@@ -5,8 +5,12 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
-# Stage 2: dev (Vite HMR en 5173)
+# Stage 2: dev (Vite HMR en 5173). uid 1000 = usuario host (WSL) para que los
+# archivos que escribe Vite en el bind mount (.tanstack/, routeTree.gen.ts) no
+# queden como root.
 FROM base AS dev
+RUN chown -R node:node /app
+USER node
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "--port", "5173"]
 
