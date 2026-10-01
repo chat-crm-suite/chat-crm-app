@@ -1,16 +1,36 @@
+# USO INDIVIDUAL (solo front en Vite) - no es el stack del día a día.
+# El stack completo (API + front + IA + infra en una orden) vive en la raíz:
+#   ../../docker-compose.dev.yml   ->  docker compose -f ../../docker-compose.dev.yml up --build -d
+#
+# Arranque individual:
+#   cp .env.example .env     # VITE_API_URL / VITE_SOCKET_URL (solo 1ra vez)
+#   docker compose up --build -d
+#   docker compose down
+#
+# Nota: si la API no corre en el mismo Docker project, el navegador necesita la API
+# publicada en localhost:3000 (usa el compose de chat-crm-api o el global de la raíz).
+# VITE_* aquí salen de interpolación sobre .env del repo; en el compose global NO se
+# declaran y manda el .env del bind mount.
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    container_name: chat-crm-app-dev
+    container_name: chat-crm-dev-app
     ports:
       - "5173:5173"
     volumes:
       - .:/app
-      - /app/node_modules
+      # Volumen con nombre: sobrevive a `down` (con anónimo cada down = npm ci otra vez).
+      - app_node_modules:/app/node_modules
     environment:
+      - NODE_ENV=development
       - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+      # /chat es el namespace canónico del gateway; /whatsapp quedó stale.
       - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:3000/chat}
     restart: unless-stopped
+
+volumes:
+  app_node_modules:
+    driver: local
