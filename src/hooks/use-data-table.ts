@@ -22,7 +22,7 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import type { ExtendedColumnSort } from "@/types/data-table";
 
 const DEBOUNCE_MS = 500;
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = import.meta.env.DEV;
 
 export interface DataTableQuery<TData> {
   page: number;
@@ -151,6 +151,7 @@ export function useDataTable<TData extends object>(props: UseDataTableProps<TDat
       ...filters,
     };
     if (isDevelopment) {
+      // eslint-disable-next-line no-console
       console.log("[DEV MODE] POST Query Body:", finalQuery);
     }
 

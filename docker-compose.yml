@@ -12,5 +12,5 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
-      - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:3000/whatsapp}
+      - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:3000/chat}
     restart: unless-stopped
