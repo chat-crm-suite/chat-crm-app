@@ -28,10 +28,11 @@ export const saveConfig = async (
   businessId: string,
   body: WhatsAppConfigInput
 ) => {
-  const { data } = await ws.patch<WhatsAppConfigInput>(
-    `config/${businessId}`,
-    body
-  )
+  const { data } = await ws.patch<WhatsAppConfigInput>(`config`, body, {
+    headers: {
+      'x-company-id': businessId,
+    },
+  })
   const result = WhatsappConfigSchema.safeParse(data)
 
   if (!result.success) throw new Error('Datos inválidos del backend')
