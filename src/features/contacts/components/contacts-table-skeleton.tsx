@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTableSkeleton } from '@/components/data-table/data-table-skeleton'
-import type { Contact } from '@/features/contacts/data/schema'
+import type { ContactResponse as Contact } from '@chat-crm/contracts'
 
 export const ContactTableSkeleton = ({
   columns,

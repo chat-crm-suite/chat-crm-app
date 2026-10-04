@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { type Contact } from '../data/schema'
+import type { ContactResponse as Contact } from '@chat-crm/contracts'
 
 const formSchema = z
   .object({

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header'
 import { DataTableRowActions } from '@/features/contacts/components/data-table-row-actions'
-import type { Contact, ContactStatus } from '@/features/contacts/data/schema'
+import type { ContactResponse as Contact, ContactStatus } from '@chat-crm/contracts'
 
 export const useColumns = (): ColumnDef<Contact>[] => {
   return useMemo<ColumnDef<Contact>[]>(
