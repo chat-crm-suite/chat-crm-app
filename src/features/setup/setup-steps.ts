@@ -59,13 +59,15 @@ export function buildSetupPayload(
       address: clean(company.address),
     },
     whatsapp: connectWhatsapp
-      ? {
+      ? // The form superRefine guarantees accessToken/phoneNumberId when
+        // `connectWhatsapp` is true; the contract requires them as strings.
+        ({
           businessId: clean(whatsapp.businessId),
           accessToken: clean(whatsapp.accessToken),
           phoneNumberId: clean(whatsapp.phoneNumberId),
           webhookUrl,
           apiVersion: clean(whatsapp.apiVersion),
-        }
+        } as NonNullable<SetupPayload['whatsapp']>)
       : undefined,
   }
 }

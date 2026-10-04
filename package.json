@@ -16,7 +16,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node scripts/link-contracts.mjs",
+    "contracts:link": "node scripts/link-contracts.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react-swc'
 import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
-import { resolveContractsDir } from './scripts/contracts-path'
+import { resolveContractsDir } from './scripts/contracts-path.mjs'
 
 // Shared contracts: single source of truth in chat-crm-api/src/contracts.
 // Resolved at config time so the same setup works in main checkouts, paired
