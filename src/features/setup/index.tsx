@@ -64,8 +64,17 @@ export function SetupPage() {
         </CardHeader>
         <CardContent>
           {isLoading || !status ? (
-            <div className='flex h-32 items-center justify-center'>
-              <Loader2 className='text-muted-foreground size-6 animate-spin' />
+            <div
+              role='status'
+              aria-busy='true'
+              aria-live='polite'
+              className='flex h-32 items-center justify-center'
+            >
+              <Loader2
+                aria-hidden
+                className='text-muted-foreground size-6 animate-spin'
+              />
+              <span className='sr-only'>Cargando configuración…</span>
             </div>
           ) : (
             <SetupWizard
