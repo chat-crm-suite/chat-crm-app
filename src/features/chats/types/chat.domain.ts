@@ -40,6 +40,14 @@ export interface ChatClient {
   phone: string
 }
 
+export interface ChatAgent {
+  id: string
+  username: string
+}
+
+/** Vistas del panel de chats (asignación automática). */
+export type ChatListView = 'inbox' | 'queue' | 'needs-response'
+
 export interface Chat {
   id: string
   preview?: ChatPreview
@@ -48,6 +56,12 @@ export interface Chat {
   createdAt: Date
   updatedAt: Date
   isDraft?: boolean
+  /** Cola de sin asignar: momento del último mensaje (antigüedad). */
+  waitingSince?: string
+  /** Vista "sin respuesta": dueño actual (null si está en cola). */
+  agent?: ChatAgent | null
+  /** Marcado local: el chat está en la cola y se puede reclamar. */
+  isUnassigned?: boolean
 }
 
 // SENTIMENT

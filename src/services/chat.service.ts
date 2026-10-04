@@ -14,6 +14,37 @@ export const getChatList = async () => {
   }
 }
 
+/** Cola de chats sin asignar de la empresa (para reclamar). */
+export const getUnassignedChats = async (): Promise<Chat[]> => {
+  try {
+    const response = await chats.get<Chat[]>('/unassigned')
+
+    return response?.data ?? []
+  } catch {
+    return []
+  }
+}
+
+/** Reclama un chat libre para el usuario actual (409 si es de otro agente). */
+export const claimChat = async (chatId: string) => {
+  const { data } = await chats.post(`/${chatId}/claim`)
+
+  return data
+}
+
+/** Chats cuyo último mensaje es del cliente y llevan `minutes` sin respuesta. */
+export const getNeedsResponseChats = async (minutes = 15): Promise<Chat[]> => {
+  try {
+    const response = await chats.get<Chat[]>('/needs-response', {
+      params: { minutes },
+    })
+
+    return response?.data ?? []
+  } catch {
+    return []
+  }
+}
+
 export const createChat = async (agentId: string, contactId: string) => {
   const res = await chats.post<Chat>('', {
     title: 'new chat',
@@ -24,10 +55,13 @@ export const createChat = async (agentId: string, contactId: string) => {
   return res?.data ?? []
 }
 
+/** Asignación manual / reasignación (solo supervisores pueden quitar dueño). */
 export const assignedUser = async (chatId: string, agentId: string) => {
-  const res = await chats.get(`/${chatId}/assigned/${agentId}`)
-  return res.data
+  const { data } = await chats.post('/assign', { chatId, agentId })
+
+  return data
 }
+
 type MessageContent = {
   id: string
   senderType: string
