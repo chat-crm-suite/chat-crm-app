@@ -26,10 +26,21 @@ dist-ssr
 *.sln
 *.sw?
 
-# Enviroments files
+# Enviroments files (nunca commitear valores reales, solo *.example)
 .env
-.env.prod
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
 .env.production.local
+.env.prod
+.env.prod.local
+.env.staging
+.env.staging.local
+!.env.example
+!.env.*.example
 
 # Generated artifacts from skills/tooling
 .coverage
