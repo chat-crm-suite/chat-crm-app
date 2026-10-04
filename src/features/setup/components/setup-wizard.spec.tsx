@@ -71,4 +71,48 @@ describe('SetupWizard', () => {
     expect(payload.company.name).toBe('J&P Perifericos')
     expect(payload.admin.username).toBe('admin')
   })
+
+  it('lets the action row wrap so the buttons never overflow the card', () => {
+    render(
+      <SetupWizard
+        status={status({ hasAdmin: true, hasCompany: true })}
+        onSubmit={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('setup-actions')).toHaveClass('flex-wrap')
+    expect(screen.getByTestId('setup-action-buttons')).toHaveClass(
+      'flex-wrap',
+      'min-w-0'
+    )
+
+    // En el paso de WhatsApp hay dos acciones: se reparten el ancho en pantallas
+    // pequeñas en vez de desbordar la tarjeta.
+    expect(
+      screen.getByRole('button', { name: 'Saltar y finalizar' })
+    ).toHaveClass('flex-1')
+    expect(
+      screen.getByRole('button', { name: 'Guardar y finalizar' })
+    ).toHaveClass('flex-1')
+  })
+
+  it('keeps the action buttons stable while the request is pending', () => {
+    const props = {
+      status: status({ hasAdmin: true, hasCompany: true }),
+      onSubmit: vi.fn(),
+    }
+    const { rerender } = render(<SetupWizard {...props} />)
+
+    expect(
+      screen.getByRole('button', { name: 'Guardar y finalizar' })
+    ).toBeInTheDocument()
+
+    rerender(<SetupWizard {...props} isPending />)
+
+    // El spinner aparece sin cambiar el nombre accesible ni romper el layout.
+    expect(
+      screen.getByRole('button', { name: 'Guardar y finalizar' })
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('setup-action-buttons')).toHaveClass('flex-wrap')
+  })
 })
