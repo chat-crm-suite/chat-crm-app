@@ -1,12 +1,9 @@
 import { z } from 'zod'
+import { UserRoleSchema } from '@chat-crm/contracts'
 
-export const userRoleSchema = z.union([
-  z.literal('admin'),
-  z.literal('support'),
-  z.literal('manager'),
-  z.literal('agent'),
-  z.literal('system')
-])
+// Canonical roles live in @chat-crm/contracts (shared with the API): the
+// previous local list had a drift ('manager' vs the API's 'supervisor').
+export const userRoleSchema = UserRoleSchema
 
 export type UserRoles = z.infer<typeof userRoleSchema>
 
