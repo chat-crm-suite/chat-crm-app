@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "postinstall": "node scripts/link-contracts.mjs",
+    "postinstall": "node --input-type=module -e \"import{existsSync}from'node:fs';if(existsSync('scripts/link-contracts.mjs')){await import('./scripts/link-contracts.mjs')}else{console.log('[@chat-crm/contracts] link skipped (scripts not present)')}\"",
     "contracts:link": "node scripts/link-contracts.mjs"
   },
   "dependencies": {
