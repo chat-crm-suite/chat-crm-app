@@ -1,23 +1,26 @@
-# Stage 1: deps base (cache eficiente con pnpm + store)
+# Stage 1: deps base (cache eficiente con pnpm + store). Todo se crea ya como
+# `node` (chown pequeño ANTES de instalar + COPY --chown), así evitamos el
+# chown -R recursivo sobre node_modules que dominaba el tiempo de build.
 FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.34.6 --activate
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-ENV PNPM_STORE=/pnpm/store
-RUN mkdir -p /pnpm/store /app && chown -R node:node /pnpm /app
+ENV npm_config_store_dir=/pnpm/store
+ENV COREPACK_HOME=/pnpm/corepack
+RUN corepack enable && corepack prepare pnpm@10.34.6 --activate \
+    && mkdir -p /pnpm/store /app \
+    && chown -R node:node /pnpm /app
 WORKDIR /app
-COPY package.json pnpm-lock.yaml* ./
+USER node
+COPY --chown=node:node package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
-COPY . .
+COPY --chown=node:node . .
 
 # Stage 2: dev (Vite HMR en 5173). uid 1000 = usuario host (WSL) para que los
 # archivos que escribe Vite en el bind mount (.tanstack/, routeTree.gen.ts) no
 # queden como root.
 FROM base AS dev
-RUN chown -R node:node /app
-USER node
 EXPOSE 5173
-CMD ["pnpm", "run", "dev", "--", "--host", "--port", "5173"]
+CMD ["pnpm", "run", "dev", "--port", "5173"]
 
 # Stage 3: build prod (VITE_* se bakea aquí -> usar --build-arg)
 # NOTA: se usa `vite build` directo (sin `tsc -b`) porque el repo tiene
