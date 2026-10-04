@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CreateSetupSchema } from '@chat-crm/contracts'
 import type { SetupStatus } from '@/services/setup.service'
 import { setupFormDefaults } from '@/schemas/setup.schema'
 import {
@@ -147,5 +148,32 @@ describe('buildSetupPayload', () => {
       webhookUrl,
       apiVersion: undefined,
     })
+  })
+
+  it('produces a payload accepted by the shared contract', () => {
+    const payload = buildSetupPayload(
+      {
+        ...setupFormDefaults,
+        setupToken: 'token-secreto',
+        admin: {
+          ...setupFormDefaults.admin,
+          username: 'admin',
+          password: 'secreta-123',
+          confirmPassword: 'secreta-123',
+          email: 'admin@example.com',
+        },
+        company: { ...setupFormDefaults.company, name: 'J&P' },
+        connectWhatsapp: true,
+        whatsapp: {
+          businessId: 'biz-1',
+          accessToken: 'token',
+          phoneNumberId: 'phone-1',
+          apiVersion: 'v22.0',
+        },
+      },
+      webhookUrl
+    )
+
+    expect(() => CreateSetupSchema.parse(payload)).not.toThrow()
   })
 })

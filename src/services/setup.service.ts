@@ -1,45 +1,18 @@
+import {
+  SetupResultSchema,
+  SetupStatusSchema,
+  type CreateSetupInput,
+  type SetupResult,
+  type SetupStatus,
+} from '@chat-crm/contracts'
+
 import { API_URL, client } from '@/lib/http'
 
-export interface SetupStatus {
-  initialized: boolean
-  hasAdmin: boolean
-  hasCompany: boolean
-  hasWhatsapp: boolean
-  hasUsers: boolean
-  requiresSetupToken: boolean
-}
-
-export interface SetupWhatsappInput {
-  businessId?: string
-  accessToken?: string
-  phoneNumberId?: string
-  webhookUrl: string
-  apiVersion?: string
-}
-
-export interface SetupPayload {
-  setupToken?: string
-  admin: {
-    username: string
-    password: string
-    firstName?: string
-    lastName?: string
-    email?: string
-    phoneNumber?: string
-  }
-  company: {
-    name: string
-    email?: string
-    phoneNumber?: string
-    address?: string
-  }
-  whatsapp?: SetupWhatsappInput
-}
-
-export interface SetupResult {
-  user: { id: string; username: string }
-  company: { id: string; name: string }
-  whatsapp: { id: string; webhookVerifyToken: string } | null
+export type {
+  CreateSetupInput,
+  CreateSetupInput as SetupPayload,
+  SetupResult,
+  SetupStatus,
 }
 
 const setup = client('/setup')
@@ -48,8 +21,21 @@ export const WEBHOOK_PATH = '/integration/webhook/whatsapp'
 
 export const getWebhookUrl = () => `${API_URL}${WEBHOOK_PATH}`
 
-export const getSetupStatus = async (): Promise<SetupStatus> =>
-  (await setup.get<SetupStatus>('/status')).data
+export const getSetupStatus = async (): Promise<SetupStatus> => {
+  const { data } = await setup.get('/status')
 
-export const runSetup = async (payload: SetupPayload): Promise<SetupResult> =>
-  (await setup.post<SetupResult>('', payload)).data
+  // Dev-only runtime check: catches API/contract drift immediately.
+  if (import.meta.env.DEV) return SetupStatusSchema.parse(data)
+
+  return data as SetupStatus
+}
+
+export const runSetup = async (
+  payload: CreateSetupInput
+): Promise<SetupResult> => {
+  const { data } = await setup.post('', payload)
+
+  if (import.meta.env.DEV) return SetupResultSchema.parse(data)
+
+  return data as SetupResult
+}

@@ -13,8 +13,12 @@ const CONTRACTS_ENTRY = 'index.ts'
  * - Paired worktrees: `chat-crm-app/.worktrees/<name>` and
  *   `chat-crm-api/.worktrees/<name>` are expected to share the same name.
  * - Main checkouts: both repos cloned side by side.
+ *
+ * @param {string} repoRoot Absolute path of this repo (chat-crm-app) or of one
+ *   of its worktrees.
+ * @returns {string} Absolute path of the contracts directory.
  */
-export function resolveContractsDir(repoRoot: string): string {
+export function resolveContractsDir(repoRoot) {
   const worktreeName = path.basename(repoRoot)
 
   const candidates = [
@@ -28,7 +32,7 @@ export function resolveContractsDir(repoRoot: string): string {
     path.resolve(repoRoot, '../chat-crm-api/src/contracts'),
     path.resolve(repoRoot, '../../chat-crm-api/src/contracts'),
     path.resolve(repoRoot, '../../../chat-crm-api/src/contracts'),
-  ].filter((candidate): candidate is string => Boolean(candidate))
+  ].filter((candidate) => Boolean(candidate))
 
   const found = candidates.find((candidate) =>
     fs.existsSync(path.join(candidate, CONTRACTS_ENTRY))

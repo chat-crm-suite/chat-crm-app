@@ -2,7 +2,7 @@ import path from 'path'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react-swc'
 
-import { resolveContractsDir } from './scripts/contracts-path'
+import { resolveContractsDir } from './scripts/contracts-path.mjs'
 
 const contractsDir = resolveContractsDir(__dirname)
 

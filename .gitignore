@@ -18,6 +18,9 @@ dist-ssr
 # Git worktrees (paired branch work, never committed)
 .worktrees/
 
+# Stable link to the shared contracts (created by scripts/link-contracts.mjs)
+.contracts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
