@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      id='shadcn-admin-logo'
+      id='chat-crm-logo'
       viewBox='0 0 24 24'
       xmlns='http://www.w3.org/2000/svg'
       height='24'
@@ -17,8 +17,8 @@ export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
       className={cn('size-6', className)}
       {...props}
     >
-      <title>Shadcn-Admin</title>
-      <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
+      <title>Chat CRM</title>
+      <path d='M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z' />
     </svg>
   )
 }

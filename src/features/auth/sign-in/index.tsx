@@ -3,7 +3,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -27,31 +26,6 @@ export function SignIn() {
         <CardContent>
           <UserAuthForm redirectTo={redirect} />
         </CardContent>
-        <CardFooter>
-          <p className='text-muted-foreground px-8 text-center text-sm'>
-            {t('sign-in.form.footer.msg')}
-            {' \''}
-            {t('sign-in.form.button.submit')}
-            {'\''}
-            {t('sign-in.form.footer.accept')}
-            <a
-              href='/terms'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              {/* Terms of Service */}
-              {t('sign-in.form.footer.term')}
-            </a>{' '}
-            and{' '}
-            <a
-              href='/privacy'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              {/* Privacy Policy */}
-              {t('sign-in.form.footer.policy')}
-            </a>
-            .
-          </p>
-        </CardFooter>
       </Card>
     </AuthLayout>
   )

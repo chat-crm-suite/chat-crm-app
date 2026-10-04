@@ -1,13 +1,10 @@
 import {
   LayoutDashboard,
   ListTodo,
-  HelpCircle,
   Settings,
   UserCog,
   Users,
   MessagesSquare,
-  AudioWaveform,
-  GalleryVerticalEnd,
   Plug,
   MessageSquare,
   NotebookTabs,
@@ -18,25 +15,15 @@ import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
-    avatar: '/avatars/shadcn.jpg',
+    name: 'Chat CRM',
+    email: 'soporte@chat-crm',
+    avatar: '',
   },
   teams: [
     {
-      name: 'J&P Perifericos SAC',
+      name: 'Chat CRM',
       logo: House,
-      plan: 'Chat CRM',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
+      plan: 'CRM',
     },
   ],
   navGroups: [
@@ -95,11 +82,6 @@ export const sidebarData: SidebarData = {
               ],
             },
           ],
-        },
-        {
-          title: 'Help Center',
-          url: '/help-center',
-          icon: HelpCircle,
         },
       ],
     },

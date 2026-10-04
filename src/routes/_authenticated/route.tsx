@@ -4,8 +4,8 @@ import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { guard } from "@/lib/guard";
 
 export const Route = createFileRoute("/_authenticated")({
-  beforeLoad: async ({ context }) => {
-    guard(context.queryClient)
+  beforeLoad: async ({ context, location }) => {
+    await guard(context.queryClient, location.href)
   },
   component: AuthenticatedLayout,
 });
