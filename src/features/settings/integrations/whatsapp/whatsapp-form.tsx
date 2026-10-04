@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,6 +41,27 @@ import { CopyIconButton } from '@/components/button-copy-icon'
 import { InputEndAddOn } from '@/components/input-end-add-on'
 import { PasswordInput } from '@/components/input-password'
 
+const WEBHOOK_PATH = '/integration/webhook/whatsapp'
+
+/**
+ * TODO(backend): persist only the domain for webhookUrl and append
+ * WEBHOOK_PATH server-side. Today the API stores the full URL, so the form
+ * splits it on load and joins it on save for backward compatibility.
+ */
+const splitWebhookUrl = (url?: string) => {
+  const value = url?.trim() ?? ''
+  if (!value) return ''
+  return value.endsWith(WEBHOOK_PATH)
+    ? value.slice(0, -WEBHOOK_PATH.length)
+    : value
+}
+
+const joinWebhookUrl = (base?: string) => {
+  const value = base?.trim().replace(/\/+$/, '') ?? ''
+  if (!value) return ''
+  return value.endsWith(WEBHOOK_PATH) ? value : `${value}${WEBHOOK_PATH}`
+}
+
 const onInvalidSubmit = (errors: FieldErrors<WhatsAppConfigInput>) => {
   Object.values(errors).forEach((error) => {
     if (error?.message) toast.error(error.message)
@@ -48,8 +70,6 @@ const onInvalidSubmit = (errors: FieldErrors<WhatsAppConfigInput>) => {
 
 export const WhatsappForm = () => {
   const { id: businessId } = useAuthStore().auth.company!
-
-  console.log('auth', useAuthStore().auth)
 
   // Get data config
   const { data, isLoading } = useQuery({
@@ -69,7 +89,7 @@ export const WhatsappForm = () => {
 
   useEffect(() => {
     if (data) {
-      form.reset(data)
+      form.reset({ ...data, webhookUrl: splitWebhookUrl(data.webhookUrl) })
     }
   }, [data, form])
 
@@ -81,11 +101,17 @@ export const WhatsappForm = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(async (vals) => {
-          toast.promise(mutateAsync(vals), {
-            loading: 'Guardando configuración...',
-            success: 'Configuración guardada correctamente 🎉',
-            error: 'Ocurrió un error al guardar la configuración ❌',
-          })
+          toast.promise(
+            mutateAsync({
+              ...vals,
+              webhookUrl: joinWebhookUrl(vals.webhookUrl),
+            }),
+            {
+              loading: 'Guardando configuración...',
+              success: 'Configuración guardada correctamente 🎉',
+              error: 'Ocurrió un error al guardar la configuración ❌',
+            }
+          )
         }, onInvalidSubmit)}
         className='flex h-8/10 w-full flex-col justify-between space-y-6'
       >
@@ -188,48 +214,67 @@ export const WhatsappForm = () => {
           </p>
         </div>
         <Separator className='my-4 flex-none' />
-        <div className='flex items-end justify-between gap-2'>
+        <div
+          data-testid='webhook-url-row'
+          className='flex flex-wrap items-start gap-2'
+        >
           <FormField
             control={form.control}
             name='webhookUrl'
             render={({ field }) => (
-              <FormItem className='w-full'>
+              <FormItem className='min-w-0 flex-1'>
                 <FormLabel>Webhook Url</FormLabel>
-                <FormControl className='flex w-full flex-row'>
-                  <InputEndAddOn
-                    textEnd='/integration/webhook/whatsapp'
-                    placeholder='http://tu-domain.com'
-                    {...field}
+                <div className='flex flex-wrap items-center gap-2'>
+                  <div className='min-w-0 flex-1'>
+                    <FormControl>
+                      <InputEndAddOn
+                        textEnd={WEBHOOK_PATH}
+                        type='url'
+                        inputMode='url'
+                        placeholder='http://tu-domain.com'
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
+                  <CopyIconButton
+                    text={joinWebhookUrl(form.getValues('webhookUrl'))}
                   />
-                </FormControl>
+                </div>
+                <FormDescription>
+                  Edita solo el dominio; el path del webhook es fijo.
+                </FormDescription>
               </FormItem>
             )}
           />
-          <CopyIconButton
-            text={
-              form.getValues('webhookUrl') + '/integration/webhook/whatsapp'
-            }
-          />
         </div>
 
-        <div className='flex items-end justify-between gap-2'>
+        <div
+          data-testid='webhook-verify-row'
+          className='flex flex-wrap items-start gap-2'
+        >
           <FormField
             control={form.control}
             name='webhookVerifyToken'
             render={({ field }) => (
-              <FormItem className='w-full'>
+              <FormItem className='min-w-0 flex-1'>
                 <FormLabel>Verify Token</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    placeholder='********'
-                    readOnly={true}
-                    {...field}
+                <div className='flex flex-wrap items-center gap-2'>
+                  <div className='min-w-0 flex-1'>
+                    <FormControl>
+                      <PasswordInput
+                        placeholder='********'
+                        readOnly={true}
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
+                  <CopyIconButton
+                    text={form.getValues('webhookVerifyToken') ?? ''}
                   />
-                </FormControl>
+                </div>
               </FormItem>
             )}
           />
-          <CopyIconButton text={form.getValues('webhookVerifyToken') + ''} />
         </div>
 
         {/* Buttons Actions */}
