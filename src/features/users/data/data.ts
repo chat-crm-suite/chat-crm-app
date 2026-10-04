@@ -4,7 +4,7 @@ import { type LucideIcon, UserCheck, Users, Hammer, UserStar, Server } from 'luc
 const trnl: Record<UserRoles, string> = {
   admin: 'Administrador',
   support: 'Soporte',
-  manager: 'Manager',
+  supervisor: 'Supervisor',
   agent: 'Agente',
   system: 'Sistema'
 }
@@ -15,9 +15,9 @@ export const roles: Record<UserRoles, { label: string, value: UserRoles, icon: L
     value: 'admin',
     icon: UserCheck,
   },
-  'manager': {
-    label: trnl['manager'] ?? 'Manager',
-    value: 'manager',
+  'supervisor': {
+    label: trnl['supervisor'] ?? 'Supervisor',
+    value: 'supervisor',
     icon: Users,
   },
   'support': {
