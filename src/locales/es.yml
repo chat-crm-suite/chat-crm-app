@@ -1,5 +1,5 @@
 app:
-  name: "CRM Business App"
+  name: "Chat CRM"
 chat:
   user:
     unknown: "Usuario desconocido"
