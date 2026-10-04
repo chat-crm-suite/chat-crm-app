@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { editUser, saveUser } from '@/services/user.service'
 import { isValidPhoneNumber } from 'react-phone-number-input'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,19 +28,19 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { PasswordInput } from '@/components/input-password'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { roles } from '@/features/users/data/data'
-import { userRoleSchema, type User } from '../data/schema'
+import { UserRoleSchema, type UserResponse as User } from '@chat-crm/contracts'
 
 const formSchema = z
   .object({
-    firstNames: z.string().min(1, 'First Name is required.'),
-    lastNames: z.string().min(1, 'Last Name is required.'),
+    firstName: z.string().min(1, 'First Name is required.'),
+    lastName: z.string().min(1, 'Last Name is required.'),
     username: z.string().min(1, 'Username is required.'),
     phoneNumber: z.string().min(1, 'Phone number is required.'),
     email: z.email({
       error: (iss) => (iss.input === '' ? 'Email is required.' : undefined),
     }),
     password: z.string().transform((pwd) => pwd?.trim()),
-    role: userRoleSchema,
+    role: UserRoleSchema,
     confirmPassword: z.string().transform((pwd) => pwd.trim()),
     isEdit: z.boolean(),
   })
@@ -133,19 +132,30 @@ export function UsersActionDialog({
 }: UserActionDialogProps) {
   const queryClient = useQueryClient()
   const isEdit = !!currentRow
-  const { auth } = useAuthStore()
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
+          firstName: currentRow.firstName ?? '',
+          lastName: currentRow.lastName ?? '',
+          username: currentRow.username,
+          phoneNumber: currentRow.phoneNumber ?? '',
+          email: currentRow.email ?? '',
           password: '',
+          role: currentRow.role,
           confirmPassword: '',
           isEdit,
         }
       : {
-          isEdit,
+          firstName: '',
+          lastName: '',
+          username: '',
+          phoneNumber: '',
+          email: '',
+          password: '',
           role: 'agent',
+          confirmPassword: '',
+          isEdit,
         },
   })
 
@@ -195,7 +205,6 @@ export function UsersActionDialog({
     } else {
       const valuesToSend = {
         ...data,
-        companyId: auth.user?.companyId,
       }
       delete (valuesToSend as any).confirmPassword
 
@@ -245,7 +254,7 @@ export function UsersActionDialog({
             >
               <FormField
                 control={form.control}
-                name='firstNames'
+                name='firstName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
@@ -263,7 +272,7 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='lastNames'
+                name='lastName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { useSearchUsers } from '@/components/contact/hooks/user-search-users'
-import type { User } from '@/features/users/data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 
 export const AssignedUser = ({ chatId }: { chatId: string }) => {
   const [searchTerm, setSearchTerm] = useState('')
