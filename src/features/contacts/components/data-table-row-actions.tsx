@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type Contact } from '../data/schema'
+import type { ContactResponse as Contact } from '@chat-crm/contracts'
 import { useContacts } from './contacts-provider'
 
 type DataTableRowActionsProps = {

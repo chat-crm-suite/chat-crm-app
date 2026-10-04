@@ -3,7 +3,7 @@ import { useDataTable, type DataTableQuery } from '@/hooks/use-data-table'
 import { DataTable } from '@/components/data-table/data-table'
 import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTableBulkActions } from '@/features/contacts/components/data-table-bulk-actions'
-import type { Contact } from '@/features/contacts/data/schema'
+import type { ContactResponse as Contact } from '@chat-crm/contracts'
 
 interface ContactTableProps {
   items: Contact[]

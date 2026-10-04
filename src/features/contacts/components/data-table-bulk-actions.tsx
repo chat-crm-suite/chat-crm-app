@@ -16,7 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import type { Contact, ContactStatus } from '../data/schema'
+import type { ContactResponse as Contact, ContactStatus } from '@chat-crm/contracts'
 import { ContactsMultiDeleteDialog } from './contacts-multi-delete-dialog'
 
 type DataTableBulkActionsProps<TData> = {
