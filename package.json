@@ -2,6 +2,10 @@
   "name": "chat-crm-app",
   "private": true,
   "version": "2.0.0-b0",
+  "packageManager": "pnpm@10.34.6",
+  "pnpm": {
+    "onlyBuiltDependencies": ["@swc/core", "esbuild"]
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --host",

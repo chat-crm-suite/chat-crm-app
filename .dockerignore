@@ -3,3 +3,4 @@ dist
 .tanstack
 .vscode
 .env
+package-lock.json

@@ -1,8 +1,13 @@
-# Stage 1: deps base (cache eficiente con npm ci)
+# Stage 1: deps base (cache eficiente con pnpm + store)
 FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.34.6 --activate
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV PNPM_STORE=/pnpm/store
+RUN mkdir -p /pnpm/store /app && chown -R node:node /pnpm /app
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Stage 2: dev (Vite HMR en 5173). uid 1000 = usuario host (WSL) para que los
@@ -12,7 +17,7 @@ FROM base AS dev
 RUN chown -R node:node /app
 USER node
 EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "--port", "5173"]
+CMD ["pnpm", "run", "dev", "--", "--host", "--port", "5173"]
 
 # Stage 3: build prod (VITE_* se bakea aquí -> usar --build-arg)
 # NOTA: se usa `vite build` directo (sin `tsc -b`) porque el repo tiene
@@ -23,7 +28,7 @@ ARG VITE_API_URL
 ARG VITE_SOCKET_URL
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
-RUN npx vite build
+RUN pnpm exec vite build
 
 # Stage 4: prod con nginx (SPA + gzip + cache estático)
 FROM nginx:1.27-alpine AS production
