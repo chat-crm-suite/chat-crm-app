@@ -9,6 +9,8 @@ const status = (overrides: Partial<SetupStatus> = {}): SetupStatus => ({
   hasAdmin: false,
   hasCompany: false,
   hasWhatsapp: false,
+  hasUsers: false,
+  requiresSetupToken: false,
   ...overrides,
 })
 
@@ -18,6 +20,19 @@ describe('SetupWizard', () => {
 
     expect(
       screen.getByRole('heading', { name: /cuenta de administrador/i })
+    ).toBeInTheDocument()
+  })
+
+  it('starts on the token step when the server requires it', () => {
+    render(
+      <SetupWizard status={status({ requiresSetupToken: true })} onSubmit={vi.fn()} />
+    )
+
+    expect(
+      screen.getByRole('heading', { name: /token de configuración/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Token de configuración')
     ).toBeInTheDocument()
   })
 

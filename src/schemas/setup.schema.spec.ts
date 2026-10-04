@@ -62,4 +62,29 @@ describe('setupFormSchema', () => {
 
     expect(result.success).toBe(true)
   })
+
+  it('requires the setup token when the server asks for it', () => {
+    const result = setupFormSchema.safeParse({
+      ...valid(),
+      requireSetupToken: true,
+      setupToken: '',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) => issue.path.includes('setupToken'))
+      ).toBe(true)
+    }
+  })
+
+  it('accepts the setup token when provided', () => {
+    const result = setupFormSchema.safeParse({
+      ...valid(),
+      requireSetupToken: true,
+      setupToken: 'token-secreto',
+    })
+
+    expect(result.success).toBe(true)
+  })
 })
