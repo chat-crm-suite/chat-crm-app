@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { assignedUser } from '@/services/chat.service'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { UserRoundSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -29,7 +30,11 @@ export const AssignedUser = ({ chatId }: { chatId: string }) => {
   const { mutate } = useMutation({
     mutationFn: (user: User) => assignedUser(chatId, user.id),
     onSuccess: () =>
-      toast.success('assignado correctamente', {
+      toast.success('Asignado correctamente', {
+        position: 'top-right',
+      }),
+    onError: (error) =>
+      toast.error(getApiErrorMessage(error, 'No se pudo asignar el chat'), {
         position: 'top-right',
       }),
   })
@@ -74,7 +79,7 @@ export const AssignedUser = ({ chatId }: { chatId: string }) => {
                 className='h-7 cursor-pointer rounded-md px-2'
                 onClick={() => mutate(item)}
               >
-                Asigned
+                Asignar
               </Button>
             </DropdownMenuItem>
           ))}

@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react'
 import { Fragment } from 'react/jsx-runtime'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ImagePlus,
@@ -10,9 +10,12 @@ import {
   Send,
 } from 'lucide-react'
 import { parsePhoneNumber } from 'react-phone-number-input'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useSocket } from '@/context/socket-provider'
+import { claimChat } from '@/services/chat.service'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +59,21 @@ export const ChatBox = () => {
     queryFn: () => api.queries.messages.get(chat!.id),
     enabled: !!chat?.id,
     select: (m) => messageBuilder.group.date(m),
+  })
+
+  const queryClient = useQueryClient()
+  const claim = useMutation({
+    mutationFn: () => claimChat(chat!.id),
+    onSuccess: () => {
+      toast.success('Chat asignado a tu nombre')
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+      if (chat) setChatSelected({ ...chat, isUnassigned: false })
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'No se pudo tomar el chat'))
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+    },
   })
 
   return chat ? (
@@ -114,6 +132,16 @@ export const ChatBox = () => {
         <div className='-me-1 flex items-center gap-1 lg:gap-2'>
           {/* here */}
           <SentimentIndicator sentiment={sentimentData} />
+          {chat.isUnassigned && (
+            <Button
+              size='sm'
+              className='h-8'
+              onClick={() => claim.mutate()}
+              disabled={claim.isPending}
+            >
+              {claim.isPending ? 'Tomando…' : 'Tomar chat'}
+            </Button>
+          )}
           <AssignedUser chatId={chat.id} />
           <Button
             size='icon'

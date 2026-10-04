@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { parsePhoneNumber } from 'react-phone-number-input'
 import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
+import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useChats } from '../../contexts/chats.provider'
 import type { Chat } from '../../types/chat.domain'
@@ -38,17 +39,17 @@ export const ChatListItem = ({ chat }: { chat: Chat }) => {
                   'PE'
                 )?.formatNational() ??
                 'unknown'}
-              {/* <Badge
-                              variant={
-                                chatUsr.status === 'pending'
-                                  ? 'secondary'
-                                  : 'default'
-                              }
-                              className='ml-2'
-                            >
-                              {chatUsr.status}
-                            </Badge> */}
+              {chat.isUnassigned && (
+                <Badge variant='secondary' className='ms-2 text-[10px]'>
+                  Sin asignar
+                </Badge>
+              )}
             </span>
+            {chat.agent && (
+              <span className='text-muted-foreground block text-[11px]'>
+                Asignado a @{chat.agent.username}
+              </span>
+            )}
             <ChatPreview preview={chat.preview} isMe={!!chat.client.id} />
           </div>
         </div>

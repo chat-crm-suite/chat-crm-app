@@ -60,12 +60,27 @@ export function Chats() {
 
     socket.on(Events.broadcast, handleNewMessage)
 
+    // Asignación automática: refrescar listas al recibir eventos del backend.
+    const handleAssigned = () => {
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+    }
+    const handleUnassigned = () => {
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'needsResponse'] })
+    }
+
+    socket.on(Events.assigned, handleAssigned)
+    socket.on(Events.unassigned, handleUnassigned)
+
     socket.on('notification', (data) => {
       toast.info(data.message)
     })
 
     return () => {
       socket.off(Events.broadcast, handleNewMessage)
+      socket.off(Events.assigned, handleAssigned)
+      socket.off(Events.unassigned, handleUnassigned)
       socket.off('notification')
     }
   }, [socket, queryClient])
