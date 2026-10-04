@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { WhatsAppConfigResponse } from '@chat-crm/contracts'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { getConfig, saveConfig } from '@/services/whatsapp.service'
-import type { WhatsAppConfig } from '@/schemas/whatsapp-config.schema'
 import { WhatsappForm } from './whatsapp-form'
 
 vi.mock('@/services/whatsapp.service', () => ({
@@ -17,7 +17,10 @@ const WEBHOOK_PATH = '/integration/webhook/whatsapp'
 const DOMAIN = 'http://localhost:3000'
 const FULL_URL = `${DOMAIN}${WEBHOOK_PATH}`
 
-const config: WhatsAppConfig = {
+const config: WhatsAppConfigResponse = {
+  id: 'config-1',
+  apiBaseUrl: 'https://graph.facebook.com',
+  isActive: true,
   businessId: '123456789012345',
   phoneNumberId: '123456789012345',
   apiVersion: 'v22.0',

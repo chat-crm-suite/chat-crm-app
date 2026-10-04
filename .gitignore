@@ -15,6 +15,9 @@ dist-ssr
 # Temporal files
 .tanstack
 
+# Git worktrees (paired branch work, never committed)
+.worktrees/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

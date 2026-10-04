@@ -27,6 +27,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@chat-crm/contracts": [
+        "../../../chat-crm-api/.worktrees/shared-contracts/src/contracts/index.ts",
+        "../chat-crm-api/src/contracts/index.ts",
+        "../../chat-crm-api/src/contracts/index.ts",
+        "../../../chat-crm-api/src/contracts/index.ts"
       ]
     }
   },
