@@ -20,7 +20,9 @@ COPY --chown=node:node . .
 # queden como root.
 FROM base AS dev
 EXPOSE 5173
-CMD ["pnpm", "run", "dev", "--port", "5173"]
+# Sincroniza node_modules con el lockfile en cada arranque: el volumen nombrado
+# solo se rellena una vez, así que un rebuild no basta si cambian dependencias.
+CMD ["sh", "-c", "pnpm install --frozen-lockfile --prefer-offline && pnpm run dev --port 5173"]
 
 # Stage 3: build prod (VITE_* se bakea aquí -> usar --build-arg)
 # NOTA: se usa `vite build` directo (sin `tsc -b`) porque el repo tiene
