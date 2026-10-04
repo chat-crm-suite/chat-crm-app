@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import type { User } from '@/features/users/data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 
 type UserComboboxProps = {
   value: string | null

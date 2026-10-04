@@ -1,4 +1,4 @@
-import type { UserRoles } from '@/features/users/data/schema'
+import type { UserRole as UserRoles } from '@chat-crm/contracts'
 import { type LucideIcon, UserCheck, Users, Hammer, UserStar, Server } from 'lucide-react'
 
 const trnl: Record<UserRoles, string> = {

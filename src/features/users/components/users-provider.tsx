@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import useDialogState from '@/hooks/use-dialog-state'
-import { type User } from '../data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 
 type UsersDialogType = 'invite' | 'add' | 'edit' | 'delete'
 

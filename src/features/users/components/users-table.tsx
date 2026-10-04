@@ -3,7 +3,7 @@ import { useDataTable, type DataTableQuery } from '@/hooks/use-data-table'
 import { DataTable } from '@/components/data-table/data-table'
 import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTableBulkActions } from '@/features/users/components/data-table-bulk-actions'
-import type { User } from '@/features/users/data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 
 interface UserTableProps {
   users: User[]
