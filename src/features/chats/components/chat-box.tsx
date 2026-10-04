@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
 import { Fragment } from 'react/jsx-runtime'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -46,7 +46,7 @@ export const ChatBox = () => {
     const payload = messageBuilder
       .chat(chat!.id)
       .sender(auth.user!.id)
-      .to(chat!.client.phone)
+      .to(chat!.client.phone ?? '')
       .text(body)
 
     socket?.emit(ChatSocketEvents.sendMessage, payload)
@@ -102,8 +102,8 @@ export const ChatBox = () => {
           <div className='flex items-center gap-2 lg:gap-4'>
             <Avatar className='size-9 lg:size-11'>
               <AvatarImage
-                src={chat.client?.username}
-                alt={chat.client?.username}
+                src={chat.client?.username ?? undefined}
+                alt={chat.client?.username ?? undefined}
               />
               <AvatarFallback className='font-bold'>
                 {chat.client?.username?.charAt(0) ?? 'N/A'}

@@ -1,43 +1,35 @@
 import type {
+  ChatListItem,
+  ChatPreview,
+  ChatMessageContent,
+  ContactResponse,
+  MessageSenderType,
   MessageType,
-  SenderType,
-  WhatsAppMessageContent,
-} from './message.domain'
+} from '@chat-crm/contracts'
 
-// CHAT
-export type ChatStatus =
-  | 'draft'
-  | 'open'
-  | 'closed'
-  | 'send'
-  | 'synced'
-  | 'error'
+export type {
+  ChatClient,
+  ChatListItem,
+  ChatPreview,
+  ChatStatus,
+  ContactSource as ClientSource,
+  ContactStatus as ClientStatus,
+} from '@chat-crm/contracts'
 
-export interface ChatPreview {
-  content: string
-  datetime: Date
-}
-
+/** Chat message as it travels over the socket (broadcast payload). */
 export interface ChatMessage {
   id: string
   chatId?: string
   msg: {
     type: MessageType
     mediaUrl?: string
-    content: WhatsAppMessageContent
+    content: ChatMessageContent
   }
   sender: {
     id: string
-    type: SenderType
+    type: MessageSenderType
   }
   timestamp: Date
-}
-
-export interface ChatClient {
-  id: string
-  username: string
-  profile: string // Avatar Url
-  phone: string
 }
 
 export interface ChatAgent {
@@ -48,13 +40,12 @@ export interface ChatAgent {
 /** Vistas del panel de chats (asignación automática). */
 export type ChatListView = 'inbox' | 'queue' | 'needs-response'
 
-export interface Chat {
-  id: string
+/**
+ * Chat de la lista (`GET /chats/list`) más los extras locales de las vistas de
+ * asignación (cola / sin respuesta).
+ */
+export interface Chat extends Omit<ChatListItem, 'preview'> {
   preview?: ChatPreview
-  status: ChatStatus
-  client: ChatClient
-  createdAt: Date
-  updatedAt: Date
   isDraft?: boolean
   /** Cola de sin asignar: momento del último mensaje (antigüedad). */
   waitingSince?: string
@@ -63,6 +54,9 @@ export interface Chat {
   /** Marcado local: el chat está en la cola y se puede reclamar. */
   isUnassigned?: boolean
 }
+
+/** Cliente del chat: el contacto del API (contrato compartido). */
+export type Client = ContactResponse
 
 // SENTIMENT
 export interface ChatSentiment {
@@ -74,27 +68,4 @@ export interface ChatSentiment {
   dominant: 'POS' | 'NEG' | 'NEU'
 }
 
-export interface SentimentData {
-  chatId?: string
-  avgPos: number
-  avgNeg: number
-  avgNeu: number
-  totalMessages: number
-  dominant: 'POS' | 'NEG' | 'NEU'
-}
-
-// CLIENT
-export type ClientStatus = 'new' | 'lead' | 'prospect' | 'client'
-export type ClientSource = 'whatsapp' | 'manual'
-
-export interface Client {
-  id: string // UUID
-  waId?: string // WhatsApp ID
-  username?: string
-  profile?: string // URL
-  phone: string
-  email?: string
-  status: ClientStatus // default 'new'
-  source: ClientSource // default 'whatsapp'
-  tags?: string[]
-}
+export type SentimentData = ChatSentiment

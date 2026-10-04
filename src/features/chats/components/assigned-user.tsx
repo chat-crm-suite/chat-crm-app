@@ -63,7 +63,7 @@ export const AssignedUser = ({ chatId }: { chatId: string }) => {
           {users?.map((item, index) => (
             <DropdownMenuItem key={index} className='justify-between'>
               <Avatar className={`border ${colorsStatus[item.status]}`}>
-                <AvatarImage src={item.avatar} alt={item.username} />
+                <AvatarImage src={item.avatar ?? undefined} alt={item.username} />
                 <AvatarFallback className='text-xs'>
                   {item.username.charAt(0).toUpperCase()}
                 </AvatarFallback>

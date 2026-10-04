@@ -8,23 +8,10 @@ export const ChatPreview = ({
   preview: Chat['preview']
   isMe: boolean
 }) => {
-  let lastMsg = ''
+  // `preview.content` is the raw text of the last message (API list endpoint).
   const content = preview?.content
+  const lastMsg = content ? (isMe ? `Yo: ${content}` : content) : ''
 
-  if (content && typeof content === 'object') {
-    if ('body' in content) {
-      lastMsg = isMe ? `Yo: ${content.body}` : content.body
-    } else if ('filename' in content) {
-      lastMsg = isMe
-        ? `Yo: Documento (${content.filename})`
-        : `Documento (${content.filename})`
-    } else if ('link' in content) {
-      lastMsg = isMe ? `Yo: Media` : `Media`
-    }
-  } else {
-    // fallback if content is string
-    lastMsg = String(content)
-  }
   return (
     <span
       className={cn(
