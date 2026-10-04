@@ -30,3 +30,9 @@ dist-ssr
 .env
 .env.prod
 .env.production.local
+
+# Generated artifacts from skills/tooling
+.coverage
+coverage-ui.json
+__pycache__/
+*.pyc
