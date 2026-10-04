@@ -17,6 +17,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: dev
+      # Shared contracts (single source of truth lives in the API repo).
+      additional_contexts:
+        contracts: ../chat-crm-api/src/contracts
     container_name: chat-crm-dev-app
     ports:
       - "5173:5173"
@@ -24,8 +27,12 @@ services:
       - .:/app
       # Volumen con nombre: sobrevive a `down` (con anónimo cada down = npm ci otra vez).
       - app_node_modules:/app/node_modules
+      # Contracts are read live (Vite resolves CONTRACTS_DIR) so contract edits
+      # hot-reload without rebuilding the image.
+      - ../chat-crm-api/src/contracts:/workspace-contracts:ro
     environment:
       - NODE_ENV=development
+      - CONTRACTS_DIR=/workspace-contracts
       - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
       # /chat es el namespace canónico del gateway; /whatsapp quedó stale.
       - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:3000/chat}

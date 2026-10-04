@@ -11,6 +11,11 @@ RUN corepack enable && corepack prepare pnpm@10.34.6 --activate \
     && chown -R node:node /pnpm /app
 WORKDIR /app
 USER node
+# Shared contracts: single source of truth in chat-crm-api/src/contracts,
+# provided by the extra build context `contracts` declared in every compose
+# file (see additional_contexts). Consumed as raw TypeScript (no build step).
+COPY --from=contracts . /contracts
+ENV CONTRACTS_DIR=/contracts
 COPY --chown=node:node package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
 COPY --chown=node:node . .

@@ -88,9 +88,18 @@ export const WhatsappForm = () => {
   })
 
   useEffect(() => {
-    if (data) {
-      form.reset({ ...data, webhookUrl: splitWebhookUrl(data.webhookUrl) })
-    }
+    if (!data) return
+
+    // Explicit mapping: the response includes contract fields the form does
+    // not use (id, timestamps) and the webhook URL is split for display.
+    form.reset({
+      businessId: data.businessId ?? '',
+      phoneNumberId: data.phoneNumberId,
+      apiVersion: data.apiVersion,
+      accessToken: data.accessToken,
+      webhookVerifyToken: data.webhookVerifyToken,
+      webhookUrl: splitWebhookUrl(data.webhookUrl),
+    })
   }, [data, form])
 
   return isLoading ? (

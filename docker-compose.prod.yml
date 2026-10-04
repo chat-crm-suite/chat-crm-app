@@ -8,6 +8,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+      # Shared contracts (single source of truth lives in the API repo).
+      additional_contexts:
+        contracts: ../chat-crm-api/src/contracts
       args:
         VITE_API_URL: ${VITE_API_URL}
         VITE_SOCKET_URL: ${VITE_SOCKET_URL}
