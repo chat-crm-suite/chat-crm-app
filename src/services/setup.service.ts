@@ -5,6 +5,8 @@ export interface SetupStatus {
   hasAdmin: boolean
   hasCompany: boolean
   hasWhatsapp: boolean
+  hasUsers: boolean
+  requiresSetupToken: boolean
 }
 
 export interface SetupWhatsappInput {
@@ -16,6 +18,7 @@ export interface SetupWhatsappInput {
 }
 
 export interface SetupPayload {
+  setupToken?: string
   admin: {
     username: string
     password: string

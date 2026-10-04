@@ -38,12 +38,22 @@ export const setupWhatsappSchema = z.object({
 
 export const setupFormSchema = z
   .object({
+    setupToken: optionalText,
+    requireSetupToken: z.boolean(),
     admin: setupAdminSchema,
     company: setupCompanySchema,
     connectWhatsapp: z.boolean(),
     whatsapp: setupWhatsappSchema,
   })
   .superRefine((data, ctx) => {
+    if (data.requireSetupToken && !data.setupToken?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['setupToken'],
+        message: 'El token de configuración es obligatorio',
+      })
+    }
+
     if (!data.connectWhatsapp) return
 
     if (!data.whatsapp.accessToken?.trim()) {
@@ -65,6 +75,8 @@ export const setupFormSchema = z
 export type SetupFormValues = z.infer<typeof setupFormSchema>
 
 export const setupFormDefaults: SetupFormValues = {
+  setupToken: '',
+  requireSetupToken: false,
   admin: {
     username: '',
     password: '',

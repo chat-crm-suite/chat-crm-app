@@ -33,6 +33,7 @@ import {
 import { buildSetupPayload, missingSetupSteps } from '../setup-steps'
 
 const STEP_LABELS: Record<string, string> = {
+  token: 'Acceso',
   admin: 'Administrador',
   company: 'Empresa',
   whatsapp: 'WhatsApp',
@@ -58,7 +59,10 @@ export function SetupWizard({
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupFormSchema),
-    defaultValues: setupFormDefaults,
+    defaultValues: {
+      ...setupFormDefaults,
+      requireSetupToken: status.requiresSetupToken,
+    },
     mode: 'onTouched',
   })
 
@@ -77,16 +81,18 @@ export function SetupWizard({
 
   const goNext = async () => {
     const fields =
-      step === 'admin'
-        ? [
-            'admin.username',
-            'admin.password',
-            'admin.confirmPassword',
-            'admin.email',
-          ]
-        : step === 'company'
-          ? ['company.name', 'company.email']
-          : ['whatsapp.accessToken', 'whatsapp.phoneNumberId']
+      step === 'token'
+        ? ['setupToken']
+        : step === 'admin'
+          ? [
+              'admin.username',
+              'admin.password',
+              'admin.confirmPassword',
+              'admin.email',
+            ]
+          : step === 'company'
+            ? ['company.name', 'company.email']
+            : ['whatsapp.accessToken', 'whatsapp.phoneNumberId']
 
     const valid = await form.trigger(fields as never)
 
@@ -125,9 +131,35 @@ export function SetupWizard({
 
       <Form {...form}>
         <form className='space-y-4'>
+          {step === 'token' && (
+            <>
+              <h2 className='text-lg font-medium'>Token de configuración</h2>
+              <p className='text-muted-foreground text-sm'>
+                Este servidor pide un token para el primer arranque. Está en la
+                variable <code>SETUP_TOKEN</code> del <code>.env</code>, o en
+                los logs de la API si no se definió.
+              </p>
+              <Field name='setupToken' label='Token de configuración'>
+                {(field) => (
+                  <PasswordInput
+                    placeholder='token del servidor'
+                    {...field}
+                  />
+                )}
+              </Field>
+            </>
+          )}
+
           {step === 'admin' && (
             <>
               <h2 className='text-lg font-medium'>Cuenta de administrador</h2>
+              {status.hasUsers && !status.hasAdmin && (
+                <p className='rounded-md border p-3 text-sm'>
+                  Ya existe un usuario en el sistema (creado por bootstrap).
+                  Introduce su usuario y contraseña para vincularlo a la nueva
+                  empresa.
+                </p>
+              )}
               <div className='grid gap-4 sm:grid-cols-2'>
                 <Field name='admin.username' label='Usuario'>
                   {(field) => (
@@ -299,6 +331,7 @@ export function SetupWizard({
 }
 
 type FieldName =
+  | 'setupToken'
   | 'admin.username'
   | 'admin.email'
   | 'admin.password'

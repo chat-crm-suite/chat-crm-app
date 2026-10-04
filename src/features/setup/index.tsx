@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AuthLayout } from '@/features/auth/auth-layout'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { login } from '@/services/auth.service'
 import {
   getSetupStatus,
@@ -48,9 +49,7 @@ export function SetupPage() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo completar la configuración'
+        getApiErrorMessage(error, 'No se pudo completar la configuración')
       )
     },
   })
