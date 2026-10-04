@@ -29,8 +29,10 @@ export default defineConfig({
   },
   server: {
     fs: {
-      // Contracts live outside the project root.
-      allow: [contractsDir],
+      // `allow` REPLACES Vite's defaults: the project root must be listed
+      // explicitly, otherwise even /index.html gets a 403. Contracts live
+      // outside the project root, so both are allowed.
+      allow: [__dirname, contractsDir],
     },
   },
 })
