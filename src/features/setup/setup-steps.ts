@@ -1,7 +1,7 @@
 import type { SetupFormValues } from '@/schemas/setup.schema'
 import type { SetupPayload, SetupStatus } from '@/services/setup.service'
 
-export type SetupStepId = 'admin' | 'company' | 'whatsapp'
+export type SetupStepId = 'token' | 'admin' | 'company' | 'whatsapp'
 
 /**
  * Pasos que faltan por completar. El usuario huérfano sin empresa no cuenta:
@@ -10,6 +10,7 @@ export type SetupStepId = 'admin' | 'company' | 'whatsapp'
 export function missingSetupSteps(status: SetupStatus): SetupStepId[] {
   const steps: SetupStepId[] = []
 
+  if (status.requiresSetupToken) steps.push('token')
   if (!status.hasAdmin) steps.push('admin')
   if (!status.hasCompany) steps.push('company')
   if (!status.hasWhatsapp) steps.push('whatsapp')
@@ -42,6 +43,7 @@ export function buildSetupPayload(
   const { admin, company, whatsapp, connectWhatsapp } = values
 
   return {
+    setupToken: clean(values.setupToken),
     admin: {
       username: admin.username.trim(),
       password: admin.password,

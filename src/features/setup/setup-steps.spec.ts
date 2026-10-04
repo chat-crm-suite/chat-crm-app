@@ -12,6 +12,8 @@ const status = (overrides: Partial<SetupStatus> = {}): SetupStatus => ({
   hasAdmin: false,
   hasCompany: false,
   hasWhatsapp: false,
+  hasUsers: false,
+  requiresSetupToken: false,
   ...overrides,
 })
 
@@ -22,6 +24,12 @@ describe('missingSetupSteps', () => {
       'company',
       'whatsapp',
     ])
+  })
+
+  it('prepends the token step when the server requires it', () => {
+    expect(
+      missingSetupSteps(status({ requiresSetupToken: true }))
+    ).toEqual(['token', 'admin', 'company', 'whatsapp'])
   })
 
   it('skips the company step when a company already exists', () => {
@@ -88,6 +96,26 @@ describe('buildSetupPayload', () => {
     expect(payload.company.name).toBe('J&P')
     expect(payload.admin.email).toBeUndefined()
     expect(payload.admin).not.toHaveProperty('confirmPassword')
+    expect(payload.setupToken).toBeUndefined()
+  })
+
+  it('includes the setup token when provided', () => {
+    const payload = buildSetupPayload(
+      {
+        ...setupFormDefaults,
+        setupToken: ' token-secreto ',
+        admin: {
+          ...setupFormDefaults.admin,
+          username: 'admin',
+          password: 'secreta-123',
+          confirmPassword: 'secreta-123',
+        },
+        company: { ...setupFormDefaults.company, name: 'J&P' },
+      },
+      webhookUrl
+    )
+
+    expect(payload.setupToken).toBe('token-secreto')
   })
 
   it('includes cleaned whatsapp credentials when enabled', () => {
