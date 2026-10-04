@@ -12,9 +12,8 @@ export const chatBuilder = {
     return {
       id: crypto.randomUUID() + '-temp',
       isDraft: true,
-      status: 'draft',
+      status: 'open',
       createdAt: new Date(),
-      updatedAt: new Date(),
       client,
     }
   },

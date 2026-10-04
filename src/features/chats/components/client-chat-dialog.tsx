@@ -40,8 +40,12 @@ export function ClientChatDialog() {
   const handleCreateChat = () => {
     if (!selectedClient) return
 
-    const chat = chatBuilder.draft(selectedClient)
-    console.log(chat)
+    const chat = chatBuilder.draft({
+      id: selectedClient.id,
+      username: selectedClient.username,
+      profile: selectedClient.profile,
+      phone: selectedClient.phoneNumber,
+    })
     setChatSelected(chat)
     setSearchClientDialog(false)
     setSelectedClient(null)
@@ -87,7 +91,10 @@ export function ClientChatDialog() {
                   >
                     <div className='flex items-center gap-2'>
                       <Avatar>
-                        <AvatarImage src={c.profile} alt='Hallie Richards' />
+                        <AvatarImage
+                          src={c.profile ?? undefined}
+                          alt='Hallie Richards'
+                        />
                         <AvatarFallback className='text-xs'>
                           <User />
                         </AvatarFallback>
@@ -96,7 +103,7 @@ export function ClientChatDialog() {
                         <span className='text-sm font-medium'>
                           {c.firstNames ??
                             parsePhoneNumber(
-                              c.phone ?? '',
+                              c.phoneNumber ?? '',
                               'PE'
                             )?.formatInternational()}
                         </span>

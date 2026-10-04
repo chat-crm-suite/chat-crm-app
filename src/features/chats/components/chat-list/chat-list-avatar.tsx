@@ -4,7 +4,10 @@ import type { Chat } from '../../types/chat.domain'
 
 export const ChatListAvatar = ({ client }: { client: Chat['client'] }) => (
   <Avatar>
-    <AvatarImage src={client?.username} alt={client?.username} />
+    <AvatarImage
+      src={client?.username ?? undefined}
+      alt={client?.username ?? undefined}
+    />
     <AvatarFallback className='font-bold'>
       {client?.username?.charAt(0) || <User />}
     </AvatarFallback>

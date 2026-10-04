@@ -1,12 +1,18 @@
-// SOCKET
-export const ChatSocketEvents = {
-    join: 'chat:join',
-    broadcast: 'chat:message:broadcast',
-    error: 'chat:message:error',
-    sendMessage: 'chat:message:send',
-    sentimentIndicator: 'chat:sentiment:update',
-    assigned: 'chat:assigned',
-    unassigned: 'chat:unassigned'
-} as const;
+import { ChatSocketEvent } from '@chat-crm/contracts'
 
-export type ChatSocketEvents = typeof ChatSocketEvents[keyof typeof ChatSocketEvents];
+/**
+ * Socket event names (values from the shared contracts, historical lowercase
+ * keys kept for call sites).
+ */
+export const ChatSocketEvents = {
+  join: ChatSocketEvent.Join,
+  broadcast: ChatSocketEvent.BroadcastMessage,
+  error: ChatSocketEvent.ErrorMessage,
+  sendMessage: ChatSocketEvent.SendMessage,
+  sentimentIndicator: ChatSocketEvent.UpdateSentimentIndicator,
+  assigned: ChatSocketEvent.ChatAssigned,
+  unassigned: ChatSocketEvent.ChatUnassigned,
+} as const
+
+export type ChatSocketEvents =
+  (typeof ChatSocketEvents)[keyof typeof ChatSocketEvents]
