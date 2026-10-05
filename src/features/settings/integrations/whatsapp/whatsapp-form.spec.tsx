@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ChannelResponse } from '@chat-crm/contracts'
+import type { WhatsAppConfigResponse } from '@chat-crm/contracts'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { getConfig, saveConfig } from '@/services/whatsapp.service'
@@ -17,7 +17,7 @@ const WEBHOOK_PATH = '/integration/webhook/whatsapp'
 const DOMAIN = 'http://localhost:3000'
 const FULL_URL = `${DOMAIN}${WEBHOOK_PATH}`
 
-const config: ChannelResponse = {
+const config: WhatsAppConfigResponse = {
   id: 'channel-1',
   type: 'whatsapp',
   name: 'WhatsApp',
@@ -28,6 +28,7 @@ const config: ChannelResponse = {
   businessId: '123456789012345',
   apiVersion: 'v22.0',
   hasCredentials: true,
+  accessToken: 'EAAB-stored-access-token',
   webhookVerifyToken: 'verify-token-123',
   webhookUrl: FULL_URL,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -133,6 +134,15 @@ describe('WhatsappForm', () => {
 
     await expect(navigator.clipboard.readText()).resolves.toBe(FULL_URL)
     expect(screen.getAllByText(WEBHOOK_PATH)).toHaveLength(1)
+  })
+
+  it('prefills the stored access token in a masked input', async () => {
+    renderForm()
+
+    const input = await screen.findByPlaceholderText('Token de acceso de Meta')
+
+    await waitFor(() => expect(input).toHaveValue(config.accessToken))
+    expect(input).toHaveAttribute('type', 'password')
   })
 
   it('reveals and copies the exact verify token', async () => {

@@ -1,7 +1,9 @@
 import {
   ChannelResponseSchema,
+  WhatsAppConfigResponseSchema,
   type ChannelResponse,
   type UpdateChannelInput,
+  type WhatsAppConfigResponse,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
 
@@ -19,12 +21,17 @@ const parseConfigResponse = (data: unknown): ChannelResponse | null => {
   return data as ChannelResponse | null
 }
 
+const whatsAppConfigResponse = WhatsAppConfigResponseSchema.nullable()
+
+/** Includes the stored access token (this endpoint only) to prefill the form. */
 export const getConfig = async (
   _businessId?: string
-): Promise<ChannelResponse | null> => {
+): Promise<WhatsAppConfigResponse | null> => {
   const { data } = await ws.get(`/whatsapp/config`)
 
-  return parseConfigResponse(data)
+  if (import.meta.env.DEV) return whatsAppConfigResponse.parse(data)
+
+  return data as WhatsAppConfigResponse | null
 }
 
 export const saveConfig = async (

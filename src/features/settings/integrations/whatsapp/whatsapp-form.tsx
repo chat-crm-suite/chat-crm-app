@@ -88,7 +88,7 @@ export const WhatsappForm = () => {
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (vals: WhatsAppConfigInput) => {
       // v2: form fields map onto the channel contract. The access token is
-      // write-only (never returned): an empty field means "keep current".
+      // prefilled from the API; an empty field means "keep current".
       const payload: UpdateChannelInput = {
         businessId: vals.businessId || undefined,
         externalAccountId: vals.phoneNumberId || undefined,
@@ -103,15 +103,15 @@ export const WhatsappForm = () => {
   useEffect(() => {
     if (!data) return
 
-    // Explicit mapping: the channel response never includes the secret
-    // (only `hasCredentials`), so the token field stays empty on load.
+    // Explicit mapping: GET /whatsapp/config returns the stored access token,
+    // so the (masked) password input shows what is saved.
     form.reset({
       businessId: data.businessId ?? '',
       phoneNumberId: data.externalAccountId ?? '',
       apiVersion: isApiVersion(data.apiVersion)
         ? data.apiVersion
         : defaultValues.apiVersion,
-      accessToken: '',
+      accessToken: data.accessToken ?? '',
       webhookVerifyToken: data.webhookVerifyToken ?? '',
       webhookUrl: splitWebhookUrl(data.webhookUrl ?? undefined),
     })
