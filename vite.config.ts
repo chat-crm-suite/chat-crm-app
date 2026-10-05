@@ -28,6 +28,16 @@ export default defineConfig({
     dedupe: ["zod"],
   },
   server: {
+    watch: {
+      // Docker on Windows polls every watched file (CHOKIDAR_USEPOLLING): skip
+      // the paired worktrees (full copies of the app) and build output, or the
+      // polling saturates the I/O threadpool and every first request takes seconds.
+      ignored: ['**/.worktrees/**', '**/dist/**', '**/.tanstack/**'],
+      // chokidar polls every 100 ms by default, which keeps the bind mount busy.
+      ...(process.env.CHOKIDAR_USEPOLLING
+        ? { usePolling: true, interval: 1000, binaryInterval: 3000 }
+        : {}),
+    },
     fs: {
       // `allow` REPLACES Vite's defaults: the project root must be listed
       // explicitly, otherwise even /index.html gets a 403. Contracts live
