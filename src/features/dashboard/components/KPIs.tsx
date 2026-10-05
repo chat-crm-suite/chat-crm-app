@@ -29,7 +29,6 @@ export const KPIs = () => {
   //   placeholderData: (prev) => prev,
   // })
   const { data: agentData } = compareData('agent', 'week')
-  console.log('data: ', agentData)
 
   return (
     <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>

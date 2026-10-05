@@ -30,7 +30,6 @@ interface SocketProviderProps {
 }
 
 const handleError = (err: any) => {
-  console.log(err)
   if (err?.hasAction) {
     toast.error(err.type, {
       position: 'top-right',
@@ -59,11 +58,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const queryClient = useQueryClient()
   const originalTitle = document.title
 
-  Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      console.log('permiso concedido')
-    }
-  })
+  Notification.requestPermission()
 
   useEffect(() => {
     if (!user) {
@@ -98,12 +93,10 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 
     // Event listeners
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id)
       setIsConnected(true)
     })
 
     newSocket.on('disconnect', () => {
-      console.log('Socket disconnected')
       setIsConnected(false)
     })
 
@@ -115,7 +108,6 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         return next
       })
 
-      console.log(notif)
       new Notification(notif.title ?? 'Mensaje nuevo', {
         body: notif.message ?? 'Vista no disponible',
       })

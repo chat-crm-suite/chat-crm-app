@@ -21,6 +21,6 @@ export async function getFileSize(url: string) {
     const res = await fetch(url, { method: 'HEAD' })
     return res.headers.get('content-length')
   } catch {
-    console.log('unknown links')
+    return null
   }
 }

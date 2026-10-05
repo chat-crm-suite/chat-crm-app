@@ -67,10 +67,9 @@ const toRankedRow = (item: SentimentTopResponse): ActiveContact => {
 // export const getKpis = metrics.get<DashboardKPIs>("/kpis").then(res => res.data)
 
 export const getCompare = (metric: string, period: string) =>
-  metrics.get(`${metric}/compare`, { params: { period } }).then((res) => {
-    console.log(res)
-    return res.data
-  })
+  metrics
+    .get(`${metric}/compare`, { params: { period } })
+    .then((res) => res.data)
 
 export const getSentimentMonthlyTrend = metrics
   .get<SentimentTrend[]>('sentiment/trend', {

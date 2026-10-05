@@ -28,8 +28,6 @@ export function Chats() {
 
     const handleNewMessage = (newMessage: ChatMessage) => {
       queryClient.setQueryData(['chat', 'list'], (oldChats: Chat[] = []) => {
-        console.log('Broadcast', newMessage)
-
         // Change preview
         const chatIndex = oldChats.findIndex((c) => c.id === newMessage.conversationId)
         if (chatIndex !== -1) {
