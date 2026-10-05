@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getContactsDataTable } from '@/services/contact.service'
 import type { DataTableQuery } from '@/hooks/use-data-table'
-import type { Contact } from '@/features/contacts/data/schema'
+import type { CustomerResponse } from '@chat-crm/contracts'
 import { useColumns } from './contacts-columns'
 import { ContactTable } from './contacts-table'
 import { ContactTableSkeleton } from './contacts-table-skeleton'
@@ -10,7 +10,7 @@ import { ContactTableSkeleton } from './contacts-table-skeleton'
 export function ContactTableData() {
   const columns = useColumns()
 
-  const [currentQuery, setCurrentQuery] = useState<DataTableQuery<Contact>>({
+  const [currentQuery, setCurrentQuery] = useState<DataTableQuery<CustomerResponse>>({
     page: 1,
     perPage: 10,
     sort: [],

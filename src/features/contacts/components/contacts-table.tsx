@@ -3,13 +3,13 @@ import { useDataTable, type DataTableQuery } from '@/hooks/use-data-table'
 import { DataTable } from '@/components/data-table/data-table'
 import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTableBulkActions } from '@/features/contacts/components/data-table-bulk-actions'
-import type { Contact } from '@/features/contacts/data/schema'
+import type { CustomerResponse } from '@chat-crm/contracts'
 
 interface ContactTableProps {
-  items: Contact[]
-  columns: ColumnDef<Contact>[]
+  items: CustomerResponse[]
+  columns: ColumnDef<CustomerResponse>[]
   pageCount: number
-  onQueryChange: (query: DataTableQuery<Contact>) => void
+  onQueryChange: (query: DataTableQuery<CustomerResponse>) => void
 }
 
 // Responsibility: Pure rendering of the table structure
@@ -19,7 +19,7 @@ export function ContactTable({
   pageCount,
   onQueryChange,
 }: ContactTableProps) {
-  const { table } = useDataTable<Contact>({
+  const { table } = useDataTable<CustomerResponse>({
     data: items,
     columns: columns,
     pageCount: pageCount,

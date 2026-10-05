@@ -3,3 +3,5 @@ dist
 .tanstack
 .vscode
 .env
+package-lock.json
+tsconfig.contracts.json

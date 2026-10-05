@@ -1,39 +1,57 @@
-import type { Contact } from "@/features/contacts/data/schema";
-import type { DataTableQuery } from "@/hooks/use-data-table";
-import { client } from "@/lib/http";
-import type { Pagination } from "@/models/types";
+import {
+  CustomerResponseSchema,
+  type CustomerResponse,
+} from '@chat-crm/contracts'
+import type { DataTableQuery } from '@/hooks/use-data-table'
+import { client } from '@/lib/http'
+import type { Pagination } from '@/models/types'
 
-const contacts = client("/contacts");
+const customers = client('/customers')
+
+/** Dev-only runtime check: catches API/contract drift immediately. */
+const parseCustomers = (data: unknown): CustomerResponse[] => {
+  if (import.meta.env.DEV) return CustomerResponseSchema.array().parse(data)
+
+  return data as CustomerResponse[]
+}
 
 export const importContacts = async (file: File) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  return (await contacts.post<{ count: number }>('/import', formData)).data
+  return (await customers.post<{ count: number }>('/import', formData)).data
 }
 
 export const saveContact = async (data: object) => {
-  return await contacts.post("", data);
+  return await customers.post('', data)
 }
 
-export const searchContacts = async (search: string) => {
-  const { data } = await contacts.get<Contact[]>('/search', { params: { q: search } });
-  return data ?? [];
+export const searchContacts = async (
+  search: string
+): Promise<CustomerResponse[]> => {
+  const { data } = await customers.get('/search', { params: { q: search } })
+  return parseCustomers(data ?? [])
 }
 
 export const editContact = async (id: string, data: object) => {
-  return await contacts.patch(`/${id}`, data);
+  return await customers.patch(`/${id}`, data)
 }
 
-export const getContactsDataTable = async (query: DataTableQuery<Contact>): Promise<Pagination<Contact>> => {
-  const { data } = await contacts.post<Pagination<Contact>>("/table", query);
+export const getContactsDataTable = async (
+  query: DataTableQuery<CustomerResponse>
+): Promise<Pagination<CustomerResponse>> => {
+  const { data } = await customers.post<Pagination<CustomerResponse>>(
+    '/table',
+    query
+  )
 
-  return data;
-};
+  return data
+}
 
 // Alias kept for legacy callers (contacts data layer) — delegates to the table endpoint.
 export const getContacts = async (
-  params: DataTableQuery<Contact>,
-): Promise<Pagination<Contact>> => getContactsDataTable(params);
+  params: DataTableQuery<CustomerResponse>
+): Promise<Pagination<CustomerResponse>> => getContactsDataTable(params)
 
-export const deleteContact = async (id: string) => await contacts.delete(`/${id}`);
+export const deleteContact = async (id: string) =>
+  await customers.delete(`/${id}`)

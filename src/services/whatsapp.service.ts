@@ -1,40 +1,61 @@
 import {
-  schema as WhatsappConfigSchema,
-  type WhatsAppConfigInput,
-} from '@/schemas/whatsapp-config.schema'
+  ChannelResponseSchema,
+  WhatsAppConfigResponseSchema,
+  type ChannelResponse,
+  type UpdateChannelInput,
+  type WhatsAppConfigResponse,
+} from '@chat-crm/contracts'
 import { client } from '@/lib/http'
 
-const ws = client('/integration/whatsapp')
+const ws = client('/channels')
 
-export const getConfig = async (businessID: string) => {
-  const { data } = await ws.get(`/config`, {
-    headers: {
-      'x-company-id': businessID,
-    },
-  })
-  const result = WhatsappConfigSchema.loose().safeParse(data)
+const configResponse = ChannelResponseSchema.nullable()
 
-  if (!result.success) throw new Error('Datos inválidos del backend')
+/**
+ * Dev-only runtime check: if the API drifts from the shared contract the form
+ * fails immediately in development instead of rendering wrong data.
+ */
+const parseConfigResponse = (data: unknown): ChannelResponse | null => {
+  if (import.meta.env.DEV) return configResponse.parse(data)
 
-  return result.data
+  return data as ChannelResponse | null
 }
 
-export const sendTemplate = async (to: string) => {
-  const { data } = await ws.post('/send/template', { to })
-  return data
+const whatsAppConfigResponse = WhatsAppConfigResponseSchema.nullable()
+
+/** Includes the stored access token (this endpoint only) to prefill the form. */
+export const getConfig = async (
+  _businessId?: string
+): Promise<WhatsAppConfigResponse | null> => {
+  const { data } = await ws.get(`/whatsapp/config`)
+
+  if (import.meta.env.DEV) return whatsAppConfigResponse.parse(data)
+
+  return data as WhatsAppConfigResponse | null
 }
 
 export const saveConfig = async (
-  businessId: string,
-  body: WhatsAppConfigInput
-) => {
-  const { data } = await ws.patch<WhatsAppConfigInput>(
-    `config/${businessId}`,
-    body
-  )
-  const result = WhatsappConfigSchema.safeParse(data)
+  _businessId: string,
+  body: UpdateChannelInput
+): Promise<ChannelResponse | null> => {
+  const { data } = await ws.patch(`whatsapp/config`, body)
+  const parsed = parseConfigResponse(data)
 
-  if (!result.success) throw new Error('Datos inválidos del backend')
+  // First-time setup: PATCH returns null when no WhatsApp channel exists yet.
+  if (parsed) return parsed
 
-  return result.data
+  const { data: created } = await ws.post('', { type: 'whatsapp', ...body })
+  return parseConfigResponse(created)
+}
+
+/**
+ * TODO(api): v2 has no `POST /integration/whatsapp/send/template` (message
+ * sending is socket-driven). Kept as a no-op so the chat error toast still
+ * compiles; wire to the conversations endpoint when the API exposes it.
+ */
+export const sendTemplate = async (_to: string) => {
+  if (import.meta.env.DEV) {
+    console.warn('[whatsapp] sendTemplate is not implemented in API v2')
+  }
+  return null
 }

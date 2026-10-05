@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { editUser, saveUser } from '@/services/user.service'
 import { isValidPhoneNumber } from 'react-phone-number-input'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,19 +28,27 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { PasswordInput } from '@/components/input-password'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { roles } from '@/features/users/data/data'
-import { userRoleSchema, type User } from '../data/schema'
+import { MemberRoleSchema, type UserResponse } from '@chat-crm/contracts'
+
+// v2: `users` is identity only (no role). The form keeps the role selector
+// until user management moves to `company-members`; the value is omitted
+// from /users payloads (the API strips unknown keys).
+type User = UserResponse & {
+  role?: z.infer<typeof MemberRoleSchema>
+  status?: string
+}
 
 const formSchema = z
   .object({
-    firstNames: z.string().min(1, 'First Name is required.'),
-    lastNames: z.string().min(1, 'Last Name is required.'),
+    firstName: z.string().min(1, 'First Name is required.'),
+    lastName: z.string().min(1, 'Last Name is required.'),
     username: z.string().min(1, 'Username is required.'),
     phoneNumber: z.string().min(1, 'Phone number is required.'),
     email: z.email({
       error: (iss) => (iss.input === '' ? 'Email is required.' : undefined),
     }),
     password: z.string().transform((pwd) => pwd?.trim()),
-    role: userRoleSchema,
+    role: MemberRoleSchema,
     confirmPassword: z.string().transform((pwd) => pwd.trim()),
     isEdit: z.boolean(),
   })
@@ -133,19 +140,30 @@ export function UsersActionDialog({
 }: UserActionDialogProps) {
   const queryClient = useQueryClient()
   const isEdit = !!currentRow
-  const { auth } = useAuthStore()
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
+          firstName: currentRow.firstName ?? '',
+          lastName: currentRow.lastName ?? '',
+          username: currentRow.username,
+          phoneNumber: currentRow.phoneNumber ?? '',
+          email: currentRow.email ?? '',
           password: '',
+          role: currentRow.role ?? 'agent',
           confirmPassword: '',
           isEdit,
         }
       : {
-          isEdit,
+          firstName: '',
+          lastName: '',
+          username: '',
+          phoneNumber: '',
+          email: '',
+          password: '',
           role: 'agent',
+          confirmPassword: '',
+          isEdit,
         },
   })
 
@@ -177,7 +195,12 @@ export function UsersActionDialog({
       for (const key in dirtyFields) {
         if (dirtyFields[key as keyof UserForm]) {
           const fieldKey = key as keyof UserForm
-          if (fieldKey !== 'confirmPassword' && fieldKey !== 'isEdit') {
+          // v2: role lives in company-members, not /users. Skip it here.
+          if (
+            fieldKey !== 'confirmPassword' &&
+            fieldKey !== 'isEdit' &&
+            fieldKey !== 'role'
+          ) {
             ;(valuesToSend as any)[fieldKey] = data[fieldKey]
           }
         }
@@ -195,9 +218,11 @@ export function UsersActionDialog({
     } else {
       const valuesToSend = {
         ...data,
-        companyId: auth.user?.companyId,
       }
       delete (valuesToSend as any).confirmPassword
+      // v2: role lives in company-members, not /users.
+      delete (valuesToSend as any).role
+      delete (valuesToSend as any).isEdit
 
       fn = saveUser(valuesToSend)
       loadingMessage = 'Guardando...'
@@ -245,7 +270,7 @@ export function UsersActionDialog({
             >
               <FormField
                 control={form.control}
-                name='firstNames'
+                name='firstName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
@@ -263,7 +288,7 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='lastNames'
+                name='lastName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>

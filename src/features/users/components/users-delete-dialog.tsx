@@ -7,7 +7,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { type User } from '../data/schema'
+import type { MemberRole, UserResponse } from '@chat-crm/contracts'
+
+// v2: `users` is identity only (no role). Kept optional until user
+// management moves to `company-members`.
+type User = UserResponse & {
+  role?: MemberRole
+  status?: string
+}
 
 type UserDeleteDialogProps = {
   open: boolean
@@ -59,7 +66,7 @@ export function UsersDeleteDialog({
             <br />
             This action will permanently remove the user with the role of{' '}
             <span className='font-bold'>
-              {currentRow.role.toUpperCase()}
+              {currentRow.role?.toUpperCase() ?? 'USER'}
             </span>{' '}
             from the system. This cannot be undone.
           </p>

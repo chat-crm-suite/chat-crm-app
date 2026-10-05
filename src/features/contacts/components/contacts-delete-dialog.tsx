@@ -7,12 +7,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { type Contact } from '../data/schema'
+import type { CustomerResponse } from '@chat-crm/contracts'
 
 type ContactsDeleteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentRow: Contact
+  currentRow: CustomerResponse
 }
 
 export function ContactsDeleteDialog({
@@ -22,9 +22,10 @@ export function ContactsDeleteDialog({
 }: ContactsDeleteDialogProps) {
   const [value, setValue] = useState('')
   const queryClient = useQueryClient()
+  const expectedPhone = currentRow.phoneNumber ?? ''
 
   const handleDelete = () => {
-    if (value.trim() !== currentRow.username) return
+    if (!expectedPhone || value.trim() !== expectedPhone) return
 
     toast.promise(deleteContact(currentRow.id), {
       success: () => {
@@ -49,7 +50,7 @@ export function ContactsDeleteDialog({
       open={open}
       onOpenChange={onOpenChange}
       handleConfirm={handleDelete}
-      disabled={value.trim() !== currentRow.username}
+      disabled={!expectedPhone || value.trim() !== expectedPhone}
       title={
         <span className='text-destructive'>
           <AlertTriangle
@@ -63,7 +64,10 @@ export function ContactsDeleteDialog({
         <div className='space-y-4'>
           <p className='mb-2'>
             Are you sure you want to delete{' '}
-            <span className='font-bold'> {currentRow.username} </span>?
+            <span className='font-bold'>
+              {' '}
+              {currentRow.displayName ?? currentRow.phoneNumber}{' '}
+            </span>?
             <br />
             This action will permanently remove the contact with phone{' '}
             <span className='font-bold'> {currentRow.phoneNumber} </span> from

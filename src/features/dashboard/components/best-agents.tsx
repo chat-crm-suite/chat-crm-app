@@ -39,13 +39,10 @@ export function TopAgentsChart() {
   if (isLoading) return <div>Cargando ranking...</div>
 
   const chartData = agents.map((a) => ({
-    name:
-      a.firstNames && a.lastNames
-        ? `${a.firstNames} ${a.lastNames}`
-        : (a.username ?? 'Sin nombre'),
-    totalPositive: Number(a.totalPositive ?? 0),
-    avgPos: Number(a.avgPos ?? 0),
-    score: Number(a.score ?? 0),
+    name: a.username ?? a.label ?? 'Sin nombre',
+    totalPositive: Number(a.positive ?? 0),
+    avgPos: Number(a.positive ?? 0),
+    score: Number(a.total ?? 0),
   }))
 
   return (

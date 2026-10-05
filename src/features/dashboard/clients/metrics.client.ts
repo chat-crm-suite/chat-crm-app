@@ -30,33 +30,46 @@ export interface DashboardKPIs {
 
 type ActiveContact = {
   id: string
-  username: string
-  firstNames: string
-  lastNames: string
-  phoneNumber: string
-  profile?: string
-  messageCount: number
+  username: string | null
+  label: string
+  positive: number
+  neutral: number
+  negative: number
+  total: number
 }
 
-type BestAgents = {
-  agentId: string
-  firstNames: string
-  lastNames: string
-  username: string
-  profile: string
-  totalPositive: string
-  phoneNumber: string
-  avgPos: number
-  score: number
+/**
+ * Raw `GET /metrics/sentiment/top` item (schema v2). Note: the API serializes
+ * the owner under the `onwer` key (historical typo); both spellings are
+ * tolerated so the UI survives either one.
+ */
+type SentimentTopResponse = {
+  onwer?: { id: string; username: string | null }
+  owner?: { id: string; username: string | null }
+  label?: string
+  sentiment?: { pos?: number; neu?: number; neg?: number }
+  total?: number
+}
+
+const toRankedRow = (item: SentimentTopResponse): ActiveContact => {
+  const owner = item.onwer ?? item.owner ?? { id: '', username: null }
+  return {
+    id: owner.id ?? '',
+    username: owner.username,
+    label: item.label ?? '',
+    positive: Number(item.sentiment?.pos ?? 0),
+    neutral: Number(item.sentiment?.neu ?? 0),
+    negative: Number(item.sentiment?.neg ?? 0),
+    total: Number(item.total ?? 0),
+  }
 }
 
 // export const getKpis = metrics.get<DashboardKPIs>("/kpis").then(res => res.data)
 
 export const getCompare = (metric: string, period: string) =>
-  metrics.get(`${metric}/compare`, { params: { period } }).then((res) => {
-    console.log(res)
-    return res.data
-  })
+  metrics
+    .get(`${metric}/compare`, { params: { period } })
+    .then((res) => res.data)
 
 export const getSentimentMonthlyTrend = metrics
   .get<SentimentTrend[]>('sentiment/trend', {
@@ -66,24 +79,24 @@ export const getSentimentMonthlyTrend = metrics
 
 export const getTopContacts = metrics
   .get<
-    ActiveContact[]
+    SentimentTopResponse[]
   >('/sentiment/top', { params: { actor: 'client', type: 'neutral' } })
-  .then((res) => res.data)
+  .then((res) => (res.data ?? []).map(toRankedRow))
 
 export const getBestAgents = metrics
   .get<
-    BestAgents[]
+    SentimentTopResponse[]
   >('/sentiment/top', { params: { actor: 'agent', type: 'neutral' } })
-  .then((res) => res.data)
+  .then((res) => (res.data ?? []).map(toRankedRow))
 
 export const getBestClients = metrics
-  .get<BestAgents[]>('/sentiment/top', {
+  .get<SentimentTopResponse[]>('/sentiment/top', {
     params: {
       actor: 'client',
       type: 'positive',
     },
   })
-  .then((res) => res.data)
+  .then((res) => (res.data ?? []).map(toRankedRow))
 
 export const getSentimentTrend = (period: string) =>
   metrics

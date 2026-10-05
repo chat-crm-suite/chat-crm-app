@@ -4,15 +4,22 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { LongText } from '@/components/long-text'
 import { roles } from '../data/data'
-import { type User } from '../data/schema'
+import type { MemberRole, UserResponse } from '@chat-crm/contracts'
+
+// v2: `users` is identity only (no role/status). Columns stay for the
+// migration to `company-members`; missing values render a placeholder.
+type User = UserResponse & {
+  role?: MemberRole
+  status?: string
+}
 import { DataTableRowActions } from './data-table-row-actions'
 
 // Translations
 const trnl: Partial<Record<keyof User, string>> = {
   phoneNumber: 'Telefono',
   role: 'Rol',
-  firstNames: 'Nombres',
-  lastNames: 'Apellidos',
+  firstName: 'Nombres',
+  lastName: 'Apellidos',
   username: 'Username',
   email: 'Correo',
   status: 'Estado',
@@ -69,34 +76,34 @@ export const usersColumns = (): ColumnDef<User>[] => {
         },
       },
       {
-        accessorKey: 'firstNames',
-        id: 'firstNames',
+        accessorKey: 'firstName',
+        id: 'firstName',
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={trnl['firstNames'] ?? 'First Names'}
+            title={trnl['firstName'] ?? 'First Names'}
           />
         ),
         cell: ({ cell }) => {
           return (
             <div className='truncate capitalize'>
-              {cell.getValue<User['firstNames']>() ?? '-'}
+              {cell.getValue<User['firstName']>() ?? '-'}
             </div>
           )
         },
       },
       {
-        accessorKey: 'lastNames',
-        id: 'lastNames',
+        accessorKey: 'lastName',
+        id: 'lastName',
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={trnl['lastNames'] ?? 'Last Names'}
+            title={trnl['lastName'] ?? 'Last Names'}
           />
         ),
         cell: ({ cell }) => (
           <div className='truncate capitalize'>
-            {cell.getValue<User['firstNames']>() ?? '-'}
+            {cell.getValue<User['lastName']>() ?? '-'}
           </div>
         ),
       },
@@ -146,6 +153,7 @@ export const usersColumns = (): ColumnDef<User>[] => {
         ),
         cell: ({ cell }) => {
           const role = cell.getValue<User['role']>()
+          if (!role) return <span className='text-muted-foreground'>-</span>
           const userType = roles[role]
 
           if (!userType) {
@@ -182,13 +190,14 @@ export const usersColumns = (): ColumnDef<User>[] => {
           />
         ),
         cell: ({ cell }) => {
-          const config = {
+          const config: Record<string, string> = {
             offline: '🔴 Offline',
             online: '🟢 Online',
             busy: '🟡 Busy',
           }
           const value = cell.getValue<User['status']>()
-          return config[value]
+          if (!value) return <span className='text-muted-foreground'>-</span>
+          return config[value] ?? value
         },
         meta: {
           label: trnl['status'] ?? 'Status',

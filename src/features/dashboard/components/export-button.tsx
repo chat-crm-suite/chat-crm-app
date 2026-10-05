@@ -7,11 +7,7 @@ export function ExportDashboardButton() {
 
   return (
     <Button
-      onClick={() => {
-        console.log('click 1')
-        exportPng('metrics', 'metrics.png')
-        console.log('click 2')
-      }}
+      onClick={() => exportPng('metrics', 'metrics.png')}
     >
       <span className='font-bold'>Export</span>
       <FileUp size={18} />

@@ -1,6 +1,6 @@
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
 import { Fragment } from 'react/jsx-runtime'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ImagePlus,
@@ -10,10 +10,13 @@ import {
   Send,
 } from 'lucide-react'
 import { parsePhoneNumber } from 'react-phone-number-input'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useSocket } from '@/context/socket-provider'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { claimChat } from '@/services/chat.service'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { api } from '../api'
@@ -40,22 +43,43 @@ export const ChatBox = () => {
   } = useChats()
 
   const handleSendMessage = (body: string) => {
+    if (!chat) return
+
+    const memberId =
+      auth.user?.memberships?.find((m) => m.companyId === auth.company.id)
+        ?.id ?? auth.user?.id
+
     const payload = messageBuilder
-      .chat(chat!.id)
-      .sender(auth.user!.id)
-      .to(chat!.client.phone)
+      .chat(chat.id)
+      .sender(memberId ?? '', 'member')
+      .to(chat.customer.phone ?? '')
       .text(body)
 
     socket?.emit(ChatSocketEvents.sendMessage, payload)
   }
 
-  const [messageInput, setMessageInput] = useState<string | undefined>()
+  const [messageInput, setMessageInput] = useState<string>('')
 
   const { data: messages } = useQuery({
     queryKey: ['chat', chat?.id, 'messages'],
     queryFn: () => api.queries.messages.get(chat!.id),
     enabled: !!chat?.id,
     select: (m) => messageBuilder.group.date(m),
+  })
+
+  const queryClient = useQueryClient()
+  const claim = useMutation({
+    mutationFn: () => claimChat(chat!.id),
+    onSuccess: () => {
+      toast.success('Chat asignado a tu nombre')
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+      if (chat) setChatSelected({ ...chat, isUnassigned: false })
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'No se pudo tomar el chat'))
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+    },
   })
 
   return chat ? (
@@ -83,17 +107,13 @@ export const ChatBox = () => {
           </Button>
           <div className='flex items-center gap-2 lg:gap-4'>
             <Avatar className='size-9 lg:size-11'>
-              <AvatarImage
-                src={chat.client?.username}
-                alt={chat.client?.username}
-              />
               <AvatarFallback className='font-bold'>
-                {chat.client?.username?.charAt(0) ?? 'N/A'}
+                {chat.customer?.displayName?.charAt(0) ?? 'N/A'}
               </AvatarFallback>
             </Avatar>
             <div>
               <span className='col-start-2 row-span-2 text-sm font-medium lg:text-base'>
-                {chat?.client?.username ?? 'Desconocido'}
+                {chat.customer?.displayName ?? 'Desconocido'}
               </span>
               <span
                 className={cn(
@@ -102,9 +122,9 @@ export const ChatBox = () => {
                 )}
               >
                 {parsePhoneNumber(
-                  chat.client.phone ?? '',
+                  chat.customer.phone ?? '',
                   'PE'
-                )?.formatInternational() || chat.client.phone}
+                )?.formatInternational() || chat.customer.phone}
               </span>
             </div>
           </div>
@@ -114,7 +134,17 @@ export const ChatBox = () => {
         <div className='-me-1 flex items-center gap-1 lg:gap-2'>
           {/* here */}
           <SentimentIndicator sentiment={sentimentData} />
-          <AssignedUser chatId={chat.id} />
+          {chat.isUnassigned && (
+            <Button
+              size='sm'
+              className='h-8'
+              onClick={() => claim.mutate()}
+              disabled={claim.isPending}
+            >
+              {claim.isPending ? 'Tomando…' : 'Tomar chat'}
+            </Button>
+          )}
+          <AssignedUser conversationId={chat.id} />
           <Button
             size='icon'
             variant='ghost'
@@ -137,7 +167,7 @@ export const ChatBox = () => {
                       <ChatMessageItem
                         key={`${msg.timestamp}-${index}`}
                         msg={msg}
-                        isClient={msg.sender.type === 'client'}
+                        isClient={msg.sender.type === 'customer'}
                       />
                     ))}
                     <div className='text-center text-xs'>
@@ -238,7 +268,13 @@ const ChatMessageItem = ({
   isClient: boolean
 }) => {
   const { text, url } = getMessageStrategy(msg.msg.type).getRenderData(msg.msg)
-  const Message = renderMessage[msg.msg.type]
+  const isMedia = msg.msg.type !== 'text'
+  // Media without url (e.g. failed download): placeholder instead of a
+  // broken `<img>` / download request to ".../null".
+  const Message =
+    (isMedia && !url ? renderMessage.text : renderMessage[msg.msg.type]) ??
+    renderMessage.text!
+  const label = isMedia && !url ? 'Archivo no disponible' : text
 
   return (
     <div
@@ -250,7 +286,7 @@ const ChatMessageItem = ({
         'relative flex max-w-6/10 flex-row break-words shadow-lg'
       )}
     >
-      <Message text={text} caption={text} url={url} time={msg.timestamp} />
+      <Message text={label} caption={label} url={url} time={msg.timestamp} />
     </div>
   )
 }

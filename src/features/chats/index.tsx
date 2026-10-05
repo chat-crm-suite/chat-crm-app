@@ -28,10 +28,8 @@ export function Chats() {
 
     const handleNewMessage = (newMessage: ChatMessage) => {
       queryClient.setQueryData(['chat', 'list'], (oldChats: Chat[] = []) => {
-        console.log('Broadcast', newMessage)
-
         // Change preview
-        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.chatId)
+        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.conversationId)
         if (chatIndex !== -1) {
           const chats = [...oldChats]
           chats[chatIndex] = {
@@ -50,7 +48,7 @@ export function Chats() {
 
       // Update chat messages
       queryClient.setQueryData(
-        ['chat', newMessage.chatId, 'messages'],
+        ['chat', newMessage.conversationId, 'messages'],
         (oldMessages: ChatMessage[] | undefined) => {
           if (!oldMessages) return [newMessage]
           return [...oldMessages, newMessage]
@@ -60,13 +58,33 @@ export function Chats() {
 
     socket.on(Events.broadcast, handleNewMessage)
 
-    socket.on('notification', (data) => {
-      toast.info(data.message)
-    })
+    // Asignación automática: refrescar listas al recibir eventos del backend.
+    const handleAssigned = () => {
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+    }
+    const handleUnassigned = () => {
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'needsResponse'] })
+    }
+
+    socket.on(Events.assigned, handleAssigned)
+    socket.on(Events.unassigned, handleUnassigned)
+
+    const handleNotification = (notification: {
+      title?: string
+      body?: string
+    }) => {
+      toast.info(notification.body ?? notification.title ?? '')
+    }
+
+    socket.on(Events.notification, handleNotification)
 
     return () => {
       socket.off(Events.broadcast, handleNewMessage)
-      socket.off('notification')
+      socket.off(Events.assigned, handleAssigned)
+      socket.off(Events.unassigned, handleUnassigned)
+      socket.off(Events.notification, handleNotification)
     }
   }, [socket, queryClient])
 

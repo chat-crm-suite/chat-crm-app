@@ -9,8 +9,8 @@ export const messageBuilder = {
     date: (messages: ChatMessage[]): GroupMessages =>
       groupMessagesByDate(messages),
   },
-  chat(chatId: string) {
-    return new MessagePayloadBuilder().chat(chatId)
+  chat(conversationId: string) {
+    return new MessagePayloadBuilder().chat(conversationId)
   },
 }
 
@@ -45,12 +45,12 @@ function groupMessagesByDate(
 class MessagePayloadBuilder {
   private payload: Partial<SendMessageRequest> = {}
 
-  chat(chatId: string) {
-    this.payload.room = chatId
+  chat(conversationId: string) {
+    this.payload.room = conversationId
     return this
   }
 
-  sender(id: string, type: SenderType = 'agent') {
+  sender(id: string, type: SenderType = 'member') {
     this.payload.sender = {
       id,
       type,

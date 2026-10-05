@@ -2,6 +2,19 @@
 
 > Tú ejecutas los comandos. Aquí solo están los archivos y el paso a paso.
 
+## 0. Contratos compartidos (2026-10-04)
+
+El front consume los schemas Zod de `chat-crm-api/src/contracts` **como TypeScript
+puro** (alias `@chat-crm/contracts`); no se copian ni se publican en npm. Por eso:
+
+- En local, los repos deben estar lado a lado (`chat-crm-api/` y `chat-crm-app/`),
+  o el mismo worktree gemelo (`repo/.worktrees/<nombre>` en ambos).
+- En Docker el compose aporta la carpeta como **contexto adicional** de build
+  (`additional_contexts: contracts: ../chat-crm-api/src/contracts`): el checkout
+  de la API debe existir junto al del front antes de construir.
+- Excepción: si solo quieres el contenedor del front sin el repo de la API,
+  exporta `CONTRACTS_DIR` apuntando a una copia de esa carpeta.
+
 ## 1. Qué se corrigió para prod
 
 - `Dockerfile`: reescrito a 4 stages `base → dev → build → production`.
@@ -26,13 +39,13 @@ git push codecta main
 En el servidor:
 
 ```bash
-ssh jypsac@100.77.254.40
-cd /home/jypsac/Proyectos/CRM/chat-crm-app
+ssh <USUARIO>@<SERVER_IP>
+cd ~/Proyectos/CRM/chat-crm-app
 cp .env.prod.example .env.prod
 nano .env.prod
-# Ej. Tailscale:
-# VITE_API_URL=http://100.77.254.40:3000
-# VITE_SOCKET_URL=http://100.77.254.40:3000/whatsapp
+# Ej. Tailscale (IP del servidor en tu tailnet):
+# VITE_API_URL=http://<SERVER_IP>:3000
+# VITE_SOCKET_URL=http://<SERVER_IP>:3000
 # APP_PORT=8081
 git pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up --build -d
@@ -55,4 +68,4 @@ docker ps | grep chat-crm-app-prod
 docker logs chat-crm-app-prod --tail 20
 ```
 
-Abre en navegador: `http://100.77.254.40:8081` y revisa Network → `VITE_API_URL` debe apuntar al API `:3000`, socket a `/whatsapp`.
+Abre en navegador: `http://<SERVER_IP>:8081` y revisa Network → `VITE_API_URL` debe apuntar al API `:3000` (el namespace del socket sale de los contratos compartidos).

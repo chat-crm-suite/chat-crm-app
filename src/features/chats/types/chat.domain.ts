@@ -1,58 +1,65 @@
 import type {
+  ConversationCustomer,
+  ConversationListItem,
+  MessageContent,
+  MessageSenderType,
+  MessageStatus,
   MessageType,
-  SenderType,
-  WhatsAppMessageContent,
-} from './message.domain'
+} from '@chat-crm/contracts'
 
-// CHAT
-export type ChatStatus =
-  | 'draft'
-  | 'open'
-  | 'closed'
-  | 'send'
-  | 'synced'
-  | 'error'
+export type {
+  ConversationCustomer as ChatCustomer,
+  ConversationPriority,
+  ConversationStatus,
+} from '@chat-crm/contracts'
 
-export interface ChatPreview {
-  content: string
-  datetime: Date
-}
-
+/** Conversation message as it travels over REST/socket (v2 broadcast payload). */
 export interface ChatMessage {
   id: string
-  chatId?: string
-  msg: {
-    type: MessageType
-    mediaUrl?: string
-    content: WhatsAppMessageContent
-  }
+  conversationId: string
+  timestamp: Date
+  status: MessageStatus
   sender: {
     id: string
-    type: SenderType
+    type: MessageSenderType
   }
-  timestamp: Date
+  msg: {
+    type: MessageType
+    mediaUrl?: string | null
+    content: MessageContent
+  }
 }
 
-export interface ChatClient {
+/** Miembro de la empresa dueño de una conversación. */
+export interface ChatMember {
   id: string
-  username: string
-  profile: string // Avatar Url
-  phone: string
+  username: string | null
 }
 
-export interface Chat {
-  id: string
-  preview?: ChatPreview
-  status: ChatStatus
-  client: ChatClient
-  createdAt: Date
-  updatedAt: Date
+/** Vistas del panel de chats (asignación automática). */
+export type ChatListView = 'inbox' | 'queue' | 'needs-response'
+
+/**
+ * Conversación de la lista (`GET /conversations/list`) más los extras locales
+ * de las vistas de asignación (cola / sin respuesta).
+ */
+export interface Chat extends Omit<ConversationListItem, 'preview'> {
+  preview?: ConversationListItem['preview']
   isDraft?: boolean
+  /** Cola de sin asignar: momento del último mensaje (antigüedad). */
+  waitingSince?: string | Date | null
+  /** Vista "sin respuesta": dueño actual (null si está en cola). */
+  member?: ChatMember | null
+  /** Marcado local: la conversación está en la cola y se puede reclamar. */
+  isUnassigned?: boolean
 }
+
+/** Cliente de la conversación: el contacto v2 (contrato compartido). */
+export type Client = ConversationCustomer
 
 // SENTIMENT
 export interface ChatSentiment {
-  chatId?: string
+  conversationId?: string
   avgPos: number
   avgNeg: number
   avgNeu: number
@@ -60,27 +67,4 @@ export interface ChatSentiment {
   dominant: 'POS' | 'NEG' | 'NEU'
 }
 
-export interface SentimentData {
-  chatId?: string
-  avgPos: number
-  avgNeg: number
-  avgNeu: number
-  totalMessages: number
-  dominant: 'POS' | 'NEG' | 'NEU'
-}
-
-// CLIENT
-export type ClientStatus = 'new' | 'lead' | 'prospect' | 'client'
-export type ClientSource = 'whatsapp' | 'manual'
-
-export interface Client {
-  id: string // UUID
-  waId?: string // WhatsApp ID
-  username?: string
-  profile?: string // URL
-  phone: string
-  email?: string
-  status: ClientStatus // default 'new'
-  source: ClientSource // default 'whatsapp'
-  tags?: string[]
-}
+export type SentimentData = ChatSentiment

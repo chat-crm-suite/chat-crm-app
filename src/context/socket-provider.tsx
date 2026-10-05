@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { SOCKET_NAMESPACES } from '@chat-crm/contracts'
 import { sendTemplate } from '@/services/whatsapp.service'
 import { CloudAlert } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
@@ -29,7 +30,6 @@ interface SocketProviderProps {
 }
 
 const handleError = (err: any) => {
-  console.log(err)
   if (err?.hasAction) {
     toast.error(err.type, {
       position: 'top-right',
@@ -58,11 +58,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const queryClient = useQueryClient()
   const originalTitle = document.title
 
-  Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      console.log('permiso concedido')
-    }
-  })
+  Notification.requestPermission()
 
   useEffect(() => {
     if (!user) {
@@ -74,8 +70,13 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       return
     }
 
+    // VITE_SOCKET_URL is the server base URL (no namespace); the namespace
+    // comes from the shared contracts (single source of truth with the API).
+    const socketBaseUrl = (
+      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+    ).replace(/\/+$/, '')
     const newSocket = io(
-      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000/chat',
+      `${socketBaseUrl}/${SOCKET_NAMESPACES.conversation}`,
       {
         auth: {
           user,
@@ -92,12 +93,10 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 
     // Event listeners
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id)
       setIsConnected(true)
     })
 
     newSocket.on('disconnect', () => {
-      console.log('Socket disconnected')
       setIsConnected(false)
     })
 
@@ -109,7 +108,6 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         return next
       })
 
-      console.log(notif)
       new Notification(notif.title ?? 'Mensaje nuevo', {
         body: notif.message ?? 'Vista no disponible',
       })

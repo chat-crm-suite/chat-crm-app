@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type User } from '../data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 import { useUsers } from './users-provider'
 
 type DataTableRowActionsProps = {
@@ -19,15 +19,21 @@ type DataTableRowActionsProps = {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
   const { setOpen, setCurrentRow } = useUsers()
+  // v2: role lives in memberships (per company), not on the user.
+  const isAdmin =
+    user?.isPlatformAdmin ||
+    user?.memberships?.some(
+      (m) => m.role === 'admin' && (!company?.id || m.companyId === company.id)
+    )
   return (
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant='ghost'
-            disabled={user?.role !== 'admin'}
+            disabled={!isAdmin}
             className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
           >
             <DotsHorizontalIcon className='h-4 w-4' />

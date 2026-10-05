@@ -5,7 +5,7 @@ import type { DataTableQuery } from '@/hooks/use-data-table'
 import { DataTableSkeleton } from '@/components/data-table/data-table-skeleton'
 import { usersColumns } from '@/features/users/components/users-columns'
 import { UserTable } from '@/features/users/components/users-table'
-import type { User } from '@/features/users/data/schema'
+import type { UserResponse as User } from '@chat-crm/contracts'
 
 export const UserTableData = () => {
   const columns = usersColumns()

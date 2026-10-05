@@ -6,7 +6,8 @@ export class ImagenStrategy implements MessageStrategy {
   getRenderData(msg: ChatMessage['msg']): { text: string; url?: string } {
     return {
       text: (msg.content as WhatsAppMediaContent).caption ?? 'Imagen recibida',
-      url: `${msg.mediaUrl}`,
+      // Never stringify a missing url: `${null}` would request ".../null".
+      url: msg.mediaUrl ?? undefined,
     }
   }
   getContent(content: WhatsAppMediaContent): string {

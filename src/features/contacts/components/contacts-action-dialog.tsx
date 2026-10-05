@@ -24,11 +24,11 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { type Contact } from '../data/schema'
+import type { CustomerResponse } from '@chat-crm/contracts'
 
 const formSchema = z
   .object({
-    username: z.string().optional(),
+    displayName: z.string().optional(),
     phoneNumber: z.string(),
     isEdit: z.boolean(),
   })
@@ -58,7 +58,7 @@ const formSchema = z
 type ContactForm = z.infer<typeof formSchema>
 
 type ContactsActionDialogProps = {
-  currentRow?: Contact
+  currentRow?: CustomerResponse
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -74,12 +74,12 @@ export function ContactsActionDialog({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
-          username: currentRow?.username ?? '',
+          displayName: currentRow?.displayName ?? '',
+          phoneNumber: currentRow?.phoneNumber ?? '',
           isEdit,
         }
       : {
-          username: '',
+          displayName: '',
           phoneNumber: '',
           isEdit,
         },
@@ -91,7 +91,7 @@ export function ContactsActionDialog({
 
     const sanitized = {
       ...data,
-      username: data.username,
+      displayName: data.displayName,
       phoneNumber: data.phoneNumber.startsWith('+')
         ? data.phoneNumber.slice(1)
         : data.phoneNumber,
@@ -151,11 +151,11 @@ export function ContactsActionDialog({
               {/* Name */}
               <FormField
                 control={form.control}
-                name='username'
+                name='displayName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className='col-span-2 text-end'>
-                      Username
+                      Nombre
                     </FormLabel>
                     <FormControl>
                       <Input

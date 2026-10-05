@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import type { SentimentData } from '../types'
+import type { SentimentData } from '../types/chat.domain'
 
 interface SentimentIndicatorProps {
   sentiment?: SentimentData

@@ -1,11 +1,13 @@
 import { client } from '@/lib/http'
 import type { ChatMessage } from '../types/chat.domain'
 
-const chats = client('/chats')
+const conversations = client('/conversations')
 
-export const getMessagesByChatId = async (
-  chatId: string
+export const getMessagesByConversationId = async (
+  conversationId: string
 ): Promise<ChatMessage[]> => {
-  const response = await chats.get<ChatMessage[]>(`/${chatId}/messages`)
+  const response = await conversations.get<ChatMessage[]>(
+    `/${conversationId}/messages`
+  )
   return response?.data ?? []
 }
