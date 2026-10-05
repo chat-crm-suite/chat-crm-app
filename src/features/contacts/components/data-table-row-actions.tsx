@@ -11,23 +11,28 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { ContactResponse as Contact } from '@chat-crm/contracts'
+import type { CustomerResponse } from '@chat-crm/contracts'
 import { useContacts } from './contacts-provider'
 
 type DataTableRowActionsProps = {
-  row: Row<Contact>
+  row: Row<CustomerResponse>
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
   const { setOpen, setCurrentRow } = useContacts()
+  const isAdmin =
+    user?.memberships.some(
+      (membership) =>
+        membership.companyId === company.id && membership.role === 'admin'
+    ) ?? false
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant='ghost'
-          disabled={user?.role !== 'admin'}
+          disabled={!isAdmin}
           className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
         >
           <DotsHorizontalIcon className='h-4 w-4' />

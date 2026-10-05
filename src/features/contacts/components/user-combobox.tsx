@@ -49,7 +49,7 @@ export function UserCombobox({
             <span className='flex gap-2'>
               <Avatar className='size-6'>
                 <AvatarImage
-                  src={selected.avatar ?? undefined}
+                  src={selected.avatarUrl ?? undefined}
                   alt={selected.username}
                 />
                 <AvatarFallback className='font-bold'>
@@ -85,7 +85,7 @@ export function UserCombobox({
                   <span className='flex items-center gap-2'>
                     <Avatar className='size-7'>
                       <AvatarImage
-                        src={user.avatar ?? undefined}
+                        src={user.avatarUrl ?? undefined}
                         alt={user.username}
                       />
                       <AvatarFallback className='font-bold'>
