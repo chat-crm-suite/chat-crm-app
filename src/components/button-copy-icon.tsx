@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { CheckIcon, CopyIcon } from 'lucide-react'
+import { toast } from 'sonner'
+import { copyToClipboard } from '@/lib/clipboard'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -11,13 +13,13 @@ export const CopyIconButton = ({ text }: CopyIconButtonProps) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch (err) {
-      console.error('Failed to copy text:', err)
+    if (!(await copyToClipboard(text))) {
+      toast.error('No se pudo copiar: selecciona el texto y cópialo a mano')
+      return
     }
+
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
 
   return (
