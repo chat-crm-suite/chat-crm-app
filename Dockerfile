@@ -38,7 +38,10 @@ ARG VITE_API_URL
 ARG VITE_SOCKET_URL
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
-RUN pnpm exec vite build
+# `pnpm install` runs before the sources are copied, so the postinstall hook
+# cannot find scripts/ and skips tsconfig.contracts.json (gitignored, generated).
+# Generate it here: tsconfig.app.json extends it.
+RUN pnpm contracts:sync && pnpm exec vite build
 
 # Stage 4: prod con nginx (SPA + gzip + cache estático)
 FROM nginx:1.27-alpine AS production
