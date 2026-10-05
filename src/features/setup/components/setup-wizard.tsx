@@ -516,7 +516,7 @@ function SetupSuccess({
         Se creó la empresa <b>{result.company.name}</b>.
       </p>
 
-      {result.whatsapp && (
+      {result.channel && (
         <div className='space-y-3 text-start'>
           <div className='bg-muted/40 rounded-md border p-3 text-sm'>
             <p className='font-medium'>URL de webhook</p>
@@ -539,14 +539,14 @@ function SetupSuccess({
             <p className='font-medium'>Verify token</p>
             <div className='flex items-center gap-2'>
               <span className='text-muted-foreground break-all'>
-                {result.whatsapp.webhookVerifyToken}
+                {result.channel.webhookVerifyToken ?? ''}
               </span>
               <Button
                 type='button'
                 size='icon'
                 variant='ghost'
                 aria-label='Copiar verify token'
-                onClick={() => copy(result.whatsapp!.webhookVerifyToken)}
+                onClick={() => copy(result.channel!.webhookVerifyToken ?? '')}
               >
                 <Copy aria-hidden className='size-4' />
               </Button>

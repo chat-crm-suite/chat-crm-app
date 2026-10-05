@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useForm, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import type { UpdateChannelInput } from '@chat-crm/contracts'
 import {
   defaultValues,
   isApiVersion,
@@ -71,10 +72,11 @@ const onInvalidSubmit = (errors: FieldErrors<WhatsAppConfigInput>) => {
 export const WhatsappForm = () => {
   const { id: businessId } = useAuthStore().auth.company!
 
-  // Get data config
+  // Get data config (company travels in the x-company-id header; businessId
+  // only keys the query cache).
   const { data, isLoading } = useQuery({
     queryKey: ['whatsapp', 'config', businessId],
-    queryFn: () => getConfig(businessId!),
+    queryFn: () => getConfig(businessId ?? undefined),
     enabled: !!businessId,
   })
 
@@ -84,21 +86,34 @@ export const WhatsappForm = () => {
   })
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (vals: WhatsAppConfigInput) => saveConfig(businessId!, vals),
+    mutationFn: (vals: WhatsAppConfigInput) => {
+      // v2: form fields map onto the channel contract. The access token is
+      // write-only (never returned): an empty field means "keep current".
+      const payload: UpdateChannelInput = {
+        businessId: vals.businessId || undefined,
+        externalAccountId: vals.phoneNumberId || undefined,
+        apiVersion: vals.apiVersion,
+        accessToken: vals.accessToken || undefined,
+        webhookUrl: joinWebhookUrl(vals.webhookUrl) || undefined,
+      }
+      return saveConfig(businessId!, payload)
+    },
   })
 
   useEffect(() => {
     if (!data) return
 
-    // Explicit mapping: the response includes contract fields the form does
-    // not use (id, timestamps) and the webhook URL is split for display.
+    // Explicit mapping: the channel response never includes the secret
+    // (only `hasCredentials`), so the token field stays empty on load.
     form.reset({
       businessId: data.businessId ?? '',
-      phoneNumberId: data.phoneNumberId,
-      apiVersion: data.apiVersion,
-      accessToken: data.accessToken,
-      webhookVerifyToken: data.webhookVerifyToken,
-      webhookUrl: splitWebhookUrl(data.webhookUrl),
+      phoneNumberId: data.externalAccountId ?? '',
+      apiVersion: isApiVersion(data.apiVersion)
+        ? data.apiVersion
+        : defaultValues.apiVersion,
+      accessToken: '',
+      webhookVerifyToken: data.webhookVerifyToken ?? '',
+      webhookUrl: splitWebhookUrl(data.webhookUrl ?? undefined),
     })
   }, [data, form])
 

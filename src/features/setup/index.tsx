@@ -40,7 +40,7 @@ export function SetupPage() {
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ['setup', 'status'] })
 
-      if (created.whatsapp) {
+      if (created.channel) {
         setResult(created)
         return
       }

@@ -144,7 +144,7 @@ describe('buildSetupPayload', () => {
     expect(payload.whatsapp).toEqual({
       businessId: 'biz-1',
       accessToken: 'token',
-      phoneNumberId: 'phone-1',
+      externalAccountId: 'phone-1',
       webhookUrl,
       apiVersion: undefined,
     })

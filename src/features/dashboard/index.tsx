@@ -13,7 +13,13 @@ import { ExportDashboardButton } from '@/features/dashboard/components/export-bu
 import { SentimentLineChart } from '@/features/dashboard/components/sentimient-line-chat'
 
 export function Dashboard() {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
+  // v2: role lives in memberships (per company), not on the user.
+  const isAdmin =
+    user?.isPlatformAdmin ||
+    user?.memberships?.some(
+      (m) => m.role === 'admin' && (!company?.id || m.companyId === company.id)
+    )
   return (
     <>
       {/* ===== Top Heading ===== */}
@@ -37,13 +43,9 @@ export function Dashboard() {
         <div className='space-y-4' id='metrics'>
           <KPIs />
           <div className='grid grid-cols-1 gap-4 lg:grid-cols-7'>
-            {user?.role === 'admin' ? (
-              <SentimentLineChart />
-            ) : (
-              <SentimentLineChart userId={user?.sub} />
-            )}
+            <SentimentLineChart />
 
-            {user?.role === 'admin' ? <TopAgentsChart /> : <TopClientsChart />}
+            {isAdmin ? <TopAgentsChart /> : <TopClientsChart />}
           </div>
         </div>
       </Main>
