@@ -209,9 +209,20 @@ export const WhatsappForm = () => {
                 <FormItem>
                   <FormLabel>Access Token</FormLabel>
                   <PasswordInput
-                    placeholder='Token de acceso de Meta'
+                    placeholder={
+                      data
+                        ? 'Token de acceso de Meta'
+                        : 'Token de acceso de Meta (obligatorio para crear el canal)'
+                    }
                     {...field}
                   />
+                  <FormDescription>
+                    {!data
+                      ? 'Canal sin configurar: al guardar se creará el canal de WhatsApp con estos datos.'
+                      : data.hasCredentials
+                        ? 'Canal configurado: edita el token solo si quieres reemplazarlo.'
+                        : 'Canal sin credenciales: introduce el access token para configurarlo.'}
+                  </FormDescription>
                 </FormItem>
               )}
             />
