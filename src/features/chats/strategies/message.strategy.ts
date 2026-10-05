@@ -6,6 +6,7 @@ import {
 import { DocumentStrategy } from './document.strategy'
 import { ImagenStrategy } from './imagen.strategy'
 import { TextStrategy } from './text.strategy'
+import { UnknownStrategy } from './unknown.strategy'
 
 export interface MessageStrategy {
   getContent(content: WhatsAppMessageContent): string
@@ -15,18 +16,14 @@ export interface MessageStrategy {
   }
 }
 
-const SUPPORT_TYPE: Record<MessageType, MessageStrategy> = {
+const SUPPORT_TYPE: Partial<Record<MessageType, MessageStrategy>> = {
   text: new TextStrategy(),
   document: new DocumentStrategy(),
   image: new ImagenStrategy(),
 }
 
+const fallbackStrategy = new UnknownStrategy()
+
 export function getMessageStrategy(type: MessageType) {
-  const strategy = SUPPORT_TYPE[type]
-
-  if (!strategy) {
-    throw new Error(`No strategy registered for message type: ${type}`)
-  }
-
-  return strategy
+  return SUPPORT_TYPE[type] ?? fallbackStrategy
 }

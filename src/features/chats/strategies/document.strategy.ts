@@ -8,7 +8,7 @@ export class DocumentStrategy implements MessageStrategy {
       text:
         (msg.content as WhatsAppDocumentContent).filename ??
         'Documento recivido',
-      url: msg.mediaUrl,
+      url: msg.mediaUrl ?? undefined,
     }
   }
   getContent(content: WhatsAppDocumentContent): string {

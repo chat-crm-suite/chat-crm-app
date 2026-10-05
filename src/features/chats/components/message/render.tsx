@@ -4,7 +4,9 @@ import { MessageDocument } from './document'
 import { MessageImage } from './image'
 import { MessageText } from './text'
 
-export const renderMessage: Record<MessageType, React.ComponentType<any>> = {
+export const renderMessage: Partial<
+  Record<MessageType, React.ComponentType<any>>
+> = {
   text: MessageText,
   image: MessageImage,
   document: MessageDocument,
