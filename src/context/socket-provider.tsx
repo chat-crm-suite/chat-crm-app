@@ -101,7 +101,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     })
 
     // TODO: Best coding format in the future
-    newSocket.on('new-notification', (notif) => {
+    newSocket.on('notification:new', (notif) => {
       setUnreadCount((prev) => {
         const next = prev + 1
         document.title = `(${next}) Nuevo mensaje - MiApp`
@@ -109,7 +109,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       })
 
       new Notification(notif.title ?? 'Mensaje nuevo', {
-        body: notif.message ?? 'Vista no disponible',
+        body: notif.body ?? 'Vista no disponible',
       })
 
       queryClient.setQueryData(['notifications'], (prev: any) => [
@@ -126,7 +126,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       setIsConnected(false)
     })
 
-    newSocket.on('chat:message:error', handleError)
+    newSocket.on('conversation:message:error', handleError)
 
     setSocket(newSocket)
 
