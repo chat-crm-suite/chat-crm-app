@@ -71,15 +71,20 @@ export function Chats() {
     socket.on(Events.assigned, handleAssigned)
     socket.on(Events.unassigned, handleUnassigned)
 
-    socket.on('notification', (data) => {
-      toast.info(data.message)
-    })
+    const handleNotification = (notification: {
+      title?: string
+      body?: string
+    }) => {
+      toast.info(notification.body ?? notification.title ?? '')
+    }
+
+    socket.on(Events.notification, handleNotification)
 
     return () => {
       socket.off(Events.broadcast, handleNewMessage)
       socket.off(Events.assigned, handleAssigned)
       socket.off(Events.unassigned, handleUnassigned)
-      socket.off('notification')
+      socket.off(Events.notification, handleNotification)
     }
   }, [socket, queryClient])
 
