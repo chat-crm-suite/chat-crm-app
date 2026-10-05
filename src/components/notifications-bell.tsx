@@ -29,7 +29,7 @@ export const NotificationBell = () => {
 
   const handleMarkAllRead = () => {
     const noReadNotifications = notifications
-      .filter((n: any) => !n.read)
+      .filter((n: any) => !n.readAt)
       ?.map((n: any) => n.id)
     mutate(noReadNotifications)
   }
@@ -45,7 +45,7 @@ export const NotificationBell = () => {
       <PopoverTrigger asChild>
         <Button variant='ghost' size='icon' className='relative rounded-full'>
           <BellIcon />
-          {notifications.some((n: any) => !n?.read) && (
+          {notifications.some((n: any) => !n?.readAt) && (
             <span className='absolute -top-0 -right-0 size-2 animate-bounce rounded-full bg-sky-600 dark:bg-sky-400' />
           )}
           <span className='sr-only'>Notifications</span>
@@ -86,12 +86,12 @@ export const NotificationBell = () => {
                     <div className='text-sm font-medium'>{item.title}</div>
                     <div className='flex'>
                       <div className='basis-3/5 font-sans text-sm'>
-                        {item.message}
+                        {item.body}
                       </div>
-                      <p className='text-muted-foreground basis-2/5 text-right text-xs'>{`${dayjs(item.time).format('MMMM D')} ago`}</p>
+                      <p className='text-muted-foreground basis-2/5 text-right text-xs'>{`${dayjs(item.createdAt).format('MMMM D')} ago`}</p>
                     </div>
                   </div>
-                  {!item.read && (
+                  {!item.readAt && (
                     <CircleIcon className='fill-primary text-primary size-2 self-center' />
                   )}
                 </li>
