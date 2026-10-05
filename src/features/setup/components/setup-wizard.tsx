@@ -9,6 +9,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2, Copy, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { copyToClipboard } from '@/lib/clipboard'
 
 import {
   Form,
@@ -491,9 +492,9 @@ function SetupSuccess({
   webhookUrl: string
   onFinish?: () => void
 }) {
-  const copy = (text: string) => {
-    void navigator.clipboard?.writeText(text)
-    toast.success('Copiado')
+  const copy = async (text: string) => {
+    if (await copyToClipboard(text)) toast.success('Copiado')
+    else toast.error('No se pudo copiar: selecciona el texto y cópialo a mano')
   }
 
   const headingRef = useRef<HTMLHeadingElement>(null)
