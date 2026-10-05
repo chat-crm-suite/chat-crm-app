@@ -42,11 +42,12 @@ export const ChatList = () => {
         ? queue.map((chat) => ({ ...chat, isUnassigned: true }))
         : needsResponse
 
-  const filterFun = ({ client }: { client: Chat['client'] }) => {
+  const filterFun = ({ customer }: Chat) => {
     if (search.trim() === '') return true
-    return client?.username
-      ?.toLowerCase()
-      ?.includes(search.trim().toLowerCase())
+    const term = search.trim().toLowerCase()
+    return [customer.displayName, customer.phone].some((value) =>
+      value?.toLowerCase().includes(term)
+    )
   }
 
   const filtered = chats.filter(filterFun)

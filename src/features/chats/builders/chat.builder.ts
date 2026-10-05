@@ -5,16 +5,16 @@ import {
   isToday,
   isYesterday,
 } from 'date-fns'
-import type { Chat, ChatClient } from '../types/chat.domain'
+import type { Chat, ChatCustomer } from '../types/chat.domain'
 
 export const chatBuilder = {
-  draft(client: ChatClient): Chat {
+  draft(customer: ChatCustomer): Chat {
     return {
       id: crypto.randomUUID() + '-temp',
       isDraft: true,
       status: 'open',
       createdAt: new Date(),
-      client,
+      customer,
     }
   },
   label: {

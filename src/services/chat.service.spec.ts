@@ -7,45 +7,47 @@ vi.mock('@/lib/http', () => ({
 }))
 
 import {
-  assignedUser,
+  assignMember,
   claimChat,
   getNeedsResponseChats,
   getUnassignedChats,
 } from './chat.service'
 
-describe('chat.service assignment operations', () => {
+describe('chat.service conversation operations', () => {
   beforeEach(() => {
     get.mockReset()
     post.mockReset()
   })
 
-  it('assigns an agent through POST /chats/assign', async () => {
+  it('assigns a member through POST /conversations/assign', async () => {
     post.mockResolvedValue({ data: { outcome: 'assigned' } })
 
-    await assignedUser('chat-1', 'agent-1')
+    await assignMember('conversation-1', 'member-1')
 
     expect(post).toHaveBeenCalledWith('/assign', {
-      chatId: 'chat-1',
-      agentId: 'agent-1',
+      conversationId: 'conversation-1',
+      memberId: 'member-1',
     })
   })
 
-  it('claims a chat through POST /chats/:id/claim', async () => {
+  it('claims a conversation through POST /conversations/:id/claim', async () => {
     post.mockResolvedValue({ data: { outcome: 'assigned' } })
 
-    await claimChat('chat-1')
+    await claimChat('conversation-1')
 
-    expect(post).toHaveBeenCalledWith('/chat-1/claim')
+    expect(post).toHaveBeenCalledWith('/conversation-1/claim')
   })
 
   it('fetches the unassigned queue', async () => {
-    get.mockResolvedValue({ data: [{ id: 'chat-1' }] })
+    get.mockResolvedValue({ data: [{ id: 'conversation-1' }] })
 
-    await expect(getUnassignedChats()).resolves.toEqual([{ id: 'chat-1' }])
+    await expect(getUnassignedChats()).resolves.toEqual([
+      { id: 'conversation-1' },
+    ])
     expect(get).toHaveBeenCalledWith('/unassigned')
   })
 
-  it('fetches needs-response chats with the minutes window', async () => {
+  it('fetches needs-response conversations with the minutes window', async () => {
     get.mockResolvedValue({ data: [] })
 
     await getNeedsResponseChats(30)
