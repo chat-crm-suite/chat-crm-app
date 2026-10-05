@@ -1,66 +1,65 @@
 import type {
-  ChatListItem,
-  ChatPreview,
-  ChatMessageContent,
-  ContactResponse,
+  ConversationCustomer,
+  ConversationListItem,
+  MessageContent,
   MessageSenderType,
+  MessageStatus,
   MessageType,
 } from '@chat-crm/contracts'
 
 export type {
-  ChatClient,
-  ChatListItem,
-  ChatPreview,
-  ChatStatus,
-  ContactSource as ClientSource,
-  ContactStatus as ClientStatus,
+  ConversationCustomer as ChatCustomer,
+  ConversationPriority,
+  ConversationStatus,
 } from '@chat-crm/contracts'
 
-/** Chat message as it travels over the socket (broadcast payload). */
+/** Conversation message as it travels over REST/socket (v2 broadcast payload). */
 export interface ChatMessage {
   id: string
-  chatId?: string
-  msg: {
-    type: MessageType
-    mediaUrl?: string
-    content: ChatMessageContent
-  }
+  conversationId: string
+  timestamp: Date
+  status: MessageStatus
   sender: {
     id: string
     type: MessageSenderType
   }
-  timestamp: Date
+  msg: {
+    type: MessageType
+    mediaUrl?: string | null
+    content: MessageContent
+  }
 }
 
-export interface ChatAgent {
+/** Miembro de la empresa dueño de una conversación. */
+export interface ChatMember {
   id: string
-  username: string
+  username: string | null
 }
 
 /** Vistas del panel de chats (asignación automática). */
 export type ChatListView = 'inbox' | 'queue' | 'needs-response'
 
 /**
- * Chat de la lista (`GET /chats/list`) más los extras locales de las vistas de
- * asignación (cola / sin respuesta).
+ * Conversación de la lista (`GET /conversations/list`) más los extras locales
+ * de las vistas de asignación (cola / sin respuesta).
  */
-export interface Chat extends Omit<ChatListItem, 'preview'> {
-  preview?: ChatPreview
+export interface Chat extends Omit<ConversationListItem, 'preview'> {
+  preview?: ConversationListItem['preview']
   isDraft?: boolean
   /** Cola de sin asignar: momento del último mensaje (antigüedad). */
-  waitingSince?: string
+  waitingSince?: string | Date | null
   /** Vista "sin respuesta": dueño actual (null si está en cola). */
-  agent?: ChatAgent | null
-  /** Marcado local: el chat está en la cola y se puede reclamar. */
+  member?: ChatMember | null
+  /** Marcado local: la conversación está en la cola y se puede reclamar. */
   isUnassigned?: boolean
 }
 
-/** Cliente del chat: el contacto del API (contrato compartido). */
-export type Client = ContactResponse
+/** Cliente de la conversación: el contacto v2 (contrato compartido). */
+export type Client = ConversationCustomer
 
 // SENTIMENT
 export interface ChatSentiment {
-  chatId?: string
+  conversationId?: string
   avgPos: number
   avgNeg: number
   avgNeu: number

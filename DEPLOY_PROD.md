@@ -39,13 +39,13 @@ git push codecta main
 En el servidor:
 
 ```bash
-ssh jypsac@100.77.254.40
-cd /home/jypsac/Proyectos/CRM/chat-crm-app
+ssh <USUARIO>@<SERVER_IP>
+cd ~/Proyectos/CRM/chat-crm-app
 cp .env.prod.example .env.prod
 nano .env.prod
-# Ej. Tailscale:
-# VITE_API_URL=http://100.77.254.40:3000
-# VITE_SOCKET_URL=http://100.77.254.40:3000/chat
+# Ej. Tailscale (IP del servidor en tu tailnet):
+# VITE_API_URL=http://<SERVER_IP>:3000
+# VITE_SOCKET_URL=http://<SERVER_IP>:3000
 # APP_PORT=8081
 git pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up --build -d
@@ -68,4 +68,4 @@ docker ps | grep chat-crm-app-prod
 docker logs chat-crm-app-prod --tail 20
 ```
 
-Abre en navegador: `http://100.77.254.40:8081` y revisa Network → `VITE_API_URL` debe apuntar al API `:3000`, socket a `/chat`.
+Abre en navegador: `http://<SERVER_IP>:8081` y revisa Network → `VITE_API_URL` debe apuntar al API `:3000` (el namespace del socket sale de los contratos compartidos).

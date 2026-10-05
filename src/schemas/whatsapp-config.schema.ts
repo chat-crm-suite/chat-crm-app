@@ -53,5 +53,5 @@ export const defaultValues: WhatsAppConfig = {
   phoneNumberId: '',
   webhookUrl: '',
   webhookVerifyToken: '',
-  apiVersion: 'v18.0',
+  apiVersion: DEFAULT_WHATSAPP_API_VERSION,
 }

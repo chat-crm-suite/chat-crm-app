@@ -31,7 +31,7 @@ export function Chats() {
         console.log('Broadcast', newMessage)
 
         // Change preview
-        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.chatId)
+        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.conversationId)
         if (chatIndex !== -1) {
           const chats = [...oldChats]
           chats[chatIndex] = {
@@ -50,7 +50,7 @@ export function Chats() {
 
       // Update chat messages
       queryClient.setQueryData(
-        ['chat', newMessage.chatId, 'messages'],
+        ['chat', newMessage.conversationId, 'messages'],
         (oldMessages: ChatMessage[] | undefined) => {
           if (!oldMessages) return [newMessage]
           return [...oldMessages, newMessage]

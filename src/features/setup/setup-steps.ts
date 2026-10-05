@@ -1,3 +1,4 @@
+import type { WhatsAppApiVersion } from '@chat-crm/contracts'
 import type { SetupFormValues } from '@/schemas/setup.schema'
 import type { SetupPayload, SetupStatus } from '@/services/setup.service'
 
@@ -60,13 +61,15 @@ export function buildSetupPayload(
     },
     whatsapp: connectWhatsapp
       ? // The form superRefine guarantees accessToken/phoneNumberId when
-        // `connectWhatsapp` is true; the contract requires them as strings.
+        // `connectWhatsapp` is true; the channel contract names the phone
+        // field `externalAccountId`.
         ({
           businessId: clean(whatsapp.businessId),
           accessToken: clean(whatsapp.accessToken),
-          phoneNumberId: clean(whatsapp.phoneNumberId),
+          externalAccountId: clean(whatsapp.phoneNumberId),
           webhookUrl,
-          apiVersion: clean(whatsapp.apiVersion),
+          apiVersion: (clean(whatsapp.apiVersion) ||
+            undefined) as WhatsAppApiVersion | undefined,
         } as NonNullable<SetupPayload['whatsapp']>)
       : undefined,
   }

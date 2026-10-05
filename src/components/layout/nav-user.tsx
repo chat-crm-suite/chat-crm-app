@@ -27,12 +27,19 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 // }
 
 export function NavUser() {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
   const { isMobile } = useSidebar()
   const [open, setOpen] = useDialogState()
   const username = user?.username ?? 'Sin Nombre'
   const fallback = user?.username?.charAt(0)?.toUpperCase() ?? '#'
-  const role = user?.role ?? '-'
+  // v2: role lives in memberships (per company), not on the user.
+  const activeMembership =
+    user?.memberships?.find((m) => m.companyId === company?.id) ??
+    user?.memberships?.[0]
+  const role = user?.isPlatformAdmin
+    ? 'admin'
+    : (activeMembership?.role ?? '-')
+  const avatarSrc = user?.avatarUrl ?? undefined
 
   return (
     <>
@@ -45,7 +52,7 @@ export function NavUser() {
                 className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
               >
                 <Avatar className='h-8 w-8 rounded-lg'>
-                  <AvatarImage src={user?.avatar} alt={username} />
+                  <AvatarImage src={avatarSrc} alt={username} />
                   <AvatarFallback className='rounded-lg'>
                     {fallback}
                   </AvatarFallback>
@@ -68,7 +75,7 @@ export function NavUser() {
               <DropdownMenuLabel className='p-0 font-normal'>
                 <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
                   <Avatar className='h-8 w-8 rounded-lg'>
-                    <AvatarImage src={user?.avatar} alt={username} />
+                    <AvatarImage src={avatarSrc} alt={username} />
                     <AvatarFallback className='rounded-lg'>
                       {fallback}
                     </AvatarFallback>

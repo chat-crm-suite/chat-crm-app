@@ -14,8 +14,12 @@ import {
 import { SignOutDialog } from '@/components/sign-out-dialog'
 
 export function ProfileDropdown() {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
   const [open, setOpen] = useDialogState()
+  // v2: role lives in memberships (per company), not on the user.
+  const activeRole =
+    user?.memberships?.find((m) => m.companyId === company?.id)?.role ??
+    user?.memberships?.[0]?.role
 
   return (
     <>
@@ -37,7 +41,7 @@ export function ProfileDropdown() {
                 {user?.username ?? 'Sin nombre'}
               </p>
               <p className='text-muted-foreground text-xs leading-none capitalize'>
-                {user?.role ?? 'Sin Rol'}
+                {user?.isPlatformAdmin ? 'admin' : (activeRole ?? 'Sin Rol')}
               </p>
             </div>
           </DropdownMenuLabel>

@@ -24,6 +24,13 @@ import { chatBuilder } from '../builders/chat.builder'
 import { useChats } from '../contexts/chats.provider'
 import type { Client } from '../types/client.api'
 
+const customerName = (client: Client) =>
+  client.displayName ||
+  [client.firstName, client.lastName].filter(Boolean).join(' ') ||
+  parsePhoneNumber(client.phoneNumber ?? '', 'PE')?.formatInternational() ||
+  client.phoneNumber ||
+  'Desconocido'
+
 export function ClientChatDialog() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch] = useDebounce(searchTerm, 400)
@@ -42,8 +49,7 @@ export function ClientChatDialog() {
 
     const chat = chatBuilder.draft({
       id: selectedClient.id,
-      username: selectedClient.username,
-      profile: selectedClient.profile,
+      displayName: selectedClient.displayName,
       phone: selectedClient.phoneNumber,
     })
     setChatSelected(chat)
@@ -92,8 +98,8 @@ export function ClientChatDialog() {
                     <div className='flex items-center gap-2'>
                       <Avatar>
                         <AvatarImage
-                          src={c.profile ?? undefined}
-                          alt='Hallie Richards'
+                          src={c.avatarUrl ?? undefined}
+                          alt={customerName(c) ?? 'Customer'}
                         />
                         <AvatarFallback className='text-xs'>
                           <User />
@@ -101,14 +107,10 @@ export function ClientChatDialog() {
                       </Avatar>
                       <div className='flex flex-col'>
                         <span className='text-sm font-medium'>
-                          {c.firstNames ??
-                            parsePhoneNumber(
-                              c.phoneNumber ?? '',
-                              'PE'
-                            )?.formatInternational()}
+                          {customerName(c)}
                         </span>
                         <span className='text-accent-foreground/70 text-xs'>
-                          {c.username}
+                          {c.phoneNumber ?? c.email}
                         </span>
                       </div>
                     </div>

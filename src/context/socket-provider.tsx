@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { SOCKET_NAMESPACES } from '@chat-crm/contracts'
 import { sendTemplate } from '@/services/whatsapp.service'
 import { CloudAlert } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
@@ -74,8 +75,13 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       return
     }
 
+    // VITE_SOCKET_URL is the server base URL (no namespace); the namespace
+    // comes from the shared contracts (single source of truth with the API).
+    const socketBaseUrl = (
+      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+    ).replace(/\/+$/, '')
     const newSocket = io(
-      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000/chat',
+      `${socketBaseUrl}/${SOCKET_NAMESPACES.conversation}`,
       {
         auth: {
           user,

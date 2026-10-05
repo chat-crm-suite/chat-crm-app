@@ -1,8 +1,4 @@
 /**
- * Client types come from the shared contracts (the contact response).
+ * Client types come from the shared contracts (the v2 customer response).
  */
-export type {
-  ContactResponse as Client,
-  ContactSource as ClientSource,
-  ContactStatus as ClientStatus,
-} from '@chat-crm/contracts'
+export type { CustomerResponse as Client } from '@chat-crm/contracts'

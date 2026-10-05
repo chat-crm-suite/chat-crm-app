@@ -1,7 +1,7 @@
 import z from 'zod'
 import { createFileRoute } from '@tanstack/react-router'
 import { Users } from '@/features/users'
-import { UserRoleSchema } from '@chat-crm/contracts'
+import { MemberRoleSchema } from '@chat-crm/contracts'
 
 const usersSearchSchema = z.object({
   page: z.number().optional().catch(1),
@@ -18,7 +18,7 @@ const usersSearchSchema = z.object({
     )
     .optional()
     .catch([]),
-  role: z.array(UserRoleSchema).optional().catch([]),
+  role: z.array(MemberRoleSchema).optional().catch([]),
   // Per-column text filter (example for username)
   username: z.string().optional().catch(''),
 })

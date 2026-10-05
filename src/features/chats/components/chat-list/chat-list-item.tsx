@@ -30,12 +30,12 @@ export const ChatListItem = ({ chat }: { chat: Chat }) => {
         }}
       >
         <div className='flex gap-2'>
-          <ChatListAvatar client={chat.client} />
+          <ChatListAvatar customer={chat.customer} />
           <div>
             <span className='col-start-2 row-span-2 font-medium'>
-              {chat.client?.username ??
+              {chat.customer?.displayName ??
                 parsePhoneNumber(
-                  chat.client?.phone ?? '',
+                  chat.customer?.phone ?? '',
                   'PE'
                 )?.formatNational() ??
                 'unknown'}
@@ -45,12 +45,12 @@ export const ChatListItem = ({ chat }: { chat: Chat }) => {
                 </Badge>
               )}
             </span>
-            {chat.agent && (
+            {chat.member && (
               <span className='text-muted-foreground block text-[11px]'>
-                Asignado a @{chat.agent.username}
+                Asignado a @{chat.member.username}
               </span>
             )}
-            <ChatPreview preview={chat.preview} isMe={!!chat.client.id} />
+            <ChatPreview preview={chat.preview} isMe={!!chat.customer.id} />
           </div>
         </div>
       </button>

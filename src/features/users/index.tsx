@@ -11,7 +11,13 @@ import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersProvider } from './components/users-provider'
 
 export function Users() {
-  const user = useAuthStore().auth.user
+  const { user, company } = useAuthStore().auth
+  // v2: role lives in memberships (per company), not on the user.
+  const isAdmin =
+    user?.isPlatformAdmin ||
+    user?.memberships?.some(
+      (m) => m.role === 'admin' && (!company?.id || m.companyId === company.id)
+    )
 
   return (
     <UsersProvider>
@@ -32,7 +38,7 @@ export function Users() {
               Manage your users and their roles here.
             </p>
           </div>
-          {user?.role === 'admin' && <UsersPrimaryButtons />}
+          {isAdmin && <UsersPrimaryButtons />}
         </div>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
           <UserTableData />

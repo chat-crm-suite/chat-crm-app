@@ -11,7 +11,12 @@ import { ContactsDialogs } from './components/contacts-dialogs'
 import { ContactsPrimaryButtons } from './components/contacts-primary-buttons'
 
 export function Contacts() {
-  const { user } = useAuthStore().auth
+  const { user, company } = useAuthStore().auth
+  const isAdmin =
+    user?.memberships.some(
+      (membership) =>
+        membership.companyId === company.id && membership.role === 'admin'
+    ) ?? false
 
   return (
     <ContactsProvider>
@@ -29,10 +34,10 @@ export function Contacts() {
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>Contact List</h2>
             <p className='text-muted-foreground'>
-              Manage your contacts and their status here.
+              Manage your contacts and their details here.
             </p>
           </div>
-          {user?.role === 'admin' && <ContactsPrimaryButtons />}
+          {isAdmin && <ContactsPrimaryButtons />}
         </div>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
           <ContactTableData />
