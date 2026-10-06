@@ -1,19 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { claimChat } from '@/services/chat.service'
 import { ArrowLeft, MessagesSquare, MoreVertical } from 'lucide-react'
 import { parsePhoneNumber } from 'react-phone-number-input'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
-import { claimChat } from '@/services/chat.service'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { api } from '../api'
-import { messageBuilder } from '../builders/message.builder'
 import { useChats } from '../contexts/chats.provider'
-import type { ChatMessage } from '../types/chat.domain'
-import { ChatSocketEvents } from '../types/socket.api'
+import { useChatThread } from '../hooks/use-chat-thread'
 import { AssignedUser } from './assigned-user'
 import { Composer } from './conversation/composer'
 import { initials } from './conversation/identity'
@@ -22,7 +19,7 @@ import { ToneControl } from './conversation/tone-control'
 
 export const ChatBox = () => {
   const { auth } = useAuthStore()
-  const { socket, isConnected } = useSocket()
+  const { isConnected } = useSocket()
   const {
     sentimentData,
     chatSelected: chat,
@@ -40,31 +37,10 @@ export const ChatBox = () => {
     [auth.user?.firstName, auth.user?.lastName].filter(Boolean).join(' ') ||
     auth.user?.username
 
-  const handleSendMessage = (body: string) => {
-    if (!chat) return
-
-    const payload = messageBuilder
-      .chat(chat.id)
-      .sender(memberId ?? '', 'member')
-      .to(chat.customer.phone ?? '')
-      .text(body)
-
-    socket?.emit(ChatSocketEvents.sendMessage, payload)
-  }
-
-  // T3 replaces this with the idempotent optimistic retry; today a failed
-  // message is simply re-sent through the v1 path.
-  const handleRetry = (message: ChatMessage) => {
-    if (message.msg.type !== 'text') return
-    const body =
-      'body' in message.msg.content ? message.msg.content.body : undefined
-    if (body) handleSendMessage(body)
-  }
-
-  const { data: messages, isLoading } = useQuery({
-    queryKey: ['chat', chat?.id, 'messages'],
-    queryFn: () => api.queries.messages.get(chat!.id),
-    enabled: !!chat?.id,
+  const thread = useChatThread(chat?.id, {
+    companyId: auth.company.id,
+    sender: { id: memberId ?? '', type: 'member' },
+    to: chat?.customer?.phone ?? '',
   })
 
   const queryClient = useQueryClient()
@@ -148,15 +124,15 @@ export const ChatBox = () => {
       </header>
 
       <ConversationThread
-        messages={messages ?? []}
-        loading={isLoading}
+        messages={thread.messages}
+        loading={thread.isLoading}
         customerName={customerName}
         currentMemberId={memberId}
         currentMemberName={memberName}
-        onRetry={handleRetry}
+        onRetry={thread.retry}
       />
 
-      <Composer connected={isConnected} onSend={handleSendMessage} />
+      <Composer connected={isConnected} onSend={thread.send} />
     </div>
   ) : (
     <div

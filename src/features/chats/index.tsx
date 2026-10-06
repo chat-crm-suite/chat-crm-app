@@ -29,7 +29,9 @@ export function Chats() {
     const handleNewMessage = (newMessage: ChatMessage) => {
       queryClient.setQueryData(['chat', 'list'], (oldChats: Chat[] = []) => {
         // Change preview
-        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.conversationId)
+        const chatIndex = oldChats.findIndex(
+          (c) => c.id === newMessage.conversationId
+        )
         if (chatIndex !== -1) {
           const chats = [...oldChats]
           chats[chatIndex] = {
@@ -45,15 +47,7 @@ export function Chats() {
         }
         return oldChats
       })
-
-      // Update chat messages
-      queryClient.setQueryData(
-        ['chat', newMessage.conversationId, 'messages'],
-        (oldMessages: ChatMessage[] | undefined) => {
-          if (!oldMessages) return [newMessage]
-          return [...oldMessages, newMessage]
-        }
-      )
+      // The open thread cache is owned by `useChatThread`.
     }
 
     socket.on(Events.broadcast, handleNewMessage)
@@ -65,7 +59,9 @@ export function Chats() {
     }
     const handleUnassigned = () => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
-      void queryClient.invalidateQueries({ queryKey: ['chat', 'needsResponse'] })
+      void queryClient.invalidateQueries({
+        queryKey: ['chat', 'needsResponse'],
+      })
     }
 
     socket.on(Events.assigned, handleAssigned)

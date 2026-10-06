@@ -18,6 +18,11 @@ export type {
 export interface ChatMessage {
   id: string
   conversationId: string
+  /**
+   * Front-generated send id: present on optimistic rows and on outbound rows
+   * saved by the API, so the thread reconciles without duplicating.
+   */
+  clientMessageId?: string | null
   timestamp: Date
   status: MessageStatus
   sender: {

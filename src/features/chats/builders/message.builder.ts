@@ -50,6 +50,21 @@ class MessagePayloadBuilder {
     return this
   }
 
+  /** Origin company, for multi-company auto-assignment. */
+  companyId(companyId?: string | null) {
+    if (companyId) this.payload.companyId = companyId
+    return this
+  }
+
+  /**
+   * Front-generated send id: the optimistic row carries it and retries reuse
+   * it, so the API dedupes by `client_message_id`.
+   */
+  clientMessageId(clientMessageId: string) {
+    this.payload.clientMessageId = clientMessageId
+    return this
+  }
+
   sender(id: string, type: SenderType = 'member') {
     this.payload.sender = {
       id,
