@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/message-scroller'
 import { Skeleton } from '@/components/ui/skeleton'
 import { chatBuilder } from '../../builders/chat.builder'
+import { sortChronologically } from '../../lib/thread-state'
 import type { ChatMessage } from '../../types/chat.domain'
 import { initials } from './identity'
 import { MessageRow, type SenderView } from './message-row'
@@ -28,9 +29,7 @@ type ThreadRow =
  */
 function buildRows(messages: ChatMessage[]): ThreadRow[] {
   const rows: ThreadRow[] = []
-  const sorted = [...messages].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  )
+  const sorted = sortChronologically(messages)
 
   let currentDate = ''
   for (const message of sorted) {

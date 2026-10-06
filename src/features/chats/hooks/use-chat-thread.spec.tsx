@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createFakeSocket, emittedPayloads } from '@/test/fake-socket'
 import type { ChatMessage } from '../types/chat.domain'
 import { ChatSocketEvents } from '../types/socket.api'
 import { useChatThread } from './use-chat-thread'
@@ -22,32 +23,15 @@ const identity = {
   to: '+51999888777',
 }
 
-/** Socket.io boundary stub: records emits and lets tests fire server events. */
-function createFakeSocket(connected = true) {
-  const listeners = new Map<string, Set<(...args: unknown[]) => void>>()
-  const socket = {
-    connected,
-    emit: vi.fn(),
-    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      const handlers = listeners.get(event) ?? new Set()
-      handlers.add(handler)
-      listeners.set(event, handlers)
-    }),
-    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      listeners.get(event)?.delete(handler)
-    }),
+/** Shared fake socket plus this suite's send-payload probe. */
+function createThreadSocket(connected = true) {
+  const { socket, fire } = createFakeSocket(connected)
+
+  return {
+    socket,
+    fire,
+    sentPayloads: () => emittedPayloads(socket, ChatSocketEvents.sendMessage),
   }
-
-  const fire = (event: string, ...args: unknown[]) => {
-    for (const handler of listeners.get(event) ?? []) handler(...args)
-  }
-
-  const sentPayloads = () =>
-    socket.emit.mock.calls
-      .filter(([event]) => event === ChatSocketEvents.sendMessage)
-      .map(([, payload]) => payload)
-
-  return { socket, fire, sentPayloads }
 }
 
 function createWrapper() {
@@ -106,7 +90,7 @@ describe('useChatThread', () => {
   })
 
   it('shows the sent message as pending immediately and emits it with a client id', async () => {
-    const { socket } = createFakeSocket()
+    const { socket } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -141,7 +125,7 @@ describe('useChatThread', () => {
   })
 
   it('reconciles the saved broadcast with the optimistic row without duplicating it', async () => {
-    const { socket, fire } = createFakeSocket()
+    const { socket, fire } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -173,7 +157,7 @@ describe('useChatThread', () => {
 
   it('advances the delivery tick from a live status patch', async () => {
     mocks.getMessages.mockResolvedValue([historyMessage])
-    const { socket, fire } = createFakeSocket()
+    const { socket, fire } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -195,7 +179,7 @@ describe('useChatThread', () => {
 
   it('applies a live attachment patch without reloading', async () => {
     mocks.getMessages.mockResolvedValue([historyImage])
-    const { socket, fire } = createFakeSocket()
+    const { socket, fire } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -221,7 +205,7 @@ describe('useChatThread', () => {
 
   it('ignores live patches from another conversation', async () => {
     mocks.getMessages.mockResolvedValue([historyMessage])
-    const { socket, fire } = createFakeSocket()
+    const { socket, fire } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -242,7 +226,7 @@ describe('useChatThread', () => {
   })
 
   it('retries a failed send with the same client id and the stored payload', async () => {
-    const { socket, fire, sentPayloads } = createFakeSocket()
+    const { socket, fire, sentPayloads } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -280,7 +264,7 @@ describe('useChatThread', () => {
 
   it('retries a failed message loaded from history with the same client id', async () => {
     mocks.getMessages.mockResolvedValue([historyFailed])
-    const { socket, sentPayloads } = createFakeSocket()
+    const { socket, sentPayloads } = createThreadSocket()
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper, queryClient } = createWrapper()
 
@@ -304,7 +288,7 @@ describe('useChatThread', () => {
   })
 
   it('joins the conversation room on open and rejoins after a reconnect', async () => {
-    const { socket, fire } = createFakeSocket(true)
+    const { socket, fire } = createThreadSocket(true)
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper } = createWrapper()
 
@@ -325,7 +309,7 @@ describe('useChatThread', () => {
   })
 
   it('joins the room once the socket connects after opening offline', async () => {
-    const { socket, fire } = createFakeSocket(false)
+    const { socket, fire } = createThreadSocket(false)
     mocks.useSocket.mockReturnValue({ socket, isConnected: false })
     const { wrapper } = createWrapper()
 
@@ -343,7 +327,7 @@ describe('useChatThread', () => {
   })
 
   it('joins the newly opened conversation room when the user switches', async () => {
-    const { socket } = createFakeSocket(true)
+    const { socket } = createThreadSocket(true)
     mocks.useSocket.mockReturnValue({ socket, isConnected: true })
     const { wrapper } = createWrapper()
 

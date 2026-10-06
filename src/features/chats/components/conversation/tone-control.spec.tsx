@@ -43,7 +43,9 @@ describe('ToneControl', () => {
   it('shows the face and label in full mode by default', () => {
     render(<ToneControl sentiment={sentiment} />)
 
-    expect(screen.getByText('Positivo')).toBeInTheDocument()
+    // Regression: the label must not be breakpoint-hidden, or `full` renders
+    // identically to `mini` below 640px.
+    expect(screen.getByText('Positivo')).not.toHaveClass('hidden')
     expect(
       screen.getByRole('button', { name: /tono positivo/i })
     ).toBeInTheDocument()

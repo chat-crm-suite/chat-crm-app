@@ -2,6 +2,7 @@ import type {
   AttachmentStatus,
   ConversationCustomer,
   ConversationListItem,
+  ConversationSentiment,
   MessageContent,
   MessageSenderType,
   MessageStatus,
@@ -69,13 +70,10 @@ export interface Chat extends Omit<ConversationListItem, 'preview'> {
 export type Client = ConversationCustomer
 
 // SENTIMENT
-export interface ChatSentiment {
-  conversationId?: string
-  avgPos: number
-  avgNeg: number
-  avgNeu: number
-  totalMessages: number
-  dominant: 'POS' | 'NEG' | 'NEU'
-}
+/**
+ * Customer tone as returned by the API, aliased to the shared contract so the
+ * service parse and every consumer cannot drift from the payload shape.
+ */
+export type ChatSentiment = ConversationSentiment
 
 export type SentimentData = ChatSentiment

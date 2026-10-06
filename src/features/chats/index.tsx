@@ -56,9 +56,10 @@ export function Chats() {
 
     socket.on(Events.broadcast, handleNewMessage)
 
-    // Asignación: refrescar listas siempre; el toast se omite cuando el evento
-    // es el eco de la propia acción (claim/auto-asignación, ya avisada por la
-    // mutación). `notification:new` se maneja solo en el socket-provider.
+    // Assignment: always refresh the lists; the toast is skipped when the
+    // event echoes this client's own action (claim/self-assignment, already
+    // announced by the mutation). `notification:new` is handled only in the
+    // socket-provider.
     const handleAssigned = (payload: unknown) => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })

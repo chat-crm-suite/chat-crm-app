@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createFakeSocket } from '@/test/fake-socket'
 import { ChatsProvider, useChats } from '../contexts/chats.provider'
 import type { ChatSentiment } from '../types/chat.domain'
 import { ChatSocketEvents } from '../types/socket.api'
@@ -14,29 +15,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/context/socket-provider', () => ({ useSocket: mocks.useSocket }))
 vi.mock('@/lib/http', () => ({ client: () => ({ get: mocks.get }) }))
-
-/** Socket.io boundary stub: records listeners and lets tests fire server events. */
-function createFakeSocket(connected = true) {
-  const listeners = new Map<string, Set<(...args: unknown[]) => void>>()
-  const socket = {
-    connected,
-    emit: vi.fn(),
-    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      const handlers = listeners.get(event) ?? new Set()
-      handlers.add(handler)
-      listeners.set(event, handlers)
-    }),
-    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      listeners.get(event)?.delete(handler)
-    }),
-  }
-
-  const fire = (event: string, ...args: unknown[]) => {
-    for (const handler of listeners.get(event) ?? []) handler(...args)
-  }
-
-  return { socket, fire }
-}
 
 /** Probe: observes the tone exactly as the chats surface sees it. */
 function ToneProbe() {

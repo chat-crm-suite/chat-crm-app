@@ -215,7 +215,7 @@ export function ToneControl({
         aria-hidden
       />
       {mode === 'full' && (
-        <span className='hidden text-xs font-medium sm:inline' aria-hidden>
+        <span className='max-w-16 truncate text-xs font-medium' aria-hidden>
           {meta.label}
         </span>
       )}

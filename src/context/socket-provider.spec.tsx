@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createFakeSocket } from '@/test/fake-socket'
 import { SocketProvider } from './socket-provider'
 
 const mocks = vi.hoisted(() => {
@@ -46,28 +47,6 @@ class MockNotification {
     this.options = options
     MockNotification.instances.push(this)
   }
-}
-
-type Handler = (...args: unknown[]) => void
-
-function createFakeSocket() {
-  const listeners = new Map<string, Set<Handler>>()
-  const socket = {
-    on: vi.fn((event: string, handler: Handler) => {
-      const handlers = listeners.get(event) ?? new Set<Handler>()
-      handlers.add(handler)
-      listeners.set(event, handlers)
-    }),
-    off: vi.fn(),
-    close: vi.fn(),
-    disconnect: vi.fn(),
-  }
-
-  const fire = (event: string, ...args: unknown[]) => {
-    for (const handler of listeners.get(event) ?? []) handler(...args)
-  }
-
-  return { socket, fire }
 }
 
 function renderProvider() {

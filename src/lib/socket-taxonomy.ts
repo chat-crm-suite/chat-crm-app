@@ -1,5 +1,7 @@
 /**
- * Pure decision helpers for the socket error/notification taxonomy (T6).
+ * Socket error/notification taxonomy decisions (T6): pure helpers that turn
+ * unknown payloads into toast/notification decisions, plus the in-memory
+ * tracker of this client's own assignments (claim/self-assign).
  *
  * The components stay thin: they only translate these decisions into toasts.
  * Payloads are `unknown` on purpose: the API emits legacy shapes too, and a

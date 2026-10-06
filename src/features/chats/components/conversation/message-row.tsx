@@ -49,24 +49,27 @@ export function StatusTick({
   status: ChatMessage['status']
   className?: string
 }) {
-  const size = className ?? 'size-3.5'
+  const tickClassName = className ?? 'size-3.5'
   switch (status) {
     case 'pending':
-      return <Clock3 className={size} aria-label='Enviando' />
+      return <Clock3 className={tickClassName} aria-label='Enviando' />
     case 'sent':
-      return <Check className={size} aria-label='Enviado' />
+      return <Check className={tickClassName} aria-label='Enviado' />
     case 'delivered':
-      return <CheckCheck className={size} aria-label='Entregado' />
+      return <CheckCheck className={tickClassName} aria-label='Entregado' />
     case 'read':
       return (
         <CheckCheck
-          className={cn(size, 'text-sky-600 dark:text-sky-400')}
+          className={cn(tickClassName, 'text-sky-600 dark:text-sky-400')}
           aria-label='Leído'
         />
       )
     case 'failed':
       return (
-        <CircleAlert className={cn(size, 'text-destructive')} aria-label='Falló' />
+        <CircleAlert
+          className={cn(tickClassName, 'text-destructive')}
+          aria-label='Falló'
+        />
       )
     default:
       return null
@@ -112,9 +115,9 @@ export function MessageRow({
   const filename = 'filename' in content ? content.filename : undefined
   const attachment = getAttachmentState(message)
   const media = message.msg.mediaUrl ?? undefined
-  const isOutbound = message.sender.type === 'member'
+  const isMine = message.sender.type === 'member'
   const isPending = message.status === 'pending'
-  const isFailed = isOutbound && message.status === 'failed'
+  const isFailed = isMine && message.status === 'failed'
   const isRecent = Date.now() - at.getTime() < RECENT_WINDOW_MS
 
   return (
@@ -130,7 +133,7 @@ export function MessageRow({
         <AvatarFallback
           className={cn(
             'text-[10px] font-semibold',
-            isOutbound ? 'bg-primary text-primary-foreground' : 'bg-muted'
+            isMine ? 'bg-primary text-primary-foreground' : 'bg-muted'
           )}
         >
           {sender.initials}
@@ -142,7 +145,7 @@ export function MessageRow({
           <span className='text-xs font-semibold'>{sender.name}</span>
           <span className='text-muted-foreground flex items-center gap-1 text-[11px] tabular-nums'>
             {format(at, 'HH:mm')}
-            {isOutbound && (
+            {isMine && (
               <StatusTick status={message.status} className='size-3' />
             )}
           </span>
@@ -193,7 +196,7 @@ export function MessageRow({
                   <time dateTime={at.toISOString()} className='tabular-nums'>
                     {format(at, 'HH:mm')}
                   </time>
-                  {isOutbound && (
+                  {isMine && (
                     <StatusTick status={message.status} className='size-3' />
                   )}
                 </span>
