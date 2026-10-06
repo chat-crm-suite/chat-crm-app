@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { assignMember, searchCompanyMembers } from '@/services/chat.service'
-import { getApiErrorMessage } from '@/lib/api-error'
+import type { CompanyMemberResponse as Member } from '@chat-crm/contracts'
 import { UserRoundSearch } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getApiErrorMessage } from '@/lib/api-error'
+import {
+  assignmentToastId,
+  clearSelfInitiatedAssignment,
+  markSelfInitiatedAssignment,
+} from '@/lib/socket-taxonomy'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,7 +22,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import type { CompanyMemberResponse as Member } from '@chat-crm/contracts'
 
 const statusColors: Record<Member['status'], string> = {
   active: 'border-green-400',
@@ -24,7 +30,8 @@ const statusColors: Record<Member['status'], string> = {
 }
 
 const memberName = (member: Member) =>
-  [member.firstName, member.lastName].filter(Boolean).join(' ') || member.username
+  [member.firstName, member.lastName].filter(Boolean).join(' ') ||
+  member.username
 
 export const AssignedUser = ({
   conversationId,
@@ -32,6 +39,10 @@ export const AssignedUser = ({
   conversationId: string
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
+  const { user, company } = useAuthStore((state) => state.auth)
+  const currentMemberId = user?.memberships?.find(
+    (membership) => membership.companyId === company.id
+  )?.id
   const { data: members = [] } = useQuery({
     queryKey: ['company-members', searchTerm],
     queryFn: () => searchCompanyMembers(searchTerm),
@@ -40,14 +51,31 @@ export const AssignedUser = ({
 
   const { mutate } = useMutation({
     mutationFn: (member: Member) => assignMember(conversationId, member.id),
-    onSuccess: () =>
-      toast.success('Asignado correctamente', {
-        position: 'top-right',
-      }),
-    onError: (error) =>
+    // Assigning yourself is an own action: the `conversation:assigned` echo
+    // must not double the mutation toast (T6).
+    onMutate: (member) => {
+      if (member.id === currentMemberId) {
+        markSelfInitiatedAssignment(conversationId)
+      }
+    },
+    onSuccess: (_data, member) => {
+      const isSelf = member.id === currentMemberId
+      toast.success(
+        isSelf ? 'Chat asignado a tu nombre' : 'Asignado correctamente',
+        {
+          position: 'top-right',
+          id: isSelf ? assignmentToastId(conversationId) : undefined,
+        }
+      )
+    },
+    onError: (error, member) => {
+      if (member.id === currentMemberId) {
+        clearSelfInitiatedAssignment(conversationId)
+      }
       toast.error(getApiErrorMessage(error, 'No se pudo asignar el chat'), {
         position: 'top-right',
-      }),
+      })
+    },
   })
 
   return (

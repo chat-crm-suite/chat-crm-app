@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import {
+  consumeSelfInitiatedAssignment,
+  resolveAssignmentToast,
+} from '@/lib/socket-taxonomy'
 import { useSocket } from '@/context/socket-provider'
 import {
   ChatBox,
@@ -52,35 +56,45 @@ export function Chats() {
 
     socket.on(Events.broadcast, handleNewMessage)
 
-    // Asignación automática: refrescar listas al recibir eventos del backend.
-    const handleAssigned = () => {
+    // Asignación: refrescar listas siempre; el toast se omite cuando el evento
+    // es el eco de la propia acción (claim/auto-asignación, ya avisada por la
+    // mutación). `notification:new` se maneja solo en el socket-provider.
+    const handleAssigned = (payload: unknown) => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+
+      const decision = resolveAssignmentToast('assigned', payload, {
+        isSelfInitiated: consumeSelfInitiatedAssignment,
+      })
+      if (decision) {
+        toast[decision.type](decision.title, {
+          description: decision.description,
+          id: decision.id,
+        })
+      }
     }
-    const handleUnassigned = () => {
+    const handleUnassigned = (payload: unknown) => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
       void queryClient.invalidateQueries({
         queryKey: ['chat', 'needsResponse'],
       })
+
+      const decision = resolveAssignmentToast('unassigned', payload)
+      if (decision) {
+        toast[decision.type](decision.title, {
+          description: decision.description,
+          id: decision.id,
+        })
+      }
     }
 
     socket.on(Events.assigned, handleAssigned)
     socket.on(Events.unassigned, handleUnassigned)
 
-    const handleNotification = (notification: {
-      title?: string
-      body?: string
-    }) => {
-      toast.info(notification.body ?? notification.title ?? '')
-    }
-
-    socket.on(Events.notification, handleNotification)
-
     return () => {
       socket.off(Events.broadcast, handleNewMessage)
       socket.off(Events.assigned, handleAssigned)
       socket.off(Events.unassigned, handleUnassigned)
-      socket.off(Events.notification, handleNotification)
     }
   }, [socket, queryClient])
 

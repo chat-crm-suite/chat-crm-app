@@ -5,6 +5,11 @@ import { parsePhoneNumber } from 'react-phone-number-input'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/lib/api-error'
+import {
+  assignmentToastId,
+  clearSelfInitiatedAssignment,
+  markSelfInitiatedAssignment,
+} from '@/lib/socket-taxonomy'
 import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -51,13 +56,21 @@ export const ChatBox = () => {
   const queryClient = useQueryClient()
   const claim = useMutation({
     mutationFn: () => claimChat(chat!.id),
+    // Own action: mark before the request so the `conversation:assigned` echo
+    // is silenced; the mutation itself shows the toast (T6).
+    onMutate: () => {
+      if (chat) markSelfInitiatedAssignment(chat.id)
+    },
     onSuccess: () => {
-      toast.success('Chat asignado a tu nombre')
+      toast.success('Chat asignado a tu nombre', {
+        id: chat ? assignmentToastId(chat.id) : undefined,
+      })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
       if (chat) setChatSelected({ ...chat, isUnassigned: false })
     },
     onError: (error) => {
+      if (chat) clearSelfInitiatedAssignment(chat.id)
       toast.error(getApiErrorMessage(error, 'No se pudo tomar el chat'))
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
     },
