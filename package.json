@@ -2,6 +2,8 @@
   "name": "chat-crm-app",
   "private": true,
   "version": "2.0.0-b0",
+  "author": "Jerremi Aron Chancan Labajos <chancanjeremiaron@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "packageManager": "pnpm@10.34.6",
   "pnpm": {
     "onlyBuiltDependencies": [
