@@ -36,7 +36,7 @@ export function ClientChatDialog() {
   const [debouncedSearch] = useDebounce(searchTerm, 400)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', debouncedSearch],
     queryFn: () => api.queries.clients.search(debouncedSearch),
     placeholderData: (prev) => prev,
   })

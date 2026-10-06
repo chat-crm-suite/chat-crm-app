@@ -1,17 +1,14 @@
 import { Fragment } from 'react'
 import { parsePhoneNumber } from 'react-phone-number-input'
 import { cn } from '@/lib/utils'
-import { useSocket } from '@/context/socket-provider'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useChats } from '../../contexts/chats.provider'
 import type { Chat } from '../../types/chat.domain'
-import { ChatSocketEvents as Events } from '../../types/socket.api'
 import { ChatListAvatar } from './chat-list-avatar'
 import { ChatPreview } from './chat-preview'
 
 export const ChatListItem = ({ chat }: { chat: Chat }) => {
-  const { socket } = useSocket()
   const { chatSelected, setChatSelected, setMobile } = useChats()
 
   return (
@@ -25,7 +22,6 @@ export const ChatListItem = ({ chat }: { chat: Chat }) => {
         )}
         onClick={() => {
           setChatSelected(chat)
-          socket?.emit(Events.join, { room: chat.id })
           setMobile(true)
         }}
       >

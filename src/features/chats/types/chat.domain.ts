@@ -1,6 +1,8 @@
 import type {
+  AttachmentStatus,
   ConversationCustomer,
   ConversationListItem,
+  ConversationSentiment,
   MessageContent,
   MessageSenderType,
   MessageStatus,
@@ -17,6 +19,11 @@ export type {
 export interface ChatMessage {
   id: string
   conversationId: string
+  /**
+   * Front-generated send id: present on optimistic rows and on outbound rows
+   * saved by the API, so the thread reconciles without duplicating.
+   */
+  clientMessageId?: string | null
   timestamp: Date
   status: MessageStatus
   sender: {
@@ -26,6 +33,11 @@ export interface ChatMessage {
   msg: {
     type: MessageType
     mediaUrl?: string | null
+    /**
+     * Attachment lifecycle as sent by the API (`pending → ready | failed`).
+     * Optional: payloads without it fall back to `mediaUrl` presence.
+     */
+    attachmentStatus?: AttachmentStatus | null
     content: MessageContent
   }
 }
@@ -58,13 +70,10 @@ export interface Chat extends Omit<ConversationListItem, 'preview'> {
 export type Client = ConversationCustomer
 
 // SENTIMENT
-export interface ChatSentiment {
-  conversationId?: string
-  avgPos: number
-  avgNeg: number
-  avgNeu: number
-  totalMessages: number
-  dominant: 'POS' | 'NEG' | 'NEU'
-}
+/**
+ * Customer tone as returned by the API, aliased to the shared contract so the
+ * service parse and every consumer cannot drift from the payload shape.
+ */
+export type ChatSentiment = ConversationSentiment
 
 export type SentimentData = ChatSentiment
