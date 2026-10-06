@@ -1,4 +1,5 @@
 import type {
+  AttachmentStatus,
   ConversationCustomer,
   ConversationListItem,
   MessageContent,
@@ -26,6 +27,11 @@ export interface ChatMessage {
   msg: {
     type: MessageType
     mediaUrl?: string | null
+    /**
+     * Attachment lifecycle as sent by the API (`pending → ready | failed`).
+     * Optional: payloads without it fall back to `mediaUrl` presence.
+     */
+    attachmentStatus?: AttachmentStatus | null
     content: MessageContent
   }
 }

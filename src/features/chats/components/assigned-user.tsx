@@ -53,18 +53,21 @@ export const AssignedUser = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant='outline'>
-          <span className='hidden sm:inline'>Assigned Member</span>
-          <span className='inline sm:hidden'>
-            <UserRoundSearch />
-          </span>
+        <Button
+          variant='outline'
+          size='sm'
+          className='h-8 gap-1.5 rounded-full px-3 text-xs'
+          aria-label='Asignar'
+        >
+          <UserRoundSearch className='size-3.5' />
+          <span className='hidden sm:inline'>Asignar</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-91'>
-        <DropdownMenuLabel>Member List</DropdownMenuLabel>
+        <DropdownMenuLabel>Miembros del equipo</DropdownMenuLabel>
         <div className='px-2 pb-2'>
           <Input
-            placeholder='Search members...'
+            placeholder='Buscar miembros…'
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className='text-sm'
