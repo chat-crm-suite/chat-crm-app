@@ -67,3 +67,13 @@ export default tseslint.config([
   },
 ])
 ```
+
+## Project license
+
+This repository (chat-crm-app) is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE):
+
+- **Noncommercial use**: free — use, modify and distribute the code while keeping the copyright notices (`NOTICE`).
+- **Commercial use**: requires a commercial license. Organizations below USD 100,000/year in revenue get a free commercial license; above that, an annual fee or revenue share — see [`COMMERCIAL.md`](COMMERCIAL.md).
+- **Authorship**: `Copyright (c) 2026 Jerremi Aron Chancan Labajos`. Commercial use requires the visible credit "Built on chat-crm".
+
+Commercial licensing contact: **chancanjeremiaron@gmail.com**.
