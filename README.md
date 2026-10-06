@@ -7,6 +7,24 @@ Currently, two official plugins are available:
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
+## Agent skills
+
+`.agents/` and `.claude/` are installed, gitignored directories (never committed).
+`skills-lock.json` is the source of truth, like `package.json` for npm deps.
+
+```sh
+pnpm skills:install          # install every skill in the lock
+pnpm skills:install -- --skill tdd
+pnpm skills:check            # verify installed skills without network
+```
+
+To add/update a skill, use the [skills.sh](https://www.skills.sh/) CLI
+(which updates the lockfile), then commit only the lock:
+
+```sh
+pnpm dlx skills@latest add <owner/repo> --skill <name> -a opencode -a claude-code --copy -y
+```
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:

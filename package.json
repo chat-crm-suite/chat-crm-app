@@ -20,7 +20,9 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "postinstall": "node --input-type=module -e \"import{existsSync}from'node:fs';if(existsSync('scripts/contracts-tsconfig.mjs')){await import('./scripts/contracts-tsconfig.mjs')}else{console.log('[@chat-crm/contracts] tsconfig skipped (scripts not present)')}\"",
-    "contracts:sync": "node scripts/contracts-tsconfig.mjs"
+    "contracts:sync": "node scripts/contracts-tsconfig.mjs",
+    "skills:install": "node scripts/skills-install.mjs",
+    "skills:check": "node scripts/skills-install.mjs --check"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
