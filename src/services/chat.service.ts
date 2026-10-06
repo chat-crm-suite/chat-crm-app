@@ -1,9 +1,10 @@
 import {
   CompanyMemberResponseSchema,
+  ConversationSentimentSchema,
   type CompanyMemberResponse,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
-import type { Chat } from '@/features/chats/types/chat.domain'
+import type { Chat, ChatSentiment } from '@/features/chats/types/chat.domain'
 
 const conversations = client('/conversations')
 const companyMembers = client('/company-members')
@@ -77,4 +78,18 @@ export const searchCompanyMembers = async (
   }
 
   return (data ?? []) as CompanyMemberResponse[]
+}
+
+/** Tono del cliente de una conversación (`GET /conversations/:id/sentiment`). */
+export const getConversationSentiment = async (
+  conversationId: string
+): Promise<ChatSentiment> => {
+  const { data } = await conversations.get(`/${conversationId}/sentiment`)
+
+  // Dev-only runtime check: catches API/contract drift immediately.
+  if (import.meta.env.DEV) {
+    return ConversationSentimentSchema.parse(data)
+  }
+
+  return data as ChatSentiment
 }

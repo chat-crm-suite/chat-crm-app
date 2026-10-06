@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
+import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { AssignedUser } from './assigned-user'
 import { Composer } from './conversation/composer'
 import { initials } from './conversation/identity'
@@ -42,6 +43,10 @@ export const ChatBox = () => {
     sender: { id: memberId ?? '', type: 'member' },
     to: chat?.customer?.phone ?? '',
   })
+
+  // Real customer tone of the open conversation: REST + live refetch, synced
+  // into the chats context that feeds the tone control.
+  useConversationSentiment(chat?.id)
 
   const queryClient = useQueryClient()
   const claim = useMutation({
