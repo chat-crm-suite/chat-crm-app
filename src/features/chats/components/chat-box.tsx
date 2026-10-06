@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
+import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
 import { AssignedUser } from './assigned-user'
 import { Composer } from './conversation/composer'
 import { initials } from './conversation/identity'
@@ -34,6 +35,10 @@ export const ChatBox = () => {
     setMobile,
     setSearchClientDialog,
   } = useChats()
+
+  // Keep the phone overlay as tall as the visual viewport, so the composer
+  // stays above the virtual keyboard (dvh fallback lives in index.css).
+  useVisualViewportHeight()
 
   const membership = auth.user?.memberships?.find(
     (m) => m.companyId === auth.company.id
@@ -83,16 +88,18 @@ export const ChatBox = () => {
       className={cn(
         'bg-background absolute inset-0 start-full z-50 hidden w-full',
         'flex-1 flex-col border shadow-xs sm:static sm:z-auto sm:flex sm:rounded-md',
+        // Keyboard-aware height on phones: dvh / visualViewport variable.
+        'max-sm:h-(--chat-viewport-height)',
         mobile && 'start-0 flex'
       )}
     >
       {/* Top Part */}
-      <header className='bg-card flex flex-none items-center justify-between gap-3 rounded-t-md border-b px-3 py-2.5 sm:px-4'>
+      <header className='bg-card flex flex-none items-center justify-between gap-3 rounded-t-md border-b py-2.5 ps-[max(0.75rem,env(safe-area-inset-left))] pe-[max(0.75rem,env(safe-area-inset-right))] sm:ps-4 sm:pe-4'>
         <div className='flex min-w-0 items-center gap-2.5'>
           <Button
             size='icon'
             variant='ghost'
-            className='-ms-2 size-8 sm:hidden'
+            className='-ms-2 size-11 sm:hidden'
             aria-label='Volver a la lista'
             onClick={() => {
               setChatSelected(null)
@@ -122,7 +129,7 @@ export const ChatBox = () => {
           {chat.isUnassigned && (
             <Button
               size='sm'
-              className='h-8 rounded-full px-3 text-xs'
+              className='h-11 rounded-full px-4 text-xs sm:h-8 sm:px-3'
               onClick={() => claim.mutate()}
               disabled={claim.isPending}
             >
@@ -133,7 +140,7 @@ export const ChatBox = () => {
           <Button
             size='icon'
             variant='ghost'
-            className='size-8'
+            className='size-11 sm:size-8'
             aria-label='Más opciones'
           >
             <MoreVertical className='size-4' />

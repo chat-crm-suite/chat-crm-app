@@ -86,7 +86,7 @@ function RetryButton({
       variant='link'
       size='sm'
       onClick={() => onRetry(message)}
-      className='text-destructive h-auto gap-1 p-0 text-xs font-medium'
+      className='text-destructive h-auto min-h-11 gap-1 p-0 text-xs font-medium sm:min-h-0'
     >
       <RefreshCcw className='size-3' />
       Reintentar

@@ -26,7 +26,11 @@ export function Composer({
 
   return (
     <form
-      className={cn('bg-card flex-none border-t p-3 sm:p-4', className)}
+      className={cn(
+        'bg-card flex-none border-t ps-[max(0.75rem,env(safe-area-inset-left))] pe-[max(0.75rem,env(safe-area-inset-right))] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+        'sm:ps-4 sm:pe-4 sm:pt-4 sm:pb-4',
+        className
+      )}
       onSubmit={(event) => {
         event.preventDefault()
         send()
@@ -39,7 +43,7 @@ export function Composer({
               type='button'
               variant='ghost'
               size='icon'
-              className='hidden size-9 shrink-0 sm:inline-flex'
+              className='size-11 shrink-0 sm:size-9'
               disabled
               title='Próximamente: enviar imagen'
               aria-label='Enviar imagen (próximamente)'
@@ -50,7 +54,7 @@ export function Composer({
               type='button'
               variant='ghost'
               size='icon'
-              className='hidden size-9 shrink-0 sm:inline-flex'
+              className='size-11 shrink-0 sm:size-9'
               disabled
               title='Próximamente: adjuntar archivo'
               aria-label='Adjuntar archivo (próximamente)'
@@ -81,7 +85,7 @@ export function Composer({
           <Button
             type='submit'
             size='icon'
-            className='size-9 shrink-0 rounded-full'
+            className='size-11 shrink-0 rounded-full sm:size-9'
             disabled={!connected || !value.trim()}
             aria-label='Enviar mensaje'
           >

@@ -10,6 +10,11 @@
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+  :root {
+    /* Mobile conversation surface height. `useVisualViewportHeight` overrides
+       it in px while the virtual keyboard is open; `dvh` is the fallback. */
+    --chat-viewport-height: 100dvh;
+  }
   html {
     @apply overflow-x-hidden;
   }

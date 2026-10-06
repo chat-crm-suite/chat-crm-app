@@ -147,7 +147,7 @@ export function ConversationThread({
                     <Skeleton
                       key={row.width}
                       className={cn(
-                        'h-9 rounded-2xl',
+                        'h-9 max-w-full rounded-2xl',
                         row.width,
                         row.mine && 'self-end'
                       )}
@@ -198,7 +198,7 @@ export function ConversationThread({
                 )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton>
+          <MessageScrollerButton className='max-sm:size-11'>
             <ArrowDownIcon />
             <span className='sr-only'>Ir al final de la conversación</span>
           </MessageScrollerButton>

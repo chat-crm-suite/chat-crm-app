@@ -84,14 +84,14 @@ export const AssignedUser = ({
         <Button
           variant='outline'
           size='sm'
-          className='h-8 gap-1.5 rounded-full px-3 text-xs'
+          className='h-11 w-11 justify-center gap-1.5 rounded-full px-0 text-xs sm:h-8 sm:w-auto sm:px-3'
           aria-label='Asignar'
         >
           <UserRoundSearch className='size-3.5' />
           <span className='hidden sm:inline'>Asignar</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className='w-91'>
+      <DropdownMenuContent className='w-91 max-sm:w-[calc(100vw_-_1rem)]'>
         <DropdownMenuLabel>Miembros del equipo</DropdownMenuLabel>
         <div className='px-2 pb-2'>
           <Input
@@ -103,7 +103,10 @@ export const AssignedUser = ({
         </div>
         <DropdownMenuGroup>
           {members.map((member) => (
-            <DropdownMenuItem key={member.id} className='justify-between'>
+            <DropdownMenuItem
+              key={member.id}
+              className='justify-between max-sm:min-h-11'
+            >
               <Avatar className={`border ${statusColors[member.status]}`}>
                 <AvatarFallback className='text-xs'>
                   {member.username.charAt(0).toUpperCase()}
@@ -119,7 +122,7 @@ export const AssignedUser = ({
               </div>
               <Button
                 variant='secondary'
-                className='h-7 cursor-pointer rounded-md px-2'
+                className='h-7 cursor-pointer rounded-md px-2 max-sm:h-11 max-sm:px-3'
                 onClick={() => mutate(member)}
               >
                 Asignar
