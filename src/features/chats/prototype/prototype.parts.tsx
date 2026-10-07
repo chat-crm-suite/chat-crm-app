@@ -511,17 +511,29 @@ export function TeamMessageRow({
           {message.msg.type === 'image' &&
             !attachment?.match(/pending|failed/) &&
             media && (
-              <span className='block'>
+              <span className='relative mt-1 block w-fit max-w-full'>
                 <img
                   src={media}
                   alt={content.caption ?? 'Imagen'}
                   loading='lazy'
                   decoding='async'
-                  className='bg-muted mt-1 aspect-[3/2] max-h-64 w-full max-w-xs rounded-xl border object-cover'
+                  className='bg-muted aspect-[3/2] max-h-64 w-full max-w-xs rounded-xl border object-cover'
                 />
-                {content.caption && (
+                {content.caption ? (
                   <span className='text-muted-foreground mt-1 block text-xs'>
                     {content.caption}
+                  </span>
+                ) : (
+                  <span className='bg-foreground/60 text-background absolute end-2.5 bottom-2.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none'>
+                    <time
+                      dateTime={message.timestamp.toISOString()}
+                      className='tabular-nums'
+                    >
+                      {format(message.timestamp, 'HH:mm')}
+                    </time>
+                    {isMine && (
+                      <StatusTick status={message.status} className='size-3' />
+                    )}
                   </span>
                 )}
               </span>
