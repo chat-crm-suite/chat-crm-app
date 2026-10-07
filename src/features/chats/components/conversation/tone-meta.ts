@@ -14,7 +14,7 @@ export const TONE_META: Record<
   NEG: { label: 'Negativo', color: 'var(--negative)', icon: Frown },
 }
 
-export function shares(sentiment: ChatSentiment) {
+export function toneShares(sentiment: ChatSentiment) {
   return [
     { tone: 'POS', value: sentiment.avgPos },
     { tone: 'NEU', value: sentiment.avgNeu },

@@ -140,10 +140,29 @@ describe('CaseRail', () => {
     expect(screen.getByText('@rosa.medina')).toBeInTheDocument()
   })
 
-  it('marks my own conversations as assigned to me', () => {
-    renderRail()
+  it('marks the inbox payload (no member) as assigned to me', () => {
+    renderRail({ currentMemberId: 'member-1' })
 
     expect(screen.getByText('Asignado a ti')).toBeInTheDocument()
+  })
+
+  it('marks the owner as me only when the member id matches', () => {
+    renderRail({
+      currentMemberId: 'member-1',
+      chat: makeChat({ member: { id: 'member-1', username: null } }),
+    })
+
+    expect(screen.getByText('Asignado a ti')).toBeInTheDocument()
+  })
+
+  it('names another owner without username honestly', () => {
+    renderRail({
+      currentMemberId: 'member-1',
+      chat: makeChat({ member: { id: 'member-2', username: null } }),
+    })
+
+    expect(screen.getByText('Otro agente')).toBeInTheDocument()
+    expect(screen.queryByText('Asignado a ti')).not.toBeInTheDocument()
   })
 
   it('shows the channel as WhatsApp', () => {

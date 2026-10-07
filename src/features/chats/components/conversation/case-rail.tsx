@@ -128,6 +128,7 @@ export function CaseRail({
   sentiment,
   onTake,
   taking = false,
+  currentMemberId,
   className,
 }: {
   chat: Chat
@@ -135,6 +136,8 @@ export function CaseRail({
   sentiment?: ChatSentiment
   onTake: () => void
   taking?: boolean
+  /** Signed-in member id, to tell "mine" from another agent without username. */
+  currentMemberId?: string
   className?: string
 }) {
   const [mode] = useToneMode()
@@ -145,6 +148,10 @@ export function CaseRail({
   // (needs-response view) both mean the chat can be claimed.
   const isUnassigned = isConversationUnassigned(chat)
   const assignee = chat.member?.username
+  // An omitted `member` is the inbox payload (only my conversations); when the
+  // payload carries an owner, only a matching id proves the chat is mine.
+  const isMine =
+    chat.member === undefined || chat.member?.id === currentMemberId
 
   return (
     <aside
@@ -207,8 +214,10 @@ export function CaseRail({
                 </Avatar>
                 @{assignee}
               </span>
-            ) : (
+            ) : isMine ? (
               'Asignado a ti'
+            ) : (
+              'Otro agente'
             )}
           </RailRow>
           {chat.priority && (

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import type { ChatSentiment } from '../../types/chat.domain'
-import { percent, shares, TONE_META } from './tone-meta'
+import { percent, toneShares, TONE_META } from './tone-meta'
 
 /** One stacked bar for the whole mix, instead of three separate meters. */
 export function ToneMeter({
@@ -13,12 +13,12 @@ export function ToneMeter({
   return (
     <span
       role='img'
-      aria-label={shares(sentiment)
+      aria-label={toneShares(sentiment)
         .map((part) => `${TONE_META[part.tone].label} ${percent(part.value)}`)
         .join(', ')}
       className={cn('flex h-1.5 w-12 gap-0.5', className)}
     >
-      {shares(sentiment).map((part) => (
+      {toneShares(sentiment).map((part) => (
         <span
           key={part.tone}
           className='h-full min-w-1 rounded-full'
@@ -70,7 +70,7 @@ export function ToneSummary({
       <ToneMeter sentiment={sentiment} className='w-full' />
 
       <ul className='space-y-1.5'>
-        {shares(sentiment).map((part) => {
+        {toneShares(sentiment).map((part) => {
           const partMeta = TONE_META[part.tone]
           const Icon = partMeta.icon
           return (

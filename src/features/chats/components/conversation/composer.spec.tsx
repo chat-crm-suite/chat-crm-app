@@ -92,6 +92,39 @@ describe('Composer', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
+  it('splices the draft at the caret, preserving the typed text around it', async () => {
+    const { onSend, user } = setup()
+    const field = screen.getByPlaceholderText(
+      'Escribe un mensaje…'
+    ) as HTMLTextAreaElement
+
+    await user.type(field, 'Hola  ¿en qué puedo ayudarte?')
+    field.setSelectionRange(5, 5)
+    await user.click(screen.getByRole('button', { name: 'Saludo' }))
+
+    expect(field).toHaveValue(`Hola ${DRAFTS.greeting} ¿en qué puedo ayudarte?`)
+    expect(field.selectionStart).toBe(5 + DRAFTS.greeting.length)
+    expect(field.selectionEnd).toBe(5 + DRAFTS.greeting.length)
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('appends at the end of the typed text and keeps the caret after the draft', async () => {
+    const { onSend, user } = setup()
+    const field = screen.getByPlaceholderText(
+      'Escribe un mensaje…'
+    ) as HTMLTextAreaElement
+
+    await user.type(field, 'Hola Rosa, ')
+    await user.click(screen.getByRole('button', { name: 'Comprobante' }))
+
+    expect(field).toHaveValue(`Hola Rosa, ${DRAFTS.receipt}`)
+    expect(field.selectionStart).toBe(`Hola Rosa, ${DRAFTS.receipt}`.length)
+    expect(onSend).not.toHaveBeenCalled()
+
+    await user.keyboard(' Gracias.')
+    expect(field).toHaveValue(`Hola Rosa, ${DRAFTS.receipt} Gracias.`)
+  })
+
   it('focuses the field after inserting, so the draft sends like typed text', async () => {
     const { onSend, user } = setup()
     const field = screen.getByPlaceholderText('Escribe un mensaje…')

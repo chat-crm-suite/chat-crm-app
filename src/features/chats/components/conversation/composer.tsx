@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { ImagePlus, Paperclip, Send, WifiOff } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -22,7 +22,18 @@ export function Composer({
   const [value, setValue] = useState('')
   const fieldId = useId()
   const fieldRef = useRef<HTMLTextAreaElement>(null)
+  /** Caret offset requested by the last quick-reply insertion. */
+  const pendingCaret = useRef<number | null>(null)
   const resolved = status === 'closed'
+
+  // The textarea is controlled: the caret can only land once React has written
+  // the spliced value, so apply the pending offset right after that commit.
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current
+    if (caret === null) return
+    pendingCaret.current = null
+    fieldRef.current?.setSelectionRange(caret, caret)
+  })
 
   const send = () => {
     const text = value.trim()
@@ -31,10 +42,17 @@ export function Composer({
     setValue('')
   }
 
-  /** Loads a quick-reply draft into the field and focuses it for editing. */
+  /**
+   * Inserts a quick-reply draft at the caret, keeping the surrounding text,
+   * and leaves the caret after the draft for editing. Never submits.
+   */
   const insertDraft = (draft: string) => {
-    setValue(draft)
-    fieldRef.current?.focus()
+    const field = fieldRef.current
+    const start = field?.selectionStart ?? value.length
+    const end = field?.selectionEnd ?? start
+    pendingCaret.current = start + draft.length
+    setValue(value.slice(0, start) + draft + value.slice(end))
+    field?.focus()
   }
 
   return (

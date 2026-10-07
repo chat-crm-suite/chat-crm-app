@@ -1,4 +1,4 @@
-import { parsePhoneNumber } from 'react-phone-number-input'
+import { formatPhone as formatPhoneShared } from '@/lib/phone'
 
 /** Avatar initials: "Rosa Medina" -> "RM". */
 export function initials(name: string): string {
@@ -11,17 +11,19 @@ export function initials(name: string): string {
     .toUpperCase()
 }
 
-/** Phone in international format when parseable, raw value otherwise. */
+/**
+ * Null-tolerant wrapper over the shared formatter: international format when
+ * the number is valid, raw value otherwise (a missing phone stays undefined).
+ */
 export function formatPhone(phone?: string | null): string | undefined {
-  if (!phone) return undefined
-
-  return parsePhoneNumber(phone, 'PE')?.formatInternational() || phone
+  return phone ? formatPhoneShared(phone) : undefined
 }
 
 /**
  * Short case identifier for the header (`#4821` style). Derived from the
  * conversation id with FNV-1a and folded into 1000-9999, so it is stable per
- * conversation, always four digits and needs no API field.
+ * conversation, always four digits and needs no API field. Display-only: the
+ * fold trades uniqueness for brevity, so ids can collide across conversations.
  */
 export function shortConversationId(id: string): string {
   let hash = 0x811c9dc5

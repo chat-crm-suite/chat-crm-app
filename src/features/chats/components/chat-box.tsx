@@ -73,14 +73,19 @@ export const ChatBox = () => {
       if (chat) {
         // The claim assigns the chat to the signed-in member: clearing only
         // `isUnassigned` would leave `member: null` and the rail would keep
-        // offering "Tomar chat".
+        // offering "Tomar chat". Never persist an empty owner id: without a
+        // resolved member there is nothing honest to store.
         setChatSelected({
           ...chat,
           isUnassigned: false,
-          member: {
-            id: memberId ?? '',
-            username: auth.user?.username ?? null,
-          },
+          ...(memberId
+            ? {
+                member: {
+                  id: memberId,
+                  username: auth.user?.username ?? null,
+                },
+              }
+            : {}),
         })
       }
     },
@@ -143,6 +148,7 @@ export const ChatBox = () => {
           sentiment={sentimentData}
           onTake={() => claim.mutate()}
           taking={claim.isPending}
+          currentMemberId={memberId}
         />
       </div>
     </div>
