@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
+import { API_URL } from '@/lib/http'
 import type { ChatMessage } from '../../types/chat.domain'
 import { MessageRow, type SenderView } from './message-row'
 
@@ -94,8 +96,31 @@ describe('MessageRow', () => {
 
     expect(screen.getByRole('img', { name: '¿Estos precios incluyen IGV?' })).toHaveAttribute(
       'src',
-      '/uploads/foto.jpg'
+      `${API_URL}/uploads/foto.jpg`
     )
+  })
+
+  it('opens the full-size viewer when the image is clicked', async () => {
+    renderRow(
+      makeMessage({
+        msg: {
+          type: 'image',
+          mediaUrl: '/uploads/foto.jpg',
+          attachmentStatus: 'ready',
+          content: { caption: 'Firewatch Sunset' },
+        },
+      })
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ampliar imagen' })
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByRole('img', { name: 'Firewatch Sunset' })
+    ).toHaveAttribute('src', `${API_URL}/uploads/foto.jpg`)
+    expect(within(dialog).getByText('Tú')).toBeInTheDocument()
   })
 
   it('overlays the time and tick on a captionless image', () => {

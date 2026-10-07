@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import {
   Check,
@@ -10,10 +11,12 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { resolveMediaUrl } from '@/lib/media-url'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { ChatMessage } from '../../types/chat.domain'
+import { ImageLightbox } from './image-lightbox'
 
 /** Identity of the message author as resolved by the thread. */
 export interface SenderView {
@@ -108,13 +111,14 @@ export function MessageRow({
   onRetry: (message: ChatMessage) => void
   className?: string
 }) {
+  const [viewerOpen, setViewerOpen] = useState(false)
   const at = new Date(message.timestamp)
   const content = message.msg.content
   const body = 'body' in content ? content.body : undefined
   const caption = 'caption' in content ? content.caption : undefined
   const filename = 'filename' in content ? content.filename : undefined
   const attachment = getAttachmentState(message)
-  const media = message.msg.mediaUrl ?? undefined
+  const media = resolveMediaUrl(message.msg.mediaUrl)
   const isMine = message.sender.type === 'member'
   const isPending = message.status === 'pending'
   const isFailed = isMine && message.status === 'failed'
@@ -176,32 +180,50 @@ export function MessageRow({
           )}
 
           {message.msg.type === 'image' && attachment === 'ready' && media && (
-            <span className='relative mt-1 block w-fit max-w-full'>
-              <img
+            <>
+              <span className='relative mt-1 block w-fit max-w-[min(20.5rem,100%)]'>
+                <button
+                  type='button'
+                  onClick={() => setViewerOpen(true)}
+                  aria-label='Ampliar imagen'
+                  className='group/image block w-fit max-w-full cursor-zoom-in overflow-hidden rounded-xl border p-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+                >
+                  <img
+                    src={media}
+                    alt={caption ?? 'Imagen'}
+                    loading='lazy'
+                    decoding='async'
+                    className='bg-muted block h-auto max-h-[26rem] w-auto max-w-full transition duration-200 motion-safe:group-hover/image:brightness-105 motion-safe:group-focus-visible/image:brightness-105'
+                  />
+                </button>
+                {caption ? (
+                  <span className='text-muted-foreground mt-1 block text-xs'>
+                    {caption}
+                  </span>
+                ) : (
+                  <span
+                    data-testid='image-meta-overlay'
+                    className='bg-foreground/60 text-background pointer-events-none absolute end-2.5 bottom-2.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none'
+                  >
+                    <time dateTime={at.toISOString()} className='tabular-nums'>
+                      {format(at, 'HH:mm')}
+                    </time>
+                    {isMine && (
+                      <StatusTick status={message.status} className='size-3' />
+                    )}
+                  </span>
+                )}
+              </span>
+              <ImageLightbox
+                open={viewerOpen}
+                onOpenChange={setViewerOpen}
                 src={media}
                 alt={caption ?? 'Imagen'}
-                loading='lazy'
-                decoding='async'
-                className='bg-muted aspect-[3/2] max-h-64 w-full max-w-xs rounded-xl border object-cover'
+                caption={caption}
+                senderName={sender.name}
+                timestamp={at}
               />
-              {caption ? (
-                <span className='text-muted-foreground mt-1 block text-xs'>
-                  {caption}
-                </span>
-              ) : (
-                <span
-                  data-testid='image-meta-overlay'
-                  className='bg-foreground/60 text-background absolute end-2.5 bottom-2.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none'
-                >
-                  <time dateTime={at.toISOString()} className='tabular-nums'>
-                    {format(at, 'HH:mm')}
-                  </time>
-                  {isMine && (
-                    <StatusTick status={message.status} className='size-3' />
-                  )}
-                </span>
-              )}
-            </span>
+            </>
           )}
 
           {message.msg.type === 'document' && attachment === 'ready' && (
