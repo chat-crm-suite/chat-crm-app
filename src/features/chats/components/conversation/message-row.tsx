@@ -5,6 +5,7 @@ import {
   CheckCheck,
   CircleAlert,
   Clock3,
+  Download,
   FileText,
   FileWarning,
   RefreshCcw,
@@ -12,9 +13,20 @@ import {
 
 import { cn } from '@/lib/utils'
 import { resolveMediaUrl } from '@/lib/media-url'
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentTrigger,
+} from '@/components/ui/attachment'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { documentMeta } from '../../lib/attachment-meta'
 import type { ChatMessage } from '../../types/chat.domain'
 import { ImageLightbox } from './image-lightbox'
 
@@ -119,6 +131,12 @@ export function MessageRow({
   const filename = 'filename' in content ? content.filename : undefined
   const attachment = getAttachmentState(message)
   const media = resolveMediaUrl(message.msg.mediaUrl)
+  const documentName = filename ?? 'Documento'
+  const documentDescription = documentMeta({
+    mimeType: message.msg.mimeType,
+    sizeBytes: message.msg.sizeBytes,
+    filename,
+  })
   const isMine = message.sender.type === 'member'
   const isPending = message.status === 'pending'
   const isFailed = isMine && message.status === 'failed'
@@ -227,13 +245,47 @@ export function MessageRow({
           )}
 
           {message.msg.type === 'document' && attachment === 'ready' && (
-            <span className='block'>
-              <span className='mt-1 flex w-fit items-center gap-2 rounded-xl border px-3 py-2'>
-                <FileText className='size-4 shrink-0' />
-                <span className='min-w-0 truncate text-[13px] font-medium'>
-                  {filename ?? 'Documento'}
-                </span>
-              </span>
+            <span className='mt-1 block'>
+              <Attachment state='done' className='max-w-[min(22rem,100%)]'>
+                <AttachmentMedia>
+                  <FileText />
+                </AttachmentMedia>
+                <AttachmentContent>
+                  <AttachmentTitle>{documentName}</AttachmentTitle>
+                  {documentDescription && (
+                    <AttachmentDescription>
+                      {documentDescription}
+                    </AttachmentDescription>
+                  )}
+                </AttachmentContent>
+                {media && (
+                  <AttachmentActions>
+                    <AttachmentAction
+                      asChild
+                      size='icon-sm'
+                      variant='secondary'
+                    >
+                      <a
+                        href={media}
+                        download={filename ?? ''}
+                        aria-label={`Descargar ${documentName}`}
+                      >
+                        <Download />
+                      </a>
+                    </AttachmentAction>
+                  </AttachmentActions>
+                )}
+                {media && (
+                  <AttachmentTrigger asChild>
+                    <a
+                      href={media}
+                      target='_blank'
+                      rel='noreferrer'
+                      aria-label={`Abrir ${documentName}`}
+                    />
+                  </AttachmentTrigger>
+                )}
+              </Attachment>
               {caption && (
                 <span className='text-muted-foreground mt-1 block text-xs'>
                   {caption}

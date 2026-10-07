@@ -201,6 +201,8 @@ describe('useChatThread', () => {
 
     expect(thread(queryClient)[0].msg.mediaUrl).toBe('/uploads/photo.jpg')
     expect(thread(queryClient)[0].msg.attachmentStatus).toBe('ready')
+    expect(thread(queryClient)[0].msg.mimeType).toBe('image/jpeg')
+    expect(thread(queryClient)[0].msg.sizeBytes).toBe(1234)
   })
 
   it('ignores live patches from another conversation', async () => {

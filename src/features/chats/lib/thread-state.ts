@@ -126,6 +126,8 @@ export function applyAttachmentPatch(
       ...current.msg,
       mediaUrl: patch.url ?? current.msg.mediaUrl ?? null,
       attachmentStatus: patch.status,
+      mimeType: patch.mimeType ?? current.msg.mimeType ?? null,
+      sizeBytes: patch.sizeBytes ?? current.msg.sizeBytes ?? null,
     },
   }
 

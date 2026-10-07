@@ -140,7 +140,7 @@ describe('MessageRow', () => {
     expect(within(overlay).getByLabelText('Leído')).toBeInTheDocument()
   })
 
-  it('renders a ready document card with its filename', () => {
+  it('renders a ready document card with its filename and type fallback', () => {
     renderRow(
       makeMessage({
         msg: {
@@ -156,9 +156,41 @@ describe('MessageRow', () => {
     )
 
     expect(screen.getByText('cotizacion-rosa.pdf')).toBeInTheDocument()
+    expect(screen.getByText('PDF')).toBeInTheDocument()
     expect(
       screen.getByText('Aquí va la cotización actualizada.')
     ).toBeInTheDocument()
+  })
+
+  it('shows the document metadata and download actions when the API exposes them', () => {
+    renderRow(
+      makeMessage({
+        msg: {
+          type: 'document',
+          mediaUrl: '/uploads/cotizacion-rosa.pdf',
+          attachmentStatus: 'ready',
+          mimeType: 'application/pdf',
+          sizeBytes: 2516582,
+          content: { filename: 'cotizacion-rosa.pdf' },
+        },
+      })
+    )
+
+    expect(screen.getByText('cotizacion-rosa.pdf')).toBeInTheDocument()
+    expect(screen.getByText('PDF · 2.4 MB')).toBeInTheDocument()
+
+    const download = screen.getByRole('link', {
+      name: 'Descargar cotizacion-rosa.pdf',
+    })
+    expect(download).toHaveAttribute(
+      'href',
+      `${API_URL}/uploads/cotizacion-rosa.pdf`
+    )
+    expect(download).toHaveAttribute('download', 'cotizacion-rosa.pdf')
+
+    expect(
+      screen.getByRole('link', { name: 'Abrir cotizacion-rosa.pdf' })
+    ).toHaveAttribute('href', `${API_URL}/uploads/cotizacion-rosa.pdf`)
   })
 
   it('renders a failed attachment honestly', () => {

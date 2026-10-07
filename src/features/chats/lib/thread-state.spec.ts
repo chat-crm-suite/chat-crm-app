@@ -216,6 +216,8 @@ describe('applyAttachmentPatch', () => {
 
     expect(thread[0].msg.mediaUrl).toBe('/uploads/photo.jpg')
     expect(thread[0].msg.attachmentStatus).toBe('ready')
+    expect(thread[0].msg.mimeType).toBe('image/jpeg')
+    expect(thread[0].msg.sizeBytes).toBe(1234)
   })
 
   it('marks the attachment failed while the row stays in the thread', () => {

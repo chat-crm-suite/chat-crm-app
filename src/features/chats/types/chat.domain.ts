@@ -39,6 +39,12 @@ export interface ChatMessage {
      * Optional: payloads without it fall back to `mediaUrl` presence.
      */
     attachmentStatus?: AttachmentStatus | null
+    /**
+     * Attachment metadata exposed by the API for the file card (`null` when
+     * unknown, e.g. legacy rows or outbound files without a stored size).
+     */
+    mimeType?: string | null
+    sizeBytes?: number | null
     content: MessageContent
   }
 }
