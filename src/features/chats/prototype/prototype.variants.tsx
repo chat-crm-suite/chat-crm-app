@@ -10,12 +10,13 @@
  * - E · Copiloto: AI-assisted (pinned summary, per-message tone, suggested
  *   replies).
  * - F · Consola Pro: convergence pick, B's workspace + D's case workflow
- *   (status, resolve/reopen, priority, internal notes kept in the thread).
+ *   mirrored from the shipped surface (disabled Resolve/Options, rail rows,
+ *   quick replies, resolved notice); internal notes remain prototype-only.
  *
  * Indicators never share a shape: connection is a Wifi/WifiOff icon, customer
  * tone is a face (Smile/Meh/Frown) from the theme palette.
  */
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   CircleCheck,
   Clock3,
@@ -772,15 +773,15 @@ export function VariantE({ engine, mode }: VariantProps) {
   )
 }
 
-/* F · Consola Pro (B layout + D case workflow) ------------------------------ */
+/* F · Consola Pro (B layout + D case workflow, synced to the shipped surface) */
 
-const PRIORITIES = [
-  { value: 'low', label: 'Baja' },
-  { value: 'mid', label: 'Media' },
-  { value: 'high', label: 'Alta' },
-] as const
-
-type Priority = (typeof PRIORITIES)[number]['value']
+/**
+ * ADR-0005 parity: the header, rail, quick replies and resolved notice mirror
+ * the shipped case surface (`components/conversation/**`). Resolve and Options
+ * ship present but disabled with "Próximamente" hints because the API has no
+ * endpoints for them; the mock engine never makes them look functional.
+ * Internal notes remain a prototype-only affordance.
+ */
 
 function RailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -793,26 +794,273 @@ function RailRow({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
+/** Status copy from the shipped STATUS_META; the mock reaches open/closed only. */
+function ShippedStatusPill({ engine }: { engine: PrototypeEngine }) {
+  const status = engine.resolved
+    ? { label: 'Resuelto', className: 'bg-muted text-muted-foreground' }
+    : { label: 'Abierto', className: 'bg-primary/15 text-foreground' }
+
+  return (
+    <span
+      className={cn(
+        'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+        status.className
+      )}
+    >
+      {status.label}
+    </span>
+  )
+}
+
+/** Resolve maps to `status = closed`, but the API write path does not exist. */
+function DisabledResolveButton() {
+  return (
+    <Button
+      type='button'
+      size='sm'
+      className='h-11 w-11 justify-center rounded-full px-0 text-xs sm:h-8 sm:w-auto sm:px-3'
+      disabled
+      title='Próximamente: resolver el caso'
+      aria-label='Resolver (próximamente)'
+    >
+      <CircleCheck className='size-3.5' />
+      <span className='hidden sm:inline'>Resolver</span>
+    </Button>
+  )
+}
+
+/** Case actions have no API yet: present but disabled, never a working no-op. */
+function DisabledOptionsButton() {
+  return (
+    <Button
+      type='button'
+      variant='ghost'
+      size='icon'
+      className='size-11 sm:size-8'
+      disabled
+      title='Próximamente: más acciones del caso'
+      aria-label='Más opciones (próximamente)'
+    >
+      <MoreVertical className='size-4' />
+    </Button>
+  )
+}
+
+/** Customer card exactly like the shipped rail: avatar, name and phone. */
+function CaseCustomerCard() {
+  return (
+    <div className='flex flex-col items-center gap-2 border-b px-4 py-5 text-center'>
+      <Avatar className='size-14'>
+        <AvatarFallback className='text-base font-semibold'>
+          {initials(CUSTOMER.displayName)}
+        </AvatarFallback>
+      </Avatar>
+      <div>
+        <p className='font-semibold'>{CUSTOMER.displayName}</p>
+        <p className='text-muted-foreground flex items-center justify-center gap-1 text-xs'>
+          <Phone className='size-3' aria-hidden />
+          {CUSTOMER.phone}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/** Shipped drafts (quick-replies.tsx): greeting, quote and receipt request. */
+const CASE_QUICK_REPLIES = [
+  {
+    label: 'Saludo',
+    draft: '¡Hola! Gracias por escribirnos. ¿En qué puedo ayudarte?',
+  },
+  {
+    label: 'Cotización',
+    draft:
+      'Te comparto la cotización solicitada. Quedo atento a cualquier consulta.',
+  },
+  {
+    label: 'Comprobante',
+    draft: '¿Podrías enviarnos el comprobante de pago, por favor?',
+  },
+] as const
+
+function CaseQuickReplies({
+  disabled,
+  insert,
+}: {
+  disabled: boolean
+  insert: (text: string) => void
+}) {
+  return (
+    <div
+      role='group'
+      aria-label='Respuestas rápidas'
+      className='mb-2 flex gap-2 overflow-x-auto pb-2'
+    >
+      {CASE_QUICK_REPLIES.map(({ label, draft }) => (
+        <Button
+          key={label}
+          type='button'
+          variant='outline'
+          size='sm'
+          disabled={disabled}
+          title={draft}
+          className='h-11 shrink-0 rounded-full px-3.5 text-xs sm:h-8 sm:px-3'
+          onClick={() => insert(draft)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/** Shipped copy of the remaining window, e.g. `14 h 32 min` / `45 min`. */
+function formatWindowRemaining(remainingMs: number): string {
+  const totalMinutes = Math.ceil(remainingMs / 60_000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours === 0) return `${minutes} min`
+
+  return `${hours} h ${String(minutes).padStart(2, '0')} min`
+}
+
+/** Re-render once a minute so an open window flips to expired in place. */
+function useMinuteNow() {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return now
+}
+
+/** Shipped service-window states, derived from the mock thread. */
+function CaseWindowMeter({ messages }: { messages: PrototypeMessage[] }) {
+  const now = useMinuteNow()
+  let lastCustomerMs: number | undefined
+
+  for (const message of messages) {
+    if (message.sender.type !== 'customer') continue
+    const timestamp = message.timestamp.getTime()
+    if (lastCustomerMs === undefined || timestamp > lastCustomerMs) {
+      lastCustomerMs = timestamp
+    }
+  }
+
+  if (lastCustomerMs === undefined) {
+    return (
+      <p className='text-muted-foreground text-xs'>
+        Aún no hay mensajes del cliente
+      </p>
+    )
+  }
+
+  const rawRemainingMs = SERVICE_WINDOW_MS - (now - lastCustomerMs)
+  if (rawRemainingMs <= 0) {
+    return (
+      <div className='space-y-2'>
+        <p className='text-xs font-medium'>
+          Ventana vencida · usa una plantilla
+        </p>
+        {/* TODO(#10): enable when the template picker ships. */}
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          className='w-full'
+          disabled
+          title='Próximamente: enviar una plantilla aprobada'
+        >
+          Usar plantilla (próximamente)
+        </Button>
+      </div>
+    )
+  }
+
+  // Seed timestamps are fixed clock times, so early in the day they can sit
+  // slightly ahead of `now`: clamp the display to a full window.
+  const remainingMs = Math.min(rawRemainingMs, SERVICE_WINDOW_MS)
+
+  return (
+    <div className='space-y-1.5'>
+      <div className='flex items-baseline justify-between text-xs'>
+        <span className='text-muted-foreground flex items-center gap-1.5'>
+          <Clock3 className='size-3.5' aria-hidden />
+          Ventana de 24 h
+        </span>
+        <span className='font-medium tabular-nums'>
+          {formatWindowRemaining(remainingMs)}
+        </span>
+      </div>
+      <div
+        role='progressbar'
+        aria-label='Ventana de 24 h restante'
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round((remainingMs / SERVICE_WINDOW_MS) * 100)}
+        className='bg-muted h-1.5 overflow-hidden rounded-full'
+      >
+        <div
+          className='bg-primary h-full rounded-full'
+          style={{ width: `${(remainingMs / SERVICE_WINDOW_MS) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/** Shipped resolved notice: same copy, Reopen disabled with the same hint. */
+function CaseResolvedNotice() {
+  return (
+    <div className='bg-muted/50 mb-3 flex items-center gap-2.5 rounded-xl border p-3'>
+      <span className='bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full'>
+        <CircleCheck className='size-4' aria-hidden />
+      </span>
+      <div className='min-w-0 flex-1 space-y-0.5'>
+        <p className='text-sm font-medium'>Caso resuelto</p>
+        <p className='text-muted-foreground text-xs'>
+          Este caso está cerrado. Reábrelo para seguir respondiendo.
+        </p>
+      </div>
+      <Button
+        type='button'
+        variant='outline'
+        size='sm'
+        className='h-11 shrink-0 rounded-full px-3.5 text-xs sm:h-8 sm:px-3'
+        disabled
+        title='Próximamente: reabrir el caso'
+        aria-label='Reabrir (próximamente)'
+      >
+        <RotateCcw className='size-3.5' />
+        Reabrir
+      </Button>
+    </div>
+  )
+}
+
 export function VariantF({ engine, mode }: VariantProps) {
   const notes = useNoteComposer(engine)
-  const [priority, setPriority] = useState<Priority>('mid')
 
   return (
     <div className='flex h-full min-h-0 flex-col lg:flex-row'>
       <div className='flex min-h-0 flex-1 flex-col'>
-        <header className='flex items-center justify-between gap-3 border-b px-3 py-2.5 sm:px-4'>
+        <header className='bg-card flex items-center justify-between gap-3 border-b px-3 py-2.5 sm:px-4'>
           <div className='flex min-w-0 items-center gap-2.5'>
-            <CustomerAvatar className='size-8 lg:hidden' />
+            <CustomerAvatar className='size-8 lg:size-9' />
             <div className='min-w-0'>
               <p className='flex items-center gap-2 text-sm'>
                 <span className='truncate font-semibold'>
                   {CUSTOMER.displayName}
                 </span>
-                <CaseStatusPill engine={engine} />
+                <ShippedStatusPill engine={engine} />
               </p>
               <p className='text-muted-foreground truncate text-xs'>
-                <span className='font-mono'>#4821</span> · Cotización y pago ·
-                WhatsApp
+                <span className='font-mono'>#4821</span> · {CUSTOMER.phone}
               </p>
             </div>
           </div>
@@ -834,8 +1082,8 @@ export function VariantF({ engine, mode }: VariantProps) {
                 Tomar
               </Button>
             )}
-            <ResolveButton engine={engine} />
-            <OptionsButton />
+            <DisabledResolveButton />
+            <DisabledOptionsButton />
           </div>
         </header>
 
@@ -843,25 +1091,33 @@ export function VariantF({ engine, mode }: VariantProps) {
           messages={engine.messages}
           onRetry={engine.retry}
           loading={engine.threadLoading}
-          withSenderLabels
-          tail={false}
-          contentClassName='gap-2'
+          layout='team'
+          contentClassName='gap-4'
         />
 
-        <ResolvedNotice engine={engine} />
         <Composer
           connected={engine.connected}
           {...notes.composer}
           above={
-            notes.isNote
-              ? undefined
-              : (insert) => <QuickReplies insert={insert} />
+            engine.resolved
+              ? () => <CaseResolvedNotice />
+              : notes.isNote
+                ? undefined
+                : (insert) => (
+                    <CaseQuickReplies
+                      disabled={!engine.connected}
+                      insert={insert}
+                    />
+                  )
           }
         />
       </div>
 
-      <aside className='bg-muted/30 hidden w-80 shrink-0 flex-col overflow-y-auto border-s lg:flex'>
-        <CustomerCard />
+      <aside
+        aria-label='Detalle del caso'
+        className='bg-muted/30 hidden w-80 shrink-0 flex-col overflow-y-auto border-s lg:flex'
+      >
+        <CaseCustomerCard />
 
         {mode !== 'off' && (
           <RailSection title='Sentimiento'>
@@ -876,51 +1132,27 @@ export function VariantF({ engine, mode }: VariantProps) {
         <RailSection title='Caso'>
           <dl className='space-y-1'>
             <RailRow label='Estado'>
-              <CaseStatusPill engine={engine} />
+              <ShippedStatusPill engine={engine} />
             </RailRow>
             <RailRow label='Responsable'>
               {engine.unassigned ? (
-                <Button
-                  size='sm'
-                  className='h-7 px-2.5 text-xs'
-                  onClick={engine.claim}
-                >
-                  Tomar chat
-                </Button>
+                <div className='space-y-1.5 text-end'>
+                  <p className='text-muted-foreground text-xs'>Sin asignar</p>
+                  <Button
+                    type='button'
+                    size='sm'
+                    className='h-7 px-2.5 text-xs'
+                    onClick={engine.claim}
+                  >
+                    Tomar chat
+                  </Button>
+                </div>
               ) : (
-                <span className='flex items-center gap-1.5'>
-                  <MemberAvatar />
-                  {MEMBER.displayName}
-                </span>
+                'Asignado a ti'
               )}
             </RailRow>
-            <RailRow label='Prioridad'>
-              <span
-                role='radiogroup'
-                aria-label='Prioridad'
-                className='bg-background flex rounded-md border p-0.5'
-              >
-                {PRIORITIES.map((option) => (
-                  <button
-                    key={option.value}
-                    type='button'
-                    role='radio'
-                    aria-checked={priority === option.value}
-                    onClick={() => setPriority(option.value)}
-                    className={cn(
-                      'focus-visible:ring-ring rounded-[5px] px-2 py-0.5 text-[11px] transition-colors focus-visible:ring-2 focus-visible:outline-none',
-                      priority === option.value
-                        ? option.value === 'high'
-                          ? 'bg-destructive text-white'
-                          : 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </span>
-            </RailRow>
+            {/* Prioridad: shipped renders it only when the conversation carries
+                one; the mock carries none, so the row stays absent. */}
             <RailRow label='Canal'>
               <span className='flex items-center gap-1.5'>
                 <MessageCircle className='size-3.5' aria-hidden />
@@ -929,7 +1161,7 @@ export function VariantF({ engine, mode }: VariantProps) {
             </RailRow>
           </dl>
           <div className='pt-1'>
-            <WindowMeter />
+            <CaseWindowMeter messages={engine.messages} />
           </div>
         </RailSection>
 
