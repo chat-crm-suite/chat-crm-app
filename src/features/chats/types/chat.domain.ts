@@ -58,12 +58,15 @@ export interface ChatMember {
 /** Vistas del panel de chats (asignación automática). */
 export type ChatListView = 'inbox' | 'queue' | 'needs-response'
 
+/** Último mensaje que muestra la lista (payload REST + actualizaciones en vivo). */
+export type ChatPreviewData = ConversationListItem['preview']
+
 /**
  * Conversación de la lista (`GET /conversations/list`) más los extras locales
  * de las vistas de asignación (cola / sin respuesta).
  */
 export interface Chat extends Omit<ConversationListItem, 'preview'> {
-  preview?: ConversationListItem['preview']
+  preview?: ChatPreviewData
   isDraft?: boolean
   /** Cola de sin asignar: momento del último mensaje (antigüedad). */
   waitingSince?: string | Date | null

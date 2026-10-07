@@ -2,6 +2,24 @@
   --positive: oklch(0.571 0.181 145.0);
   --neutro: oklch(0.549 0.000 0.0);
   --negative: oklch(0.55 0.2 20);
+  --warning: oklch(0.6 0.13 70);
+  /* Chat-list avatar tints: one deterministic hue per customer monogram. */
+  --avatar-tint-1-bg: oklch(0.93 0.05 25);
+  --avatar-tint-1-fg: oklch(0.42 0.11 25);
+  --avatar-tint-2-bg: oklch(0.93 0.05 70);
+  --avatar-tint-2-fg: oklch(0.42 0.11 70);
+  --avatar-tint-3-bg: oklch(0.93 0.05 120);
+  --avatar-tint-3-fg: oklch(0.42 0.11 120);
+  --avatar-tint-4-bg: oklch(0.93 0.05 160);
+  --avatar-tint-4-fg: oklch(0.42 0.11 160);
+  --avatar-tint-5-bg: oklch(0.93 0.05 195);
+  --avatar-tint-5-fg: oklch(0.42 0.11 195);
+  --avatar-tint-6-bg: oklch(0.93 0.05 250);
+  --avatar-tint-6-fg: oklch(0.42 0.11 250);
+  --avatar-tint-7-bg: oklch(0.93 0.05 300);
+  --avatar-tint-7-fg: oklch(0.42 0.11 300);
+  --avatar-tint-8-bg: oklch(0.93 0.05 340);
+  --avatar-tint-8-fg: oklch(0.42 0.11 340);
   --background: oklch(0.9911 0 0);
   --foreground: oklch(0.2046 0 0);
   --card: oklch(0.9911 0 0);
@@ -60,6 +78,23 @@
   --positive: oklch(0.571 0.181 145.0);
   --neutro: oklch(0.549 0.000 0.0);
   --negative: oklch(0.55 0.2 20);
+  --warning: oklch(0.8 0.13 75);
+  --avatar-tint-1-bg: oklch(0.3 0.055 25);
+  --avatar-tint-1-fg: oklch(0.84 0.09 25);
+  --avatar-tint-2-bg: oklch(0.3 0.055 70);
+  --avatar-tint-2-fg: oklch(0.84 0.09 70);
+  --avatar-tint-3-bg: oklch(0.3 0.055 120);
+  --avatar-tint-3-fg: oklch(0.84 0.09 120);
+  --avatar-tint-4-bg: oklch(0.3 0.055 160);
+  --avatar-tint-4-fg: oklch(0.84 0.09 160);
+  --avatar-tint-5-bg: oklch(0.3 0.055 195);
+  --avatar-tint-5-fg: oklch(0.84 0.09 195);
+  --avatar-tint-6-bg: oklch(0.3 0.055 250);
+  --avatar-tint-6-fg: oklch(0.84 0.09 250);
+  --avatar-tint-7-bg: oklch(0.3 0.055 300);
+  --avatar-tint-7-fg: oklch(0.84 0.09 300);
+  --avatar-tint-8-bg: oklch(0.3 0.055 340);
+  --avatar-tint-8-fg: oklch(0.84 0.09 340);
   --background: oklch(0.1822 0 0);
   --foreground: oklch(0.9288 0.0126 255.5078);
   --card: oklch(0.2046 0 0);
@@ -129,6 +164,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -170,6 +206,35 @@
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
   --tracking-wider: calc(var(--tracking-normal) + 0.05em);
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+}
+
+/*
+ * Product breakpoints (mobile-first), added on top of Tailwind's defaults.
+ * - `tablet` (768px): where the app sidebar joins the layout. It is the same
+ *   value as Tailwind's `md`, but the name states the product meaning; the
+ *   sheet-side decision in `case-rail.tsx` mirrors it in JS (`matchMedia`
+ *   cannot read CSS variables reliably).
+ * - `desktop` (1280px): the chat list takes its widest step.
+ * `sm` (640px) stays as the phone/rest split for touch targets and the chat
+ * overlay.
+ */
+@theme {
+  --breakpoint-tablet: 48rem;
+  --breakpoint-desktop: 80rem;
+}
+
+/*
+ * Container size for the case rail. A viewport breakpoint cannot decide this
+ * one: the room left for the thread depends on the (user-collapsible) app
+ * sidebar and the chat list, not on the window. Measured under the real
+ * layout: the case header has a 611px min-content and the rail is 288px, so
+ * the rail only goes inline from 58rem of chat card — which in turn is why the
+ * chat list must not widen at `2xl` (the outer content is capped at 1280px, so
+ * a wider list would leave the card below the threshold and the rail would
+ * never dock).
+ */
+@theme {
+  --container-rail: 58rem;
 }
 
 body {

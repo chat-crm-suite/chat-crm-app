@@ -6,70 +6,100 @@ import {
   getUnassignedChats,
 } from '@/services/chat.service'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useNow } from '../../hooks/use-now'
 import type { Chat, ChatListView } from '../../types/chat.domain'
 import { ChatListHeader } from './chat-list-header'
 import { ChatListItem } from './chat-list-item'
+import {
+  ChatListEmpty,
+  ChatListError,
+  ChatListSkeleton,
+} from './chat-list-states'
 
 export const ChatList = () => {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ChatListView>('inbox')
+  const now = useNow()
 
-  const { data: inbox = [] } = useQuery({
+  // The three lists stay warm: tab counts are always real and switching views
+  // never re-shows a skeleton.
+  const inboxQuery = useQuery({
     queryKey: ['chat', 'list'],
     queryFn: getChatList,
     placeholderData: (prev) => prev,
-    enabled: view === 'inbox',
   })
 
-  const { data: queue = [] } = useQuery({
+  const queueQuery = useQuery({
     queryKey: ['chat', 'unassigned'],
     queryFn: getUnassignedChats,
     placeholderData: (prev) => prev,
-    enabled: view === 'queue',
   })
 
-  const { data: needsResponse = [] } = useQuery({
+  const needsQuery = useQuery({
     queryKey: ['chat', 'needsResponse'],
     queryFn: () => getNeedsResponseChats(),
     placeholderData: (prev) => prev,
-    enabled: view === 'needs-response',
   })
+
+  const activeQuery =
+    view === 'inbox' ? inboxQuery : view === 'queue' ? queueQuery : needsQuery
 
   const chats: Chat[] =
     view === 'inbox'
-      ? inbox
+      ? (inboxQuery.data ?? [])
       : view === 'queue'
-        ? queue.map((chat) => ({ ...chat, isUnassigned: true }))
-        : needsResponse
+        ? (queueQuery.data ?? []).map((chat) => ({
+            ...chat,
+            isUnassigned: true,
+          }))
+        : (needsQuery.data ?? [])
 
-  const filterFun = ({ customer }: Chat) => {
-    if (search.trim() === '') return true
-    const term = search.trim().toLowerCase()
-    return [customer.displayName, customer.phone].some((value) =>
-      value?.toLowerCase().includes(term)
-    )
+  const counts: Record<ChatListView, number | undefined> = {
+    inbox: inboxQuery.data?.length,
+    queue: queueQuery.data?.length,
+    'needs-response': needsQuery.data?.length,
   }
 
-  const filtered = chats.filter(filterFun)
+  const term = search.trim().toLowerCase()
+  const filtered =
+    term === ''
+      ? chats
+      : chats.filter(({ customer }) =>
+          [customer.displayName, customer.phone].some((value) =>
+            value?.toLowerCase().includes(term)
+          )
+        )
 
   return (
-    <div className='flex w-full flex-col gap-2 sm:w-56 lg:w-72 2xl:w-80'>
+    <div className='flex w-full flex-col gap-2 sm:w-56 desktop:w-72'>
       <ChatListHeader
         searchState={{ search, setSearch }}
         viewState={{ view, setView }}
+        counts={counts}
       />
 
       <ScrollArea className='-mx-3 h-full overflow-scroll p-3'>
-        {filtered.map((chatUsr) => {
-          return <ChatListItem key={chatUsr.id} chat={chatUsr} />
-        })}
-
-        {filtered.length === 0 && (
-          <p className='text-muted-foreground p-4 text-center text-xs'>
-            {view === 'inbox' && 'No tenés chats asignados.'}
-            {view === 'queue' && 'No hay chats sin asignar.'}
-            {view === 'needs-response' && 'No hay chats sin respuesta.'}
-          </p>
+        {activeQuery.isLoading ? (
+          <ChatListSkeleton />
+        ) : activeQuery.isError ? (
+          <ChatListError onRetry={() => void activeQuery.refetch()} />
+        ) : filtered.length === 0 ? (
+          <ChatListEmpty
+            view={view}
+            search={search.trim()}
+            onClearSearch={() => setSearch('')}
+          />
+        ) : (
+          <div className='flex flex-col gap-1'>
+            {filtered.map((chat) => (
+              <ChatListItem
+                key={chat.id}
+                chat={chat}
+                waiting={view !== 'inbox'}
+                now={now}
+              />
+            ))}
+          </div>
         )}
       </ScrollArea>
     </div>

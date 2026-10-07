@@ -1,1 +1,17 @@
-export { Search, Edit, MessagesSquare, SearchIcon, User } from 'lucide-react'
+export {
+  CloudOff,
+  Edit,
+  FileText,
+  Film,
+  Image as ImageIcon,
+  MessageSquareText,
+  MessagesSquare,
+  Music,
+  Plus,
+  RefreshCw,
+  Search,
+  SearchIcon,
+  SearchX,
+  User,
+  X,
+} from 'lucide-react'

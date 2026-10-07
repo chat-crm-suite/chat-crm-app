@@ -45,6 +45,9 @@ export function Chats() {
                 newMessage.msg.content
               ),
               datetime: newMessage.timestamp,
+              // Same shape as the REST list: the type labels attachments
+              // whose content is empty.
+              type: newMessage.msg.type,
             },
           }
           return chats
