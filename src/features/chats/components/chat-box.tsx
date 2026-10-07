@@ -129,7 +129,11 @@ export const ChatBox = () => {
             onRetry={thread.retry}
           />
 
-          <Composer connected={isConnected} onSend={thread.send} />
+          <Composer
+            connected={isConnected}
+            onSend={thread.send}
+            status={chat.status}
+          />
         </div>
 
         {/* Case rail: wide screens only, phones keep the full-width thread. */}

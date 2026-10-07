@@ -1,27 +1,40 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { ImagePlus, Paperclip, Send, WifiOff } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import type { ConversationStatus } from '../../types/chat.domain'
+import { QuickReplies } from './quick-replies'
+import { ResolvedNotice } from './resolved-notice'
 
 export function Composer({
   connected,
   onSend,
+  status = 'open',
   className,
 }: {
   connected: boolean
   onSend: (text: string) => void
+  status?: ConversationStatus
   className?: string
 }) {
   const [value, setValue] = useState('')
   const fieldId = useId()
+  const fieldRef = useRef<HTMLTextAreaElement>(null)
+  const resolved = status === 'closed'
 
   const send = () => {
     const text = value.trim()
     if (!text || !connected) return
     onSend(text)
     setValue('')
+  }
+
+  /** Loads a quick-reply draft into the field and focuses it for editing. */
+  const insertDraft = (draft: string) => {
+    setValue(draft)
+    fieldRef.current?.focus()
   }
 
   return (
@@ -36,6 +49,11 @@ export function Composer({
         send()
       }}
     >
+      {resolved && <ResolvedNotice />}
+      {!resolved && (
+        <QuickReplies disabled={!connected} onInsert={insertDraft} />
+      )}
+
       <div className='border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex flex-col rounded-2xl border transition-[border-color,box-shadow,background-color] focus-within:ring-2'>
         <div className='flex items-end gap-1.5 p-1.5 ps-2'>
           <div className='flex items-center gap-0.5 pb-0.5'>
@@ -68,6 +86,7 @@ export function Composer({
           </label>
           <Textarea
             id={fieldId}
+            ref={fieldRef}
             rows={1}
             value={value}
             disabled={!connected}
