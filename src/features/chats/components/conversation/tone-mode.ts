@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export const TONE_MODES = ['full', 'mini', 'off'] as const
 export type ToneMode = (typeof TONE_MODES)[number]
@@ -15,13 +15,25 @@ export function readToneMode(): ToneMode {
   return isToneMode(stored) ? stored : 'full'
 }
 
-/** Tone display mode persisted in localStorage across reloads. */
+const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+/**
+ * Writes the preference and notifies every placement, so switching the mode in
+ * the header also updates the rail panel (ADR-0003: `off` hides it everywhere).
+ */
+export function writeToneMode(mode: ToneMode): void {
+  localStorage.setItem(TONE_MODE_STORAGE_KEY, mode)
+  for (const listener of listeners) listener()
+}
+
+/** Tone display mode persisted in localStorage and shared across placements. */
 export function useToneMode(): [ToneMode, (mode: ToneMode) => void] {
-  const [mode, setMode] = useState<ToneMode>(readToneMode)
+  const mode = useSyncExternalStore(subscribe, readToneMode, readToneMode)
 
-  useEffect(() => {
-    localStorage.setItem(TONE_MODE_STORAGE_KEY, mode)
-  }, [mode])
-
-  return [mode, setMode]
+  return [mode, writeToneMode]
 }

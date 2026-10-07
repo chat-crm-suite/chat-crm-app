@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { claimChat } from '@/services/chat.service'
 import { ArrowLeft, MessagesSquare, MoreVertical } from 'lucide-react'
-import { parsePhoneNumber } from 'react-phone-number-input'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -19,8 +18,9 @@ import { useChatThread } from '../hooks/use-chat-thread'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
 import { AssignedUser } from './assigned-user'
+import { CaseRail } from './conversation/case-rail'
 import { Composer } from './conversation/composer'
-import { initials } from './conversation/identity'
+import { formatPhone, initials } from './conversation/identity'
 import { ConversationThread } from './conversation/thread'
 import { ToneControl } from './conversation/tone-control'
 
@@ -87,77 +87,88 @@ export const ChatBox = () => {
     <div
       className={cn(
         'bg-background absolute inset-0 start-full z-50 hidden w-full',
-        'flex-1 flex-col border shadow-xs sm:static sm:z-auto sm:flex sm:rounded-md',
+        'flex-1 flex-col overflow-hidden border shadow-xs sm:static sm:z-auto sm:flex sm:rounded-md',
         // Keyboard-aware height on phones: dvh / visualViewport variable.
         'max-sm:h-(--chat-viewport-height)',
         mobile && 'start-0 flex'
       )}
     >
-      {/* Top Part */}
-      <header className='bg-card flex flex-none items-center justify-between gap-3 rounded-t-md border-b py-2.5 ps-[max(0.75rem,env(safe-area-inset-left))] pe-[max(0.75rem,env(safe-area-inset-right))] sm:ps-4 sm:pe-4'>
-        <div className='flex min-w-0 items-center gap-2.5'>
-          <Button
-            size='icon'
-            variant='ghost'
-            className='-ms-2 size-11 sm:hidden'
-            aria-label='Volver a la lista'
-            onClick={() => {
-              setChatSelected(null)
-              setMobile(false)
-            }}
-          >
-            <ArrowLeft className='rtl:rotate-180' />
-          </Button>
-          <Avatar className='size-8 lg:size-9'>
-            <AvatarFallback className='text-xs font-semibold'>
-              {initials(customerName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className='min-w-0'>
-            <p className='truncate text-sm font-semibold'>{customerName}</p>
-            <p className='text-muted-foreground truncate text-xs'>
-              {parsePhoneNumber(
-                chat.customer?.phone ?? '',
-                'PE'
-              )?.formatInternational() || chat.customer?.phone}
-            </p>
-          </div>
+      <div className='flex min-h-0 flex-1 flex-col lg:flex-row'>
+        {/* Conversation column */}
+        <div className='flex min-h-0 flex-1 flex-col'>
+          {/* Top Part */}
+          <header className='bg-card flex flex-none items-center justify-between gap-3 rounded-t-md border-b py-2.5 ps-[max(0.75rem,env(safe-area-inset-left))] pe-[max(0.75rem,env(safe-area-inset-right))] sm:ps-4 sm:pe-4'>
+            <div className='flex min-w-0 items-center gap-2.5'>
+              <Button
+                size='icon'
+                variant='ghost'
+                className='-ms-2 size-11 sm:hidden'
+                aria-label='Volver a la lista'
+                onClick={() => {
+                  setChatSelected(null)
+                  setMobile(false)
+                }}
+              >
+                <ArrowLeft className='rtl:rotate-180' />
+              </Button>
+              <Avatar className='size-8 lg:size-9'>
+                <AvatarFallback className='text-xs font-semibold'>
+                  {initials(customerName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>{customerName}</p>
+                <p className='text-muted-foreground truncate text-xs'>
+                  {formatPhone(chat.customer?.phone)}
+                </p>
+              </div>
+            </div>
+
+            <div className='flex shrink-0 items-center gap-1.5'>
+              <ToneControl sentiment={sentimentData} />
+              {chat.isUnassigned && (
+                <Button
+                  size='sm'
+                  className='h-11 rounded-full px-4 text-xs sm:h-8 sm:px-3'
+                  onClick={() => claim.mutate()}
+                  disabled={claim.isPending}
+                >
+                  {claim.isPending ? 'Tomando…' : 'Tomar'}
+                </Button>
+              )}
+              <AssignedUser conversationId={chat.id} />
+              <Button
+                size='icon'
+                variant='ghost'
+                className='size-11 sm:size-8'
+                aria-label='Más opciones'
+              >
+                <MoreVertical className='size-4' />
+              </Button>
+            </div>
+          </header>
+
+          <ConversationThread
+            messages={thread.messages}
+            loading={thread.isLoading}
+            customerName={customerName}
+            currentMemberId={memberId}
+            currentMemberName={memberName}
+            onRetry={thread.retry}
+          />
+
+          <Composer connected={isConnected} onSend={thread.send} />
         </div>
 
-        <div className='flex shrink-0 items-center gap-1.5'>
-          <ToneControl sentiment={sentimentData} />
-          {chat.isUnassigned && (
-            <Button
-              size='sm'
-              className='h-11 rounded-full px-4 text-xs sm:h-8 sm:px-3'
-              onClick={() => claim.mutate()}
-              disabled={claim.isPending}
-            >
-              {claim.isPending ? 'Tomando…' : 'Tomar'}
-            </Button>
-          )}
-          <AssignedUser conversationId={chat.id} />
-          <Button
-            size='icon'
-            variant='ghost'
-            className='size-11 sm:size-8'
-            aria-label='Más opciones'
-          >
-            <MoreVertical className='size-4' />
-          </Button>
-        </div>
-      </header>
-
-      <ConversationThread
-        messages={thread.messages}
-        loading={thread.isLoading}
-        customerName={customerName}
-        currentMemberId={memberId}
-        currentMemberName={memberName}
-        onRetry={thread.retry}
-      />
-
-      <Composer connected={isConnected} onSend={thread.send} />
+        {/* Case rail: wide screens only, phones keep the full-width thread. */}
+        <CaseRail
+          chat={chat}
+          messages={thread.messages}
+          sentiment={sentimentData}
+          onTake={() => claim.mutate()}
+          taking={claim.isPending}
+        />
+      </div>
     </div>
   ) : (
     <div

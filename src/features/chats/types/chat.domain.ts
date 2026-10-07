@@ -2,6 +2,7 @@ import type {
   AttachmentStatus,
   ConversationCustomer,
   ConversationListItem,
+  ConversationPriority,
   ConversationSentiment,
   MessageContent,
   MessageSenderType,
@@ -64,6 +65,11 @@ export interface Chat extends Omit<ConversationListItem, 'preview'> {
   member?: ChatMember | null
   /** Marcado local: la conversación está en la cola y se puede reclamar. */
   isUnassigned?: boolean
+  /**
+   * Case priority when the API emits it; today no list endpoint does, so the
+   * rail hides the row instead of inventing a value.
+   */
+  priority?: ConversationPriority | null
 }
 
 /** Cliente de la conversación: el contacto v2 (contrato compartido). */
