@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ArrowLeft, CircleCheck, MoreVertical } from 'lucide-react'
+import { ArrowLeft, CircleCheck, Info, MoreVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,11 @@ export type CaseHeaderProps = {
   taking?: boolean
   onBack: () => void
   /**
+   * Opens the case detail sheet below `desktop`, where the rail is not
+   * inline. The button hides itself from `desktop` up.
+   */
+  onOpenDetails?: () => void
+  /**
    * Extra action widgets that need their own data (the assignee picker),
    * rendered between Take and Resolve so the header stays a single row.
    */
@@ -28,6 +33,8 @@ export type CaseHeaderProps = {
  * and phone) plus the case actions. Status copy is shared with the case rail;
  * Resolve and the options menu have no API behind them yet, so they ship
  * visibly disabled with a "Próximamente" hint instead of looking functional.
+ * Below `desktop` the header also carries the only trigger for the case
+ * detail sheet, since the rail is not inline there.
  */
 export function CaseHeader({
   chat,
@@ -35,6 +42,7 @@ export function CaseHeader({
   onTake,
   taking = false,
   onBack,
+  onOpenDetails,
   children,
 }: CaseHeaderProps) {
   const customerName = chat.customer?.displayName ?? 'Cliente'
@@ -96,18 +104,36 @@ export function CaseHeader({
           </Button>
         )}
         {children}
-        {/* TODO(#11): enable when the API close endpoint ships. */}
+        {/* TODO(#11): enable when the API close endpoint ships. On phones the
+            disabled placeholder yields its slot to the case-detail trigger, so
+            the customer name keeps room in the single header row; the
+            "coming soon" signal stays in the options menu. */}
         <Button
           type='button'
           size='sm'
-          className='h-11 w-11 justify-center rounded-full px-0 text-xs sm:h-8 sm:w-auto sm:px-3'
+          className='h-11 w-11 justify-center rounded-full px-0 text-xs max-sm:hidden sm:h-8 sm:w-auto sm:px-3'
           disabled
           title='Próximamente: resolver el caso'
           aria-label='Resolver (próximamente)'
         >
           <CircleCheck className='size-3.5' />
-          <span className='hidden sm:inline'>Resolver</span>
+          <span className='hidden desktop:inline'>Resolver</span>
         </Button>
+        {/* Case detail: the rail is inline from `desktop` up, so this trigger
+            only exists where the relationship is a sheet. */}
+        {onOpenDetails && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            className='size-11 @rail/card:hidden sm:size-8'
+            title='Detalle del caso'
+            aria-label='Detalle del caso'
+            onClick={onOpenDetails}
+          >
+            <Info className='size-4' />
+          </Button>
+        )}
         {/* TODO(#11): list wired case actions here once they exist. */}
         <Button
           type='button'

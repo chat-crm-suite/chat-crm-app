@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react'
+import { useDirection } from '@radix-ui/react-direction'
 import { Clock3, MessageCircle, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNow } from '../../hooks/use-now'
 import { isConversationUnassigned } from '../../lib/conversation-assignment'
 import {
@@ -29,6 +32,16 @@ const PRIORITY_LABEL: Record<ConversationPriority, string> = {
   high: 'Alta',
   urgent: 'Urgente',
 }
+
+/**
+ * Phone body of the case detail, mirrored from the `tablet` breakpoint in
+ * `theme.css`: below 768px the chat is a full-width overlay, so the detail
+ * opens as a bottom sheet within thumb reach instead of a side panel.
+ */
+export const RAIL_PHONE_MEDIA_QUERY = '(max-width: 767px)'
+
+/** Below this the countdown stops being background noise. */
+export const SERVICE_WINDOW_WARNING_MS = 4 * 60 * 60 * 1000
 
 function RailSection({
   title,
@@ -60,7 +73,10 @@ function RailRow({ label, children }: { label: string; children: ReactNode }) {
 
 /**
  * Remaining WhatsApp service window, counted client-side from the last
- * customer message. The expired state points at the template flow (#10).
+ * customer message. It gets its own section above the case rows because it is
+ * the constraint that decides whether a free-form reply is still possible;
+ * the expired state points at the template flow (#10) and is the only place
+ * the rail spends a semantic color.
  */
 function WindowMeter({ messages }: { messages: ChatMessage[] }) {
   // Re-sample the clock while the rail stays mounted, so an open chat flips to
@@ -79,7 +95,7 @@ function WindowMeter({ messages }: { messages: ChatMessage[] }) {
   if (state.kind === 'expired') {
     return (
       <div className='space-y-2'>
-        <p className='text-xs font-medium'>
+        <p className='text-(--negative) text-xs font-medium'>
           Ventana vencida · usa una plantilla
         </p>
         {/* TODO(#10): enable when the template picker ships. */}
@@ -97,14 +113,24 @@ function WindowMeter({ messages }: { messages: ChatMessage[] }) {
     )
   }
 
+  // Entering the last hours is worth a typographic nudge, not a new color.
+  const isEnding = state.remainingMs <= SERVICE_WINDOW_WARNING_MS
+
   return (
     <div className='space-y-1.5'>
       <div className='flex items-baseline justify-between text-xs'>
-        <span className='text-muted-foreground flex items-center gap-1.5'>
+        <span
+          className={cn(
+            'flex items-center gap-1.5',
+            isEnding ? 'text-foreground' : 'text-muted-foreground'
+          )}
+        >
           <Clock3 className='size-3.5' aria-hidden />
           Ventana de 24 h
         </span>
-        <span className='font-medium tabular-nums'>
+        <span
+          className={cn('tabular-nums', isEnding ? 'font-semibold' : 'font-medium')}
+        >
           {formatServiceWindowRemaining(state.remainingMs)}
         </span>
       </div>
@@ -117,29 +143,27 @@ function WindowMeter({ messages }: { messages: ChatMessage[] }) {
   )
 }
 
-/**
- * Wide-screen case rail: customer card, tone panel, case rows and the 24 h
- * service window. Mounted by `ChatBox` as `hidden lg:flex`, so phones keep the
- * full-width thread (ADR-0004).
- */
-export function CaseRail({
-  chat,
-  messages,
-  sentiment,
-  onTake,
-  taking = false,
-  currentMemberId,
-  className,
-}: {
+type CaseRailContentProps = {
   chat: Chat
   messages: ChatMessage[]
   sentiment?: ChatSentiment
   onTake: () => void
-  taking?: boolean
-  /** Signed-in member id, to tell "mine" from another agent without username. */
+  taking: boolean
   currentMemberId?: string
-  className?: string
-}) {
+}
+
+/**
+ * Single body shared by the inline column and the sheet shells, so the detail
+ * never forks between viewports.
+ */
+function CaseRailContent({
+  chat,
+  messages,
+  sentiment,
+  onTake,
+  taking,
+  currentMemberId,
+}: CaseRailContentProps) {
   const [mode] = useToneMode()
   const customerName = chat.customer?.displayName ?? 'Cliente'
   const phone = formatPhone(chat.customer?.phone)
@@ -154,13 +178,7 @@ export function CaseRail({
     chat.member === undefined || chat.member?.id === currentMemberId
 
   return (
-    <aside
-      aria-label='Detalle del caso'
-      className={cn(
-        'bg-muted/30 hidden w-80 shrink-0 flex-col overflow-y-auto border-s lg:flex',
-        className
-      )}
-    >
+    <>
       <div className='flex flex-col items-center gap-2 border-b px-4 py-5 text-center'>
         <Avatar className='size-14'>
           <AvatarFallback className='text-base font-semibold'>
@@ -178,11 +196,9 @@ export function CaseRail({
         </div>
       </div>
 
-      {sentiment && mode !== 'off' && (
-        <RailSection title='Sentimiento'>
-          <ToneSummary sentiment={sentiment} />
-        </RailSection>
-      )}
+      <RailSection title='Ventana de contacto'>
+        <WindowMeter messages={messages} />
+      </RailSection>
 
       <RailSection title='Caso'>
         <dl className='space-y-1'>
@@ -198,7 +214,7 @@ export function CaseRail({
                 <Button
                   type='button'
                   size='sm'
-                  className='h-7 px-2.5 text-xs'
+                  className='h-11 w-full px-2.5 text-xs sm:h-8 sm:w-auto'
                   onClick={onTake}
                   disabled={taking}
                 >
@@ -232,10 +248,101 @@ export function CaseRail({
             </span>
           </RailRow>
         </dl>
-        <div className='pt-1'>
-          <WindowMeter messages={messages} />
-        </div>
       </RailSection>
-    </aside>
+
+      {sentiment && mode !== 'off' && (
+        <RailSection title='Sentimiento'>
+          <ToneSummary sentiment={sentiment} />
+        </RailSection>
+      )}
+    </>
+  )
+}
+
+/**
+ * Case detail, one body in three shells (ADR-0004):
+ * - below `tablet` (768px) a bottom sheet, within thumb reach;
+ * - from `tablet` up to the point where the card can hold the rail, a side
+ *   sheet opened from the header button;
+ * - once the chat card is wide enough (`@rail/card`, see `theme.css`), the
+ *   inline `w-72` column, where the thread still fits the case header.
+ * The sheet is controlled by `ChatBox` because its trigger lives in the
+ * header; the inline column stays in the DOM (CSS-hidden while compact) so
+ * the content assertions keep a single, stable target.
+ */
+export function CaseRail({
+  chat,
+  messages,
+  sentiment,
+  onTake,
+  taking = false,
+  currentMemberId,
+  open = false,
+  onOpenChange,
+  className,
+}: {
+  chat: Chat
+  messages: ChatMessage[]
+  sentiment?: ChatSentiment
+  onTake: () => void
+  taking?: boolean
+  /** Signed-in member id, to tell "mine" from another agent without username. */
+  currentMemberId?: string
+  /** Controlled sheet state; the header button opens it while the rail is not inline. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  className?: string
+}) {
+  const isPhone = useMediaQuery(RAIL_PHONE_MEDIA_QUERY)
+  // Radix falls back to `ltr`, so the shell still renders without a provider.
+  const dir = useDirection()
+  // Sheet sides are physical: mirror the inline rail's logical border in RTL.
+  const side = isPhone ? 'bottom' : dir === 'rtl' ? 'left' : 'right'
+
+  return (
+    <>
+      <aside
+        aria-label='Detalle del caso'
+        className={cn(
+          'bg-muted/30 hidden w-72 shrink-0 flex-col overflow-y-auto border-s @rail/card:flex',
+          className
+        )}
+      >
+        <CaseRailContent
+          chat={chat}
+          messages={messages}
+          sentiment={sentiment}
+          onTake={onTake}
+          taking={taking}
+          currentMemberId={currentMemberId}
+        />
+      </aside>
+
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side={side}
+          aria-describedby={undefined}
+          className={cn(
+            'gap-0 overflow-y-auto overscroll-contain p-0',
+            // The shared Sheet animates unconditionally; respect the user's
+            // reduced-motion preference at least on this surface.
+            'motion-reduce:animate-none! motion-reduce:duration-0!',
+            side === 'bottom'
+              ? 'max-h-[85dvh] rounded-t-2xl pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+              : 'w-full sm:max-w-sm'
+          )}
+        >
+          <SheetTitle className='sr-only'>Detalle del caso</SheetTitle>
+          <CaseRailContent
+            chat={chat}
+            messages={messages}
+            sentiment={sentiment}
+            onTake={onTake}
+            taking={taking}
+            currentMemberId={currentMemberId}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }

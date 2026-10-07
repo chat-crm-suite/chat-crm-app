@@ -113,4 +113,22 @@ describe('CaseHeader', () => {
 
     expect(onBack).toHaveBeenCalledTimes(1)
   })
+
+  it('opens the case detail from the header trigger', async () => {
+    const user = userEvent.setup()
+    const onOpenDetails = vi.fn()
+    renderHeader({ onOpenDetails })
+
+    await user.click(screen.getByRole('button', { name: 'Detalle del caso' }))
+
+    expect(onOpenDetails).toHaveBeenCalledTimes(1)
+  })
+
+  it('ships no detail trigger when the owner does not wire one', () => {
+    renderHeader()
+
+    expect(
+      screen.queryByRole('button', { name: 'Detalle del caso' })
+    ).not.toBeInTheDocument()
+  })
 })

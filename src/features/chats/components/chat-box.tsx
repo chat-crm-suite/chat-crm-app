@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { claimChat } from '@/services/chat.service'
 import { MessagesSquare } from 'lucide-react'
@@ -37,6 +38,16 @@ export const ChatBox = () => {
   // Keep the phone overlay as tall as the visual viewport, so the composer
   // stays above the virtual keyboard (dvh fallback lives in index.css).
   useVisualViewportHeight()
+
+  // Case detail sheet (phones/tablets only): owned here because its trigger
+  // lives in the header while the sheet lives with the rail.
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
+  // The sheet describes one conversation: close it when the open chat
+  // changes, so it never shows a stale case.
+  useEffect(() => {
+    setDetailsOpen(false)
+  }, [chat?.id])
 
   const membership = auth.user?.memberships?.find(
     (m) => m.companyId === auth.company.id
@@ -105,18 +116,22 @@ export const ChatBox = () => {
         'flex-1 flex-col overflow-hidden border shadow-xs sm:static sm:z-auto sm:flex sm:rounded-md',
         // Keyboard-aware height on phones: dvh / visualViewport variable.
         'max-sm:h-(--chat-viewport-height)',
+        // Sizing context for the case rail (`@rail/card:`): the thread, the
+        // header and the rail all react to the room this card really has.
+        '@container/card',
         mobile && 'start-0 flex'
       )}
     >
-      <div className='flex min-h-0 flex-1 flex-col lg:flex-row'>
+      <div className='flex min-h-0 flex-1 flex-col @rail/card:flex-row'>
         {/* Conversation column */}
-        <div className='flex min-h-0 flex-1 flex-col'>
+        <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
           {/* Top Part */}
           <CaseHeader
             chat={chat}
             sentiment={sentimentData}
             taking={claim.isPending}
             onTake={() => claim.mutate()}
+            onOpenDetails={() => setDetailsOpen(true)}
             onBack={() => {
               setChatSelected(null)
               setMobile(false)
@@ -141,7 +156,7 @@ export const ChatBox = () => {
           />
         </div>
 
-        {/* Case rail: wide screens only, phones keep the full-width thread. */}
+        {/* Case detail: inline column when the card fits it, sheet below. */}
         <CaseRail
           chat={chat}
           messages={thread.messages}
@@ -149,6 +164,8 @@ export const ChatBox = () => {
           onTake={() => claim.mutate()}
           taking={claim.isPending}
           currentMemberId={memberId}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
         />
       </div>
     </div>

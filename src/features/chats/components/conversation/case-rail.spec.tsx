@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Chat, ChatMessage, ChatSentiment } from '../../types/chat.domain'
@@ -264,5 +264,54 @@ describe('CaseRail', () => {
     expect(
       screen.getByText('Aún no hay mensajes del cliente')
     ).toBeInTheDocument()
+  })
+
+  it('keeps the sheet unmounted until it is opened', () => {
+    renderRail()
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('renders the same detail in the inline column and the opened sheet', () => {
+    render(
+      <CaseRail
+        chat={makeChat()}
+        messages={[makeMessage()]}
+        sentiment={sentiment}
+        onTake={vi.fn()}
+        open
+      />
+    )
+
+    // The sheet renders as a dialog; the inline column stays the only
+    // complementary landmark (Radix hides it from the a11y tree while the
+    // modal is open, hence `hidden: true`).
+    expect(
+      screen.getAllByRole('complementary', { hidden: true })
+    ).toHaveLength(1)
+    expect(
+      within(screen.getByRole('dialog')).getByText('Rosa Medina')
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByText('Tono positivo')
+    ).toBeInTheDocument()
+  })
+
+  it('reports the sheet close back to its owner', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(
+      <CaseRail
+        chat={makeChat()}
+        messages={[makeMessage()]}
+        onTake={vi.fn()}
+        open
+        onOpenChange={onOpenChange}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
