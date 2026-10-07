@@ -1,27 +1,58 @@
-import { useId, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { ImagePlus, Paperclip, Send, WifiOff } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import type { ConversationStatus } from '../../types/chat.domain'
+import { QuickReplies } from './quick-replies'
+import { ResolvedNotice } from './resolved-notice'
 
 export function Composer({
   connected,
   onSend,
+  status = 'open',
   className,
 }: {
   connected: boolean
   onSend: (text: string) => void
+  status?: ConversationStatus
   className?: string
 }) {
   const [value, setValue] = useState('')
   const fieldId = useId()
+  const fieldRef = useRef<HTMLTextAreaElement>(null)
+  /** Caret offset requested by the last quick-reply insertion. */
+  const pendingCaret = useRef<number | null>(null)
+  const resolved = status === 'closed'
+
+  // The textarea is controlled: the caret can only land once React has written
+  // the spliced value, so apply the pending offset right after that commit.
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current
+    if (caret === null) return
+    pendingCaret.current = null
+    fieldRef.current?.setSelectionRange(caret, caret)
+  })
 
   const send = () => {
     const text = value.trim()
     if (!text || !connected) return
     onSend(text)
     setValue('')
+  }
+
+  /**
+   * Inserts a quick-reply draft at the caret, keeping the surrounding text,
+   * and leaves the caret after the draft for editing. Never submits.
+   */
+  const insertDraft = (draft: string) => {
+    const field = fieldRef.current
+    const start = field?.selectionStart ?? value.length
+    const end = field?.selectionEnd ?? start
+    pendingCaret.current = start + draft.length
+    setValue(value.slice(0, start) + draft + value.slice(end))
+    field?.focus()
   }
 
   return (
@@ -36,6 +67,11 @@ export function Composer({
         send()
       }}
     >
+      {resolved && <ResolvedNotice />}
+      {!resolved && (
+        <QuickReplies disabled={!connected} onInsert={insertDraft} />
+      )}
+
       <div className='border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex flex-col rounded-2xl border transition-[border-color,box-shadow,background-color] focus-within:ring-2'>
         <div className='flex items-end gap-1.5 p-1.5 ps-2'>
           <div className='flex items-center gap-0.5 pb-0.5'>
@@ -68,6 +104,7 @@ export function Composer({
           </label>
           <Textarea
             id={fieldId}
+            ref={fieldRef}
             rows={1}
             value={value}
             disabled={!connected}
