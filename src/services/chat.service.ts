@@ -11,25 +11,16 @@ const conversations = client('/conversations')
 const companyMembers = client('/company-members')
 
 export const getChatList = async (): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/list')
+  const response = await conversations.get<Chat[]>('/list')
 
-    return response?.data ?? []
-  } catch (error) {
-    console.error('Error al obtener la lista de conversaciones:', error)
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Cola de conversaciones sin asignar de la empresa (para reclamar). */
 export const getUnassignedChats = async (): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/unassigned')
+  const response = await conversations.get<Chat[]>('/unassigned')
 
-    return response?.data ?? []
-  } catch {
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Reclama una conversación libre para el miembro actual (409 si es de otro). */
@@ -41,15 +32,11 @@ export const claimChat = async (conversationId: string) => {
 
 /** Conversaciones cuyo último mensaje es del cliente y llevan `minutes` sin respuesta. */
 export const getNeedsResponseChats = async (minutes = 15): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/needs-response', {
-      params: { minutes },
-    })
+  const response = await conversations.get<Chat[]>('/needs-response', {
+    params: { minutes },
+  })
 
-    return response?.data ?? []
-  } catch {
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Asignación manual / reasignación por member id (solo supervisores pueden quitar dueño). */
