@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Chat, ChatMessage, ChatSentiment } from '../../types/chat.domain'
@@ -112,6 +112,20 @@ describe('CaseRail', () => {
     ).toBeInTheDocument()
   })
 
+  it('offers no Take once the claim assigned the chat to me', () => {
+    renderRail({
+      chat: makeChat({
+        isUnassigned: false,
+        member: { id: 'member-1', username: 'aron' },
+      }),
+    })
+
+    expect(screen.getByText('@aron')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Tomar chat' })
+    ).not.toBeInTheDocument()
+  })
+
   it('disables Take while the claim is in flight', () => {
     renderRail({ chat: makeChat({ isUnassigned: true }), taking: true })
 
@@ -193,6 +207,34 @@ describe('CaseRail', () => {
     expect(
       screen.getByRole('button', { name: 'Usar plantilla (próximamente)' })
     ).toBeDisabled()
+  })
+
+  it('flips to the expired copy when the 24 h boundary passes while mounted', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-10-06T12:00:00'))
+      renderRail({
+        messages: [
+          makeMessage({
+            // 23 h 59 min ago -> 1 min left, one tick away from the boundary.
+            timestamp: new Date(Date.now() - (23 * 60 + 59) * 60 * 1000),
+          }),
+        ],
+      })
+
+      expect(screen.getByText('1 min')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(2 * 60 * 1000)
+      })
+
+      expect(
+        screen.getByText('Ventana vencida · usa una plantilla')
+      ).toBeInTheDocument()
+      expect(screen.queryByText('1 min')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows no window when the customer has not written yet', () => {

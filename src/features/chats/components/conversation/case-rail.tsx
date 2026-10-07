@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useNow } from '../../hooks/use-now'
+import { isConversationUnassigned } from '../../lib/conversation-assignment'
 import {
   formatServiceWindowRemaining,
   serviceWindowState,
@@ -72,7 +74,10 @@ function RailRow({ label, children }: { label: string; children: ReactNode }) {
  * customer message. The expired state points at the template flow (#10).
  */
 function WindowMeter({ messages }: { messages: ChatMessage[] }) {
-  const state = serviceWindowState(messages)
+  // Re-sample the clock while the rail stays mounted, so an open chat flips to
+  // "Ventana vencida" when the 24 h boundary passes instead of freezing.
+  const now = useNow(60_000)
+  const state = serviceWindowState(messages, now)
 
   if (state.kind === 'none') {
     return (
@@ -147,9 +152,9 @@ export function CaseRail({
   const customerName = chat.customer?.displayName ?? 'Cliente'
   const phone = formatPhone(chat.customer?.phone)
   const status = STATUS_META[chat.status]
-  // A null member means no active assignment (needs-response view); the inbox
-  // payload omits it, and those conversations belong to the signed-in member.
-  const isUnassigned = chat.isUnassigned || chat.member === null
+  // Header and rail share this predicate: the queue marker or a null owner
+  // (needs-response view) both mean the chat can be claimed.
+  const isUnassigned = isConversationUnassigned(chat)
   const assignee = chat.member?.username
 
   return (

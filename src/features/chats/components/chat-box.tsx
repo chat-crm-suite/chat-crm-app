@@ -17,6 +17,7 @@ import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
+import { isConversationUnassigned } from '../lib/conversation-assignment'
 import { AssignedUser } from './assigned-user'
 import { CaseRail } from './conversation/case-rail'
 import { Composer } from './conversation/composer'
@@ -72,7 +73,19 @@ export const ChatBox = () => {
       })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
-      if (chat) setChatSelected({ ...chat, isUnassigned: false })
+      if (chat) {
+        // The claim assigns the chat to the signed-in member: clearing only
+        // `isUnassigned` would leave `member: null` and the rail would keep
+        // offering "Tomar chat".
+        setChatSelected({
+          ...chat,
+          isUnassigned: false,
+          member: {
+            id: memberId ?? '',
+            username: auth.user?.username ?? null,
+          },
+        })
+      }
     },
     onError: (error) => {
       if (chat) clearSelfInitiatedAssignment(chat.id)
@@ -126,7 +139,7 @@ export const ChatBox = () => {
 
             <div className='flex shrink-0 items-center gap-1.5'>
               <ToneControl sentiment={sentimentData} />
-              {chat.isUnassigned && (
+              {isConversationUnassigned(chat) && (
                 <Button
                   size='sm'
                   className='h-11 rounded-full px-4 text-xs sm:h-8 sm:px-3'
