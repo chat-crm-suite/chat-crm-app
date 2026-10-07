@@ -17,22 +17,11 @@ import type {
   ChatMessage,
   ChatSentiment,
   ConversationPriority,
-  ConversationStatus,
 } from '../../types/chat.domain'
 import { formatPhone, initials } from './identity'
+import { STATUS_META } from './status-meta'
 import { useToneMode } from './tone-mode'
 import { ToneSummary } from './tone-summary'
-
-/** Spanish copy for the real statuses (`closed` is the Resolve target). */
-const STATUS_META: Record<
-  ConversationStatus,
-  { label: string; className: string }
-> = {
-  open: { label: 'Abierto', className: 'bg-primary/15 text-foreground' },
-  pending: { label: 'Pendiente', className: 'bg-chart-2/15 text-chart-2' },
-  closed: { label: 'Resuelto', className: 'bg-muted text-muted-foreground' },
-  archived: { label: 'Archivado', className: 'bg-muted text-muted-foreground' },
-}
 
 const PRIORITY_LABEL: Record<ConversationPriority, string> = {
   low: 'Baja',

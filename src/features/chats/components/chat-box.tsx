@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { claimChat } from '@/services/chat.service'
-import { ArrowLeft, MessagesSquare, MoreVertical } from 'lucide-react'
+import { MessagesSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -11,19 +11,16 @@ import {
 } from '@/lib/socket-taxonomy'
 import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
-import { isConversationUnassigned } from '../lib/conversation-assignment'
 import { AssignedUser } from './assigned-user'
+import { CaseHeader } from './conversation/case-header'
 import { CaseRail } from './conversation/case-rail'
 import { Composer } from './conversation/composer'
-import { formatPhone, initials } from './conversation/identity'
 import { ConversationThread } from './conversation/thread'
-import { ToneControl } from './conversation/tone-control'
 
 export const ChatBox = () => {
   const { auth } = useAuthStore()
@@ -110,56 +107,18 @@ export const ChatBox = () => {
         {/* Conversation column */}
         <div className='flex min-h-0 flex-1 flex-col'>
           {/* Top Part */}
-          <header className='bg-card flex flex-none items-center justify-between gap-3 rounded-t-md border-b py-2.5 ps-[max(0.75rem,env(safe-area-inset-left))] pe-[max(0.75rem,env(safe-area-inset-right))] sm:ps-4 sm:pe-4'>
-            <div className='flex min-w-0 items-center gap-2.5'>
-              <Button
-                size='icon'
-                variant='ghost'
-                className='-ms-2 size-11 sm:hidden'
-                aria-label='Volver a la lista'
-                onClick={() => {
-                  setChatSelected(null)
-                  setMobile(false)
-                }}
-              >
-                <ArrowLeft className='rtl:rotate-180' />
-              </Button>
-              <Avatar className='size-8 lg:size-9'>
-                <AvatarFallback className='text-xs font-semibold'>
-                  {initials(customerName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className='min-w-0'>
-                <p className='truncate text-sm font-semibold'>{customerName}</p>
-                <p className='text-muted-foreground truncate text-xs'>
-                  {formatPhone(chat.customer?.phone)}
-                </p>
-              </div>
-            </div>
-
-            <div className='flex shrink-0 items-center gap-1.5'>
-              <ToneControl sentiment={sentimentData} />
-              {isConversationUnassigned(chat) && (
-                <Button
-                  size='sm'
-                  className='h-11 rounded-full px-4 text-xs sm:h-8 sm:px-3'
-                  onClick={() => claim.mutate()}
-                  disabled={claim.isPending}
-                >
-                  {claim.isPending ? 'Tomando…' : 'Tomar'}
-                </Button>
-              )}
-              <AssignedUser conversationId={chat.id} />
-              <Button
-                size='icon'
-                variant='ghost'
-                className='size-11 sm:size-8'
-                aria-label='Más opciones'
-              >
-                <MoreVertical className='size-4' />
-              </Button>
-            </div>
-          </header>
+          <CaseHeader
+            chat={chat}
+            sentiment={sentimentData}
+            taking={claim.isPending}
+            onTake={() => claim.mutate()}
+            onBack={() => {
+              setChatSelected(null)
+              setMobile(false)
+            }}
+          >
+            <AssignedUser conversationId={chat.id} />
+          </CaseHeader>
 
           <ConversationThread
             messages={thread.messages}
