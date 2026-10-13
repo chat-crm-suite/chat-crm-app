@@ -299,6 +299,7 @@ describe('useChatThread', () => {
     await waitFor(() =>
       expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
         room: 'c-1',
+        companyId: 'company-1',
       })
     )
 
@@ -319,12 +320,14 @@ describe('useChatThread', () => {
 
     expect(socket.emit).not.toHaveBeenCalledWith(ChatSocketEvents.join, {
       room: 'c-1',
+      companyId: 'company-1',
     })
 
     act(() => fire('connect'))
 
     expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
       room: 'c-1',
+      companyId: 'company-1',
     })
   })
 
@@ -341,6 +344,7 @@ describe('useChatThread', () => {
     await waitFor(() =>
       expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
         room: 'c-1',
+        companyId: 'company-1',
       })
     )
 
@@ -349,6 +353,7 @@ describe('useChatThread', () => {
     await waitFor(() =>
       expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
         room: 'c-2',
+        companyId: 'company-1',
       })
     )
   })

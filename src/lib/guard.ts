@@ -16,7 +16,7 @@ export async function guard(queryClient: QueryClient, href: string) {
     throw redirect({ to: '/sign-in', search: { redirect: href } })
   }
 
-  const { setUser, setCompany } = useAuthStore.getState().auth
-  setUser(auth.user)
-  setCompany(auth.company)
+  // Company list + active company come from the session; switching later is
+  // local (the next request just carries another `x-company-id`).
+  useAuthStore.getState().auth.setSession(auth.user)
 }

@@ -21,6 +21,7 @@ export function createFakeSocket(connected = true) {
       listeners.get(event)?.delete(handler)
     }),
     close: vi.fn(),
+    connect: vi.fn(),
     disconnect: vi.fn(),
   }
 

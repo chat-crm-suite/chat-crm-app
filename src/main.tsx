@@ -10,6 +10,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
+import { onSessionRefreshed } from '@/lib/http'
 import { I18nProvider } from '@/lib/i18n/I18nProvider'
 import { SocketProvider } from '@/context/socket-provider'
 import { DirectionProvider } from './context/direction-provider'
@@ -69,6 +70,24 @@ const queryClient = new QueryClient({
       }
     },
   }),
+})
+
+// A refreshed session (new memberships) replaces the cached profile, so the
+// route guard never re-applies an outdated company list.
+onSessionRefreshed((session) => {
+  queryClient.setQueryData(['auth', 'me'], session)
+})
+
+// Switching the active company is local (no request): drop every cached
+// query so lists refetch with the new `x-company-id`.
+useAuthStore.subscribe((state, previous) => {
+  const next = state.auth.company.id
+  const prev = previous.auth.company.id
+  if (prev && next && prev !== next) {
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] !== 'auth',
+    })
+  }
 })
 
 // Create a new router instance

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFakeSocket } from '@/test/fake-socket'
 import { SocketProvider } from './socket-provider'
@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
   return {
     auth,
     io: vi.fn(),
+    refreshSession: vi.fn(),
     sendTemplate: vi.fn(),
     toast: Object.assign(vi.fn(), {
       info: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('sonner', () => ({ toast: mocks.toast }))
 vi.mock('@/services/whatsapp.service', () => ({
   sendTemplate: mocks.sendTemplate,
 }))
+vi.mock('@/lib/http', () => ({ refreshSession: mocks.refreshSession }))
 vi.mock('@/stores/auth-store', () => ({
   useAuthStore: (selector: (state: { auth: unknown }) => unknown) =>
     selector({ auth: mocks.auth }),
@@ -186,5 +188,60 @@ describe('SocketProvider', () => {
 
     options.action.onClick()
     expect(mocks.sendTemplate).toHaveBeenCalledWith('+51999888777')
+  })
+
+  it('authenticates with the session cookie only (no identity or company in the handshake)', () => {
+    renderProvider()
+
+    expect(mocks.io).toHaveBeenCalledTimes(1)
+    const [, options] = mocks.io.mock.calls[0] as [string, Record<string, unknown>]
+    expect(options).toMatchObject({ withCredentials: true })
+    expect(options).not.toHaveProperty('auth')
+  })
+
+  it('keeps the same socket when the active company changes', () => {
+    const { rerender, queryClient } = renderProvider()
+
+    mocks.auth.company = { id: 'company-2' }
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SocketProvider>
+          <div />
+        </SocketProvider>
+      </QueryClientProvider>
+    )
+
+    expect(mocks.io).toHaveBeenCalledTimes(1)
+    expect(fake.socket.close).not.toHaveBeenCalled()
+    mocks.auth.company = { id: 'company-1' }
+  })
+
+  it('refreshes the session and reconnects when the server drops the socket', async () => {
+    mocks.refreshSession.mockResolvedValue({ user: mocks.auth.user })
+    renderProvider()
+
+    act(() => fake.fire('disconnect', 'io server disconnect'))
+
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(fake.socket.connect).toHaveBeenCalledTimes(1))
+  })
+
+  it('leaves transport drops to the built-in reconnection', () => {
+    renderProvider()
+
+    act(() => fake.fire('disconnect', 'transport close'))
+
+    expect(mocks.refreshSession).not.toHaveBeenCalled()
+    expect(fake.socket.connect).not.toHaveBeenCalled()
+  })
+
+  it('stays disconnected when the session can no longer be refreshed', async () => {
+    mocks.refreshSession.mockRejectedValue(new Error('401'))
+    renderProvider()
+
+    act(() => fake.fire('disconnect', 'io server disconnect'))
+
+    await waitFor(() => expect(mocks.refreshSession).toHaveBeenCalled())
+    expect(fake.socket.connect).not.toHaveBeenCalled()
   })
 })
