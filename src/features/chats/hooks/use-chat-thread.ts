@@ -58,7 +58,13 @@ export function useChatThread(
   useEffect(() => {
     if (!socket || !conversationId) return
 
-    const join = () => socket.emit(Events.join, { room: conversationId })
+    // The socket spans every company of the session: the join names the
+    // conversation's company so the server can check it against the token.
+    const join = () =>
+      socket.emit(Events.join, {
+        room: conversationId,
+        ...(companyId ? { companyId } : {}),
+      })
 
     if (socket.connected) join()
     socket.on('connect', join)
@@ -67,7 +73,7 @@ export function useChatThread(
       socket.off('connect', join)
       // TODO(backend): emit `conversation:leave` here once the API exposes it.
     }
-  }, [socket, conversationId])
+  }, [socket, conversationId, companyId])
 
   useEffect(() => {
     if (!socket || !conversationId) return

@@ -6,6 +6,7 @@ import { CloudAlert } from 'lucide-react'
 import { io, type Socket } from 'socket.io-client'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { refreshSession } from '@/lib/http'
 import {
   notificationToastPayload,
   prependNotification,
@@ -37,7 +38,9 @@ interface SocketProviderProps {
 export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const { user, company } = useAuthStore((state) => state.auth)
+  // Keyed by the user only: one socket spans every company of the session,
+  // so switching the active company never reconnects it.
+  const userId = useAuthStore((state) => state.auth.user?.id)
   const [_unreadCount, setUnreadCount] = useState(0)
   const queryClient = useQueryClient()
   const socketRef = useRef<Socket | null>(null)
@@ -53,7 +56,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   }, [])
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       socketRef.current?.disconnect()
       socketRef.current = null
       setSocket(null)
@@ -66,11 +69,9 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     const socketBaseUrl = (
       import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
     ).replace(/\/+$/, '')
+    // Identity is the `access_token` cookie only; the server joins the socket
+    // to the rooms of every company in the session.
     const newSocket = io(`${socketBaseUrl}/${SOCKET_NAMESPACES.conversation}`, {
-      auth: {
-        user,
-        companyId: company.id,
-      },
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -84,8 +85,16 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       setIsConnected(true)
     })
 
-    newSocket.on('disconnect', () => {
+    newSocket.on('disconnect', (reason) => {
       setIsConnected(false)
+
+      // The server drops the socket when the session memberships change (or
+      // the token is stale): refresh them, then reconnect with the new rooms.
+      if (reason === 'io server disconnect') {
+        void refreshSession()
+          .then(() => newSocket.connect())
+          .catch(() => undefined)
+      }
     })
 
     // Single `notification:new` handler: browser notification + sound + title
@@ -156,7 +165,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       newSocket.close()
       socketRef.current = null
     }
-  }, [user, company.id, queryClient])
+  }, [userId, queryClient])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
