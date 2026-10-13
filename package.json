@@ -21,6 +21,8 @@
     "preview": "vite preview",
     "postinstall": "node --input-type=module -e \"import{existsSync}from'node:fs';if(existsSync('scripts/contracts-tsconfig.mjs')){await import('./scripts/contracts-tsconfig.mjs')}else{console.log('[@chat-crm/contracts] tsconfig skipped (scripts not present)')}\"",
     "contracts:sync": "node scripts/contracts-tsconfig.mjs",
+    "contracts:pull": "node scripts/sync-contracts.mjs",
+    "contracts:status": "node scripts/contracts-status.mjs",
     "skills:install": "node scripts/skills-install.mjs",
     "skills:check": "node scripts/skills-install.mjs --check"
   },
