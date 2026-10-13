@@ -86,6 +86,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// Dev-only: warn (and show a banner) when this build's contracts fingerprint
+// drifts from the running backend. Never runs in production.
+if (import.meta.env.DEV) {
+  void import('./lib/contracts-sync').then((module) =>
+    module.checkContractsSync(),
+  )
+}
+
 // Render the app
 const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {

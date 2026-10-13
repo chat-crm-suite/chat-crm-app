@@ -1,4 +1,5 @@
 import path from 'path'
+import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from "@tailwindcss/vite"
@@ -11,6 +12,20 @@ import { resolveContractsDir } from './scripts/contracts-path.mjs'
 // worktrees and Docker (CONTRACTS_DIR).
 const contractsDir = resolveContractsDir(__dirname)
 
+// Bakes the synced contracts fingerprint into the bundle so the dev-only
+// runtime check can compare it with `GET /contracts/version`. `null` when the
+// frontend has not been synced yet (no contracts.lock.json).
+function readLockHash(): string | null {
+  try {
+    const lock = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, 'contracts.lock.json'), 'utf8')
+    )
+    return typeof lock.hash === 'string' ? lock.hash : null
+  } catch {
+    return null
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // TanStack Router debe ir ANTES de los plugins de transformación JSX.
@@ -18,6 +33,10 @@ export default defineConfig({
     target: 'react',
     autoCodeSplitting: true,
   }), react(), tailwindcss()],
+  define: {
+    // Consumed by the dev-only runtime contracts check (src/lib/contracts-sync.ts).
+    __CONTRACTS_LOCK_HASH__: JSON.stringify(readLockHash()),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
