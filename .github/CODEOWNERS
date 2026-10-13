@@ -1,0 +1,12 @@
+# Contract changes move only through an explicit, reviewed PR (see AGENTS.md,
+# "Contracts sync verification"). The regenerated artifacts and the lockfile
+# are the visible diff the reviewer approves.
+
+/src/generated/              @lisk0vian
+/contracts.lock.json         @lisk0vian
+/scripts/contracts-path.mjs  @lisk0vian
+/scripts/contracts-path.spec.mjs @lisk0vian
+/scripts/contracts-status-core.mjs @lisk0vian
+/scripts/contracts-status.mjs @lisk0vian
+/scripts/sync-contracts.mjs  @lisk0vian
+/src/lib/contracts-sync.ts   @lisk0vian

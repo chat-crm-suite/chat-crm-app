@@ -84,6 +84,8 @@ Los valores `VITE_*` se fijan al compilar: si cambian, hay que volver a compilar
 | `pnpm test` · `pnpm test:watch` | Vitest |
 | `pnpm lint` | ESLint |
 | `pnpm contracts:sync` | Regenera la ruta a los contratos compartidos |
+| `pnpm contracts:pull` | Descarga el snapshot de contratos del backend a `src/generated/` + `contracts.lock.json` (solo endpoint) |
+| `pnpm contracts:status` | Informa si la app está sincronizada con un backend (`--api-url`, `--token`, `--verbose`) |
 
 ## Estructura del proyecto
 

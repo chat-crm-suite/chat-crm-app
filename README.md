@@ -84,6 +84,8 @@ pnpm dev              # http://localhost:5173
 | `pnpm test` · `pnpm test:watch` | Vitest |
 | `pnpm lint` | ESLint |
 | `pnpm contracts:sync` | Regenerate the path to the shared contracts |
+| `pnpm contracts:pull` | Download the backend contracts snapshot into `src/generated/` + `contracts.lock.json` (endpoint-only) |
+| `pnpm contracts:status` | Report whether this app is in sync with a backend (`--api-url`, `--token`, `--verbose`) |
 
 ## Project structure
 
