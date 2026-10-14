@@ -42,7 +42,7 @@ export function DocumentBody({ view, message }: MessageBodyProps<'document'>) {
               ? 'done'
               : 'uploading'
         }
-        className='max-w-[min(22rem,100%)]'
+        className='w-72 max-w-full'
       >
         <AttachmentMedia>
           {source.state === 'unavailable' ? (

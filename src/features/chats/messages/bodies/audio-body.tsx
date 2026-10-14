@@ -23,37 +23,37 @@ export function AudioBody({ view, message }: MessageBodyProps<'audio'>) {
   const Icon = view.voice ? Mic : Headphones
 
   if (source.state !== 'ready') {
-    return <MediaPlaceholder source={source} label={label} className='mt-1' />
+    return (
+      <MediaPlaceholder source={source} label={label} className='mt-1 w-72 max-w-full' />
+    )
   }
 
-  const shown = player.isPlaying || player.currentTime > 0
-    ? player.currentTime
-    : player.duration
+  const shown =
+    player.isPlaying || player.currentTime > 0 ? player.currentTime : player.duration
 
   return (
-    <div className='bg-muted/40 mt-1 flex w-[min(20rem,100%)] flex-col gap-0.5 rounded-xl border px-2.5 pt-2 pb-1.5'>
+    <div className='bg-muted/40 mt-1 flex w-72 max-w-full items-center gap-3 rounded-xl border p-2.5'>
       <audio ref={player.audioRef} src={source.src} preload='metadata' />
-      <div className='flex items-center gap-2'>
-        <span
-          aria-hidden
-          className={cn(
-            'grid size-9 shrink-0 place-items-center rounded-full',
-            view.voice ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
-          )}
-        >
-          <Icon className='size-4' />
-        </span>
-        <Button
-          type='button'
-          variant='ghost'
-          size='icon'
-          onClick={player.toggle}
-          disabled={source.uploading}
-          aria-label={player.isPlaying ? `Pausar ${label.toLowerCase()}` : `Reproducir ${label.toLowerCase()}`}
-          className='size-9 shrink-0 rounded-full max-sm:size-11'
-        >
-          {player.isPlaying ? <Pause className='size-5' /> : <Play className='size-5' />}
-        </Button>
+      <Button
+        type='button'
+        size='icon'
+        onClick={player.toggle}
+        disabled={source.uploading}
+        aria-label={
+          player.isPlaying
+            ? `Pausar ${label.toLowerCase()}`
+            : `Reproducir ${label.toLowerCase()}`
+        }
+        className='size-10 shrink-0 rounded-full max-sm:size-11'
+      >
+        {player.isPlaying ? (
+          <Pause className='size-4 fill-current' />
+        ) : (
+          <Play className='size-4 translate-x-px fill-current' />
+        )}
+      </Button>
+
+      <div className='flex min-w-0 flex-1 flex-col gap-2'>
         <Slider
           aria-label={`Posición de ${label.toLowerCase()}`}
           min={0}
@@ -62,22 +62,28 @@ export function AudioBody({ view, message }: MessageBodyProps<'audio'>) {
           value={[Math.min(player.currentTime, player.duration || 1)]}
           onValueChange={([seconds]) => player.seek(seconds)}
           disabled={source.uploading || !player.duration}
-          className='min-w-0 flex-1'
+          className='mt-1.5'
         />
-        {view.voice && (
-          <button
-            type='button'
-            onClick={player.cycleRate}
-            aria-label={`Velocidad ${player.rate}x`}
-            className="bg-background text-foreground/80 hover:bg-background/70 focus-visible:ring-ring relative h-6 min-w-9 shrink-0 rounded-full px-1.5 text-[11px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
-          >
-            {player.rate}×
-          </button>
-        )}
+        <div className='text-muted-foreground flex items-center justify-between gap-2 text-[11px] tabular-nums'>
+          <span className='flex items-center gap-1'>
+            <Icon
+              aria-hidden
+              className={cn('size-3.5', view.voice && 'text-primary')}
+            />
+            {formatClock(shown)}
+          </span>
+          {view.voice && (
+            <button
+              type='button'
+              onClick={player.cycleRate}
+              aria-label={`Velocidad ${player.rate}x`}
+              className="bg-background text-foreground/80 hover:bg-background/70 focus-visible:ring-ring relative h-5 min-w-8 rounded-full border px-1.5 text-[10px] font-semibold focus-visible:ring-2 focus-visible:outline-none after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
+            >
+              {player.rate}×
+            </button>
+          )}
+        </div>
       </div>
-      <span className='text-muted-foreground ps-[5.5rem] text-[11px] tabular-nums'>
-        {formatClock(shown)}
-      </span>
     </div>
   )
 }
