@@ -7,7 +7,7 @@ import { messageWith, makeMessage, readyMedia } from '../../testing/messages'
 import type { ChatMessage } from '../../types/chat.domain'
 import { MessageRow, type SenderView } from './message-row'
 
-const mine: SenderView = { name: 'Tú', initials: 'AC', isSelf: true }
+const mine: SenderView = { name: 'Tú', initials: 'AC' }
 const customer: SenderView = { name: 'Rosa Medina', initials: 'RM' }
 
 const outgoing = (overrides: Partial<ChatMessage> = {}) =>
@@ -54,36 +54,19 @@ describe('MessageRow', () => {
   })
 
   describe('layout', () => {
-    it('aligns the customer to the start and the team to the end', () => {
-      const { container, unmount } = renderRow(makeMessage(), customer)
-      expect(container.querySelector('[data-slot=message]')).toHaveAttribute(
-        'data-align',
-        'start'
-      )
-      unmount()
+    it('heads every message with the author, time and tick', () => {
+      renderRow(outgoing())
 
-      const { container: team } = renderRow(outgoing())
-      expect(team.querySelector('[data-slot=message]')).toHaveAttribute(
-        'data-align',
-        'end'
-      )
+      expect(screen.getByText('Tú')).toBeInTheDocument()
+      expect(screen.getByText('09:12')).toBeInTheDocument()
+      expect(screen.getByLabelText('Leído')).toBeInTheDocument()
     })
 
-    it('names the customer only on the first message of a run', () => {
-      const { rerender } = render(
-        <MessageRow message={makeMessage()} sender={customer} onRetry={vi.fn()} />
-      )
-      expect(screen.getByText('Rosa Medina')).toBeInTheDocument()
+    it('names the customer without a tick', () => {
+      renderRow(makeMessage(), customer)
 
-      rerender(
-        <MessageRow
-          message={makeMessage()}
-          sender={customer}
-          showSender={false}
-          onRetry={vi.fn()}
-        />
-      )
-      expect(screen.queryByText('Rosa Medina')).not.toBeInTheDocument()
+      expect(screen.getByText('Rosa Medina')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Leído')).not.toBeInTheDocument()
     })
 
     it('turns links in text into new-tab links', () => {
@@ -251,13 +234,12 @@ describe('MessageRow', () => {
       })
     })
 
-    it('draws stickers without a bubble', () => {
-      const { container } = renderRow(
+    it('draws stickers without a frame', () => {
+      renderRow(
         outgoing({ msg: { type: 'sticker', media: readyMedia({ mimeType: 'image/webp' }) } })
       )
 
-      expect(screen.getByRole('img', { name: 'Sticker' })).toBeInTheDocument()
-      expect(container.querySelector('[data-slot=bubble]')).not.toBeInTheDocument()
+      expect(screen.getByRole('img', { name: 'Sticker' })).toHaveClass('object-contain')
     })
 
     it('names kinds it cannot render and keeps their text', () => {

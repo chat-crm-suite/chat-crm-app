@@ -1,13 +1,8 @@
-import { MessageMeta } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 import { unsupportedKind } from '../unsupported-kinds'
 
-/** An honest stand-in: what arrived and its text, never a blank bubble. */
-export function UnsupportedBody({
-  view,
-  message,
-  isMine,
-}: MessageBodyProps<'unsupported'>) {
+/** An honest stand-in: what arrived and its text, never a blank row. */
+export function UnsupportedBody({ view }: MessageBodyProps<'unsupported'>) {
   const kind = unsupportedKind(view.originalType)
 
   return (
@@ -22,7 +17,6 @@ export function UnsupportedBody({
             Ábrelo en WhatsApp para verlo completo.
           </span>
         )}
-        <MessageMeta message={message} isMine={isMine} />
       </p>
     </div>
   )

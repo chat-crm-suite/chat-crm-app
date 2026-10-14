@@ -1,27 +1,24 @@
 import { MediaPlaceholder, UploadProgress } from '../media-placeholder'
 import { mediaFrameStyle, mediaSource } from '../media-source'
-import { MessageMeta } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 import { Caption } from './text-body'
 
-export function VideoBody({ view, message, isMine }: MessageBodyProps<'video'>) {
+export function VideoBody({ view, message }: MessageBodyProps<'video'>) {
   const source = mediaSource(message, view.media)
 
   if (source.state !== 'ready') {
     return (
-      <div className='flex flex-col gap-1 p-1'>
+      <div className='mt-1'>
         <MediaPlaceholder source={source} label='Video' />
-        {view.caption && (
-          <Caption text={view.caption} message={message} isMine={isMine} />
-        )}
+        {view.caption && <Caption text={view.caption} />}
       </div>
     )
   }
 
   return (
-    <>
+    <div className='mt-1 w-fit max-w-[min(20.5rem,100%)]'>
       <div
-        className='bg-foreground/90 relative w-[min(18rem,100%)] overflow-hidden rounded-lg'
+        className='relative w-[min(18rem,100%)] overflow-hidden rounded-xl border bg-black'
         style={
           mediaFrameStyle(view.media.width, view.media.height) ?? {
             aspectRatio: '16 / 9',
@@ -35,22 +32,11 @@ export function VideoBody({ view, message, isMine }: MessageBodyProps<'video'>) 
           preload='metadata'
           playsInline
           aria-label={view.caption ?? 'Video'}
-          className='size-full object-contain'
+          className='block size-full max-h-[26rem] object-contain'
         />
         {source.uploading && <UploadProgress progress={source.progress} />}
-        {!view.caption && source.uploading && (
-          <MessageMeta message={message} isMine={isMine} variant='overlay' />
-        )}
       </div>
-      {view.caption ? (
-        <Caption text={view.caption} message={message} isMine={isMine} />
-      ) : (
-        !source.uploading && (
-          <p className='flex justify-end px-2 pt-1'>
-            <MessageMeta message={message} isMine={isMine} className='float-none ms-0 mt-0 top-0' />
-          </p>
-        )
-      )}
-    </>
+      {view.caption && <Caption text={view.caption} />}
+    </div>
   )
 }

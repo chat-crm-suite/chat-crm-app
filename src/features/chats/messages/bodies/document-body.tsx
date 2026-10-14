@@ -13,12 +13,11 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { documentMeta } from '../../lib/attachment-meta'
 import { mediaSource } from '../media-source'
-import { MessageMeta } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 import { Caption } from './text-body'
 
 /** WhatsApp-style document card: type, size, open and download. */
-export function DocumentBody({ view, message, isMine }: MessageBodyProps<'document'>) {
+export function DocumentBody({ view, message }: MessageBodyProps<'document'>) {
   const source = mediaSource(message, view.media)
   const name = view.filename ?? 'Documento'
   const ready = source.state === 'ready' && !source.uploading
@@ -34,7 +33,7 @@ export function DocumentBody({ view, message, isMine }: MessageBodyProps<'docume
           })
 
   return (
-    <div className='flex flex-col'>
+    <div className='mt-1'>
       <Attachment
         state={
           source.state === 'unavailable'
@@ -43,7 +42,7 @@ export function DocumentBody({ view, message, isMine }: MessageBodyProps<'docume
               ? 'done'
               : 'uploading'
         }
-        className='w-[min(20rem,100%)] border-none bg-transparent'
+        className='max-w-[min(22rem,100%)]'
       >
         <AttachmentMedia>
           {source.state === 'unavailable' ? (
@@ -78,17 +77,7 @@ export function DocumentBody({ view, message, isMine }: MessageBodyProps<'docume
           </>
         )}
       </Attachment>
-      {view.caption ? (
-        <Caption text={view.caption} message={message} isMine={isMine} />
-      ) : (
-        <p className='flex justify-end px-2 pb-1'>
-          <MessageMeta
-            message={message}
-            isMine={isMine}
-            className='static float-none ms-0 mt-0'
-          />
-        </p>
-      )}
+      {view.caption && <Caption text={view.caption} />}
     </div>
   )
 }
