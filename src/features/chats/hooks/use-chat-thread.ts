@@ -9,7 +9,6 @@ import {
   type SendMessageErrorCode,
 } from '@chat-crm/contracts'
 import { toast } from 'sonner'
-import { getApiErrorMessage } from '@/lib/api-error'
 import { useSocket } from '@/context/socket-provider'
 import { api } from '../api'
 import {
@@ -19,6 +18,7 @@ import {
   uploadKindOf,
   type OutgoingDraft,
 } from '../lib/outgoing-draft'
+import { uploadErrorMessage } from '../lib/upload-errors'
 import {
   applyAttachmentPatch,
   applyStatusPatch,
@@ -195,7 +195,7 @@ export function useChatThread(
           )
           uploadId = staged.uploadId
         } catch (error: unknown) {
-          fail(clientMessageId, getApiErrorMessage(error, 'No se pudo subir el archivo.'))
+          fail(clientMessageId, uploadErrorMessage(error))
           return null
         }
       }
