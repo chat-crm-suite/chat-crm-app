@@ -18,7 +18,8 @@ export type ServiceWindow =
  */
 export function serviceWindowState(
   messages: ChatMessage[],
-  now: Date | number = Date.now()
+  now: Date | number = Date.now(),
+  windowMs: number = SERVICE_WINDOW_MS
 ): ServiceWindow {
   const nowMs = now instanceof Date ? now.getTime() : now
 
@@ -34,7 +35,7 @@ export function serviceWindowState(
 
   if (lastCustomerMs === undefined) return { kind: 'none' }
 
-  const remainingMs = SERVICE_WINDOW_MS - (nowMs - lastCustomerMs)
+  const remainingMs = windowMs - (nowMs - lastCustomerMs)
 
   return remainingMs > 0 ? { kind: 'open', remainingMs } : { kind: 'expired' }
 }

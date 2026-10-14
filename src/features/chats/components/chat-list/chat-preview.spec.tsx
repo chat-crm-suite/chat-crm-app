@@ -9,7 +9,7 @@ describe('ChatPreview', () => {
   it('labels an image without body from the explicit type', () => {
     render(<ChatPreview preview={{ content: null, type: 'image' }} />)
 
-    expect(screen.getByText('Imagen')).toBeInTheDocument()
+    expect(screen.getByText('Foto')).toBeInTheDocument()
   })
 
   it('labels a document without body from the explicit type', () => {
@@ -26,10 +26,18 @@ describe('ChatPreview', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('infers the kind from a filename when the type is missing', () => {
+  it('labels a voice note and kinds the thread cannot render', () => {
+    render(<ChatPreview preview={{ content: 'Nota de voz', type: 'audio' }} />)
+    expect(screen.getByText('Audio:')).toBeInTheDocument()
+
+    render(<ChatPreview preview={{ content: null, type: 'location' }} />)
+    expect(screen.getByText('Ubicación')).toBeInTheDocument()
+  })
+
+  it('never guesses a kind from the text (the API always sends it)', () => {
     render(<ChatPreview preview={{ content: 'foto.jpg' }} />)
 
     expect(screen.getByText('foto.jpg')).toBeInTheDocument()
-    expect(screen.getByText('Imagen:')).toBeInTheDocument()
+    expect(screen.queryByText(/:$/)).not.toBeInTheDocument()
   })
 })

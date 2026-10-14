@@ -1,13 +1,9 @@
 import type {
-  AttachmentStatus,
   ConversationCustomer,
   ConversationListItem,
+  ConversationMessage,
   ConversationPriority,
   ConversationSentiment,
-  MessageContent,
-  MessageSenderType,
-  MessageStatus,
-  MessageType,
 } from '@chat-crm/contracts'
 
 export type {
@@ -16,38 +12,21 @@ export type {
   ConversationStatus,
 } from '@chat-crm/contracts'
 
-/** Conversation message as it travels over REST/socket (v2 broadcast payload). */
-export interface ChatMessage {
-  id: string
-  conversationId: string
-  /**
-   * Front-generated send id: present on optimistic rows and on outbound rows
-   * saved by the API, so the thread reconciles without duplicating.
-   */
-  clientMessageId?: string | null
-  timestamp: Date
-  status: MessageStatus
-  sender: {
-    id: string
-    type: MessageSenderType
-  }
-  msg: {
-    type: MessageType
-    mediaUrl?: string | null
-    /**
-     * Attachment lifecycle as sent by the API (`pending → ready | failed`).
-     * Optional: payloads without it fall back to `mediaUrl` presence.
-     */
-    attachmentStatus?: AttachmentStatus | null
-    /**
-     * Attachment metadata exposed by the API for the file card (`null` when
-     * unknown, e.g. legacy rows or outbound files without a stored size).
-     */
-    mimeType?: string | null
-    sizeBytes?: number | null
-    content: MessageContent
-  }
+/**
+ * What only this client knows about a row it is sending: the local preview
+ * of the file (`blob:` URL) and the upload progress. Never sent by the API.
+ */
+export interface LocalSendState {
+  previewUrl?: string
+  /** Upload progress in [0, 1] while the file goes to the API. */
+  progress?: number
 }
+
+/**
+ * Conversation message as REST and the socket deliver it (shared contract),
+ * plus the local send state of rows this client is sending.
+ */
+export type ChatMessage = ConversationMessage & { local?: LocalSendState }
 
 /** Miembro de la empresa dueño de una conversación. */
 export interface ChatMember {

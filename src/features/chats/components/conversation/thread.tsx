@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ComponentProps } from 'react'
 import { format } from 'date-fns'
 import { ArrowDownIcon, MessageSquareDashed } from 'lucide-react'
 
@@ -102,7 +102,7 @@ function resolveSender(
 
   if (isMine) {
     const memberName = currentMemberName ?? 'Tú'
-    return { name: 'Tú', initials: initials(memberName) }
+    return { name: 'Tú', initials: initials(memberName), isSelf: true }
   }
 
   return { name: 'Agente', initials: initials('Agente') }
@@ -115,6 +115,7 @@ export function ConversationThread({
   currentMemberId,
   currentMemberName,
   onRetry,
+  onResendSticker,
   className,
 }: {
   messages: ChatMessage[]
@@ -123,6 +124,7 @@ export function ConversationThread({
   currentMemberId?: string
   currentMemberName?: string
   onRetry: (message: ChatMessage) => void
+  onResendSticker?: ComponentProps<typeof MessageRow>['onResendSticker']
   className?: string
 }) {
   const rows = useMemo(() => buildRows(messages), [messages])
@@ -178,10 +180,11 @@ export function ConversationThread({
                     </MessageScrollerItem>
                   ) : (
                     <MessageScrollerItem key={row.id} messageId={row.id}>
-                      <div className='flex flex-col gap-3'>
-                        {row.messages.map((message) => (
+                      <div className='flex flex-col gap-1'>
+                        {row.messages.map((message, index) => (
                           <MessageRow
                             key={message.id}
+                            showSender={index === 0}
                             message={message}
                             sender={resolveSender(message, {
                               customerName,
@@ -189,6 +192,7 @@ export function ConversationThread({
                               currentMemberName,
                             })}
                             onRetry={onRetry}
+                            onResendSticker={onResendSticker}
                           />
                         ))}
                       </div>

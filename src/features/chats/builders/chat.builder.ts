@@ -12,6 +12,8 @@ export const chatBuilder = {
     return {
       id: crypto.randomUUID() + '-temp',
       isDraft: true,
+      // New conversations start on WhatsApp, the only channel today.
+      channelType: 'whatsapp',
       status: 'open',
       createdAt: new Date(),
       customer,

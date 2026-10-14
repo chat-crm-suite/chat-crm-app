@@ -19,6 +19,7 @@ function makeChat(overrides: Partial<Chat> = {}): Chat {
       content: 'tienen stock del modelo X?',
       datetime: new Date(NOW - 2 * 60_000),
     },
+    channelType: 'whatsapp',
     status: 'open',
     createdAt: new Date(NOW - 60 * 60_000),
     ...overrides,
@@ -60,16 +61,17 @@ describe('ChatListItem', () => {
       })
     )
 
-    expect(screen.getByText('Imagen:')).toBeInTheDocument()
+    expect(screen.getByText('Foto:')).toBeInTheDocument()
     expect(screen.getByText('foto.jpg')).toBeInTheDocument()
   })
 
-  it('keeps the attachment kind after a reload (no live type)', () => {
+  it('keeps the attachment kind after a reload (REST type)', () => {
     renderItem(
       makeChat({
         preview: {
           content: 'transferencia.pdf',
           datetime: new Date(NOW - 5 * 60_000),
+          type: 'document',
         },
       })
     )

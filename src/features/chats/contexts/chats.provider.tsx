@@ -1,67 +1,39 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { Chat, ChatSentiment } from '../types/chat.domain'
+import { ChatsContext } from './chats.context'
 
-type ChatBoxContextType = {
-  chatSelected: Chat | null
-  setChatSelected: (chat: Chat | null) => void
-  sentimentData?: ChatSentiment
-  setSentimentData: (data?: ChatSentiment) => void
-  chatId?: string
-  setChatId: (id: string) => void
-  mobile: boolean
-  setMobile: (m: boolean) => void
-  searchClientDialog: boolean
-  setSearchClientDialog: (b: boolean) => void
+/** Neutral tone until the open conversation's sentiment loads. */
+const NEUTRAL_SENTIMENT: ChatSentiment = {
+  avgPos: 0,
+  avgNeg: 0,
+  avgNeu: 0,
+  totalMessages: 0,
+  dominant: 'NEU',
 }
 
-const ChatsContext = createContext<ChatBoxContextType | undefined>(undefined)
-
-export const ChatsProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
-  const [chatId, setChatId] = useState<string | undefined>(undefined)
+/** UI state shared by the chat list, the open chat and the new-chat dialog. */
+export function ChatsProvider({ children }: { children: ReactNode }) {
   const [mobile, setMobile] = useState(false)
   const [searchClientDialog, setSearchClientDialog] = useState(false)
   const [chatSelected, setChatSelected] = useState<Chat | null>(null)
   const [sentimentData, setSentimentData] = useState<ChatSentiment | undefined>(
-    {
-      avgPos: 0,
-      avgNeg: 0,
-      avgNeu: 0,
-      totalMessages: 0,
-      dominant: 'NEU',
-    }
+    NEUTRAL_SENTIMENT
   )
 
-  return (
-    <ChatsContext
-      value={{
-        chatSelected,
-        setChatSelected,
-        sentimentData,
-        setSentimentData,
-        chatId,
-        setChatId,
-        searchClientDialog,
-        setSearchClientDialog,
-        mobile,
-        setMobile,
-      }}
-    >
-      {children}
-    </ChatsContext>
+  // Stable value: consumers re-render only when something they read changed.
+  const value = useMemo(
+    () => ({
+      chatSelected,
+      setChatSelected,
+      sentimentData,
+      setSentimentData,
+      searchClientDialog,
+      setSearchClientDialog,
+      mobile,
+      setMobile,
+    }),
+    [chatSelected, sentimentData, searchClientDialog, mobile]
   )
-}
 
-export const useChats = () => {
-  const context = useContext(ChatsContext)
-
-  if (!context) throw new Error('useChats must be used within ChatsProvider')
-
-  return context
+  return <ChatsContext value={value}>{children}</ChatsContext>
 }

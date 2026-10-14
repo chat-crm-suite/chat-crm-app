@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFakeSocket, emittedPayloads } from '@/test/fake-socket'
+import { makeMessage, messageWith, readyMedia } from '../testing/messages'
 import type { ChatMessage } from '../types/chat.domain'
 import { ChatSocketEvents } from '../types/socket.api'
 import { useChatThread } from './use-chat-thread'
@@ -10,351 +11,361 @@ import { useChatThread } from './use-chat-thread'
 const mocks = vi.hoisted(() => ({
   useSocket: vi.fn(),
   getMessages: vi.fn(),
+  upload: vi.fn(),
+  toast: { error: vi.fn(), info: vi.fn() },
 }))
 
 vi.mock('@/context/socket-provider', () => ({ useSocket: mocks.useSocket }))
+vi.mock('sonner', () => ({ toast: mocks.toast }))
 vi.mock('../api', () => ({
-  api: { queries: { messages: { get: mocks.getMessages } } },
+  api: {
+    queries: { messages: { get: mocks.getMessages } },
+    commands: { messages: { upload: mocks.upload } },
+  },
 }))
+
+const UPLOAD_ID = '0b9f6a3e-5c1d-4f7e-9a2b-3c4d5e6f7a8b'
 
 const identity = {
   companyId: 'company-1',
   sender: { id: 'member-1', type: 'member' as const },
-  to: '+51999888777',
 }
 
-/** Shared fake socket plus this suite's send-payload probe. */
-function createThreadSocket(connected = true) {
-  const { socket, fire } = createFakeSocket(connected)
-
-  return {
-    socket,
-    fire,
-    sentPayloads: () => emittedPayloads(socket, ChatSocketEvents.sendMessage),
-  }
-}
-
-function createWrapper() {
+function setup(options: { connected?: boolean; history?: ChatMessage[] } = {}) {
+  mocks.getMessages.mockResolvedValue(options.history ?? [])
+  const fake = createFakeSocket(options.connected ?? true)
+  mocks.useSocket.mockReturnValue({ socket: fake.socket, isConnected: true })
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  const hook = renderHook(
+    ({ id }: { id: string }) => useChatThread(id, identity),
+    { wrapper, initialProps: { id: 'c-1' } }
+  )
 
   return {
-    queryClient,
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
+    ...fake,
+    hook,
+    thread: () =>
+      queryClient.getQueryData<ChatMessage[]>(['chat', 'c-1', 'messages']) ?? [],
+    sends: () => emittedPayloads(fake.socket, ChatSocketEvents.sendMessage),
+    loaded: () => waitFor(() => expect(mocks.getMessages).toHaveBeenCalled()),
   }
 }
 
-const thread = (queryClient: QueryClient) =>
-  queryClient.getQueryData<ChatMessage[]>(['chat', 'c-1', 'messages']) ?? []
-
-const historyMessage: ChatMessage = {
-  id: 'server-1',
-  conversationId: 'c-1',
-  timestamp: new Date('2026-10-06T09:00:00'),
-  status: 'pending',
-  sender: { id: 'member-1', type: 'member' },
-  msg: { type: 'text', mediaUrl: null, content: { body: 'Hola' } },
-}
-
-const historyImage: ChatMessage = {
-  id: 'server-2',
-  conversationId: 'c-1',
-  timestamp: new Date('2026-10-06T09:01:00'),
-  status: 'delivered',
-  sender: { id: 'customer-1', type: 'customer' },
-  msg: {
-    type: 'image',
-    mediaUrl: null,
-    attachmentStatus: 'pending',
-    content: { caption: 'foto' },
-  },
-}
-
-const historyFailed: ChatMessage = {
-  id: 'server-7',
-  conversationId: 'c-1',
-  clientMessageId: 'client-7',
-  timestamp: new Date('2026-10-05T18:00:00'),
-  status: 'failed',
-  sender: { id: 'member-1', type: 'member' },
-  msg: { type: 'text', mediaUrl: null, content: { body: 'Hola de ayer' } },
-}
+const photo = (name = 'foto.png') =>
+  new File([new Uint8Array([1, 2, 3])], name, { type: 'image/png' })
 
 describe('useChatThread', () => {
+  beforeAll(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:preview')
+    URL.revokeObjectURL = vi.fn()
+  })
+  afterAll(() => {
+    vi.restoreAllMocks()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getMessages.mockResolvedValue([])
+    mocks.upload.mockResolvedValue({ uploadId: UPLOAD_ID })
   })
 
-  it('shows the sent message as pending immediately and emits it with a client id', async () => {
-    const { socket } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
+  describe('text', () => {
+    it('shows the message as pending at once and sends it with a client id', async () => {
+      const t = setup()
+      await t.loaded()
 
-    const { result } = renderHook(() => useChatThread('c-1', identity), {
-      wrapper,
-    })
-    await waitFor(() => expect(mocks.getMessages).toHaveBeenCalledWith('c-1'))
+      act(() => t.hook.result.current.send({ type: 'text', text: 'Hola Rosa' }))
 
-    act(() => result.current.send('Hola Rosa'))
-
-    const messages = thread(queryClient)
-    expect(messages).toHaveLength(1)
-    expect(messages[0]).toMatchObject({
-      conversationId: 'c-1',
-      status: 'pending',
-      sender: { id: 'member-1', type: 'member' },
-      msg: { type: 'text', content: { body: 'Hola Rosa' } },
-    })
-    expect(messages[0].clientMessageId).toBeTruthy()
-
-    expect(socket.emit).toHaveBeenCalledWith(
-      ChatSocketEvents.sendMessage,
-      expect.objectContaining({
-        room: 'c-1',
-        companyId: 'company-1',
-        clientMessageId: messages[0].clientMessageId,
-        to: '+51999888777',
-        sender: { id: 'member-1', type: 'member' },
-        msg: { type: 'text', content: { body: 'Hola Rosa' } },
-      })
-    )
-  })
-
-  it('reconciles the saved broadcast with the optimistic row without duplicating it', async () => {
-    const { socket, fire } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
-
-    const { result } = renderHook(() => useChatThread('c-1', identity), {
-      wrapper,
-    })
-    await waitFor(() => expect(mocks.getMessages).toHaveBeenCalledWith('c-1'))
-
-    act(() => result.current.send('Hola Rosa'))
-    const clientMessageId = thread(queryClient)[0].clientMessageId
-
-    act(() => {
-      fire(ChatSocketEvents.broadcast, {
-        id: 'server-1',
-        conversationId: 'c-1',
-        clientMessageId,
-        timestamp: new Date('2026-10-06T09:00:01'),
+      expect(t.thread()[0]).toMatchObject({
         status: 'pending',
         sender: { id: 'member-1', type: 'member' },
-        msg: { type: 'text', mediaUrl: null, content: { body: 'Hola Rosa' } },
-      } satisfies ChatMessage)
+        msg: { type: 'text', text: 'Hola Rosa' },
+      })
+      await waitFor(() => expect(t.sends()).toHaveLength(1))
+      expect(t.sends()[0]).toEqual({
+        room: 'c-1',
+        companyId: 'company-1',
+        clientMessageId: t.thread()[0].clientMessageId,
+        msg: { type: 'text', text: 'Hola Rosa' },
+      })
     })
 
-    const messages = thread(queryClient)
-    expect(messages).toHaveLength(1)
-    expect(messages[0].id).toBe('server-1')
-    expect(messages[0].clientMessageId).toBe(clientMessageId)
+    it('reconciles the saved broadcast with the optimistic row', async () => {
+      const t = setup()
+      await t.loaded()
+      act(() => t.hook.result.current.send({ type: 'text', text: 'Hola' }))
+      const clientMessageId = t.thread()[0].clientMessageId
+
+      act(() =>
+        t.fire(
+          ChatSocketEvents.broadcast,
+          makeMessage({
+            id: 'server-1',
+            clientMessageId,
+            status: 'pending',
+            sender: { id: 'member-1', type: 'member' },
+          })
+        )
+      )
+
+      expect(t.thread()).toHaveLength(1)
+      expect(t.thread()[0].id).toBe('server-1')
+    })
   })
 
-  it('advances the delivery tick from a live status patch', async () => {
-    mocks.getMessages.mockResolvedValue([historyMessage])
-    const { socket, fire } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
+  describe('acknowledgement', () => {
+    it('fails the row at once when the API refuses the send', async () => {
+      const t = setup()
+      t.setAck(() =>
+        Promise.resolve({ ok: false, code: 'forbidden', message: 'denied' })
+      )
+      await t.loaded()
 
-    renderHook(() => useChatThread('c-1', identity), { wrapper })
-    await waitFor(() => expect(thread(queryClient)).toHaveLength(1))
+      act(() => t.hook.result.current.send({ type: 'text', text: 'Hola' }))
 
-    act(() => {
-      fire(ChatSocketEvents.messageStatus, {
-        id: 'server-1',
-        conversationId: 'c-1',
+      await waitFor(() => expect(t.thread()[0].status).toBe('failed'))
+      expect(mocks.toast.error).toHaveBeenCalledWith('No se pudo enviar el mensaje', {
+        description: 'Ya no tienes acceso a esta conversación.',
+      })
+    })
+
+    it('fails the row when the acknowledgement never comes', async () => {
+      const t = setup()
+      t.setAck(() => Promise.reject(new Error('operation has timed out')))
+      await t.loaded()
+
+      act(() => t.hook.result.current.send({ type: 'text', text: 'Hola' }))
+
+      await waitFor(() => expect(t.thread()[0].status).toBe('failed'))
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'No se pudo enviar el mensaje',
+        expect.objectContaining({ description: expect.stringContaining('Sin respuesta') as string })
+      )
+    })
+  })
+
+  describe('files', () => {
+    it('uploads, shows progress on the local preview and sends by uploadId', async () => {
+      const t = setup()
+      let reportProgress: (progress: number) => void = () => {}
+      let finish: (value: { uploadId: string }) => void = () => {}
+      mocks.upload.mockImplementation(
+        (_id, _file, options: { onProgress: (progress: number) => void }) => {
+          reportProgress = options.onProgress
+          return new Promise((resolve) => (finish = resolve))
+        }
+      )
+      await t.loaded()
+      const file = photo()
+
+      act(() =>
+        t.hook.result.current.send({ type: 'image', file, caption: 'Mira', width: 2, height: 1 })
+      )
+
+      expect(t.thread()[0]).toMatchObject({
+        status: 'pending',
+        msg: {
+          type: 'image',
+          caption: 'Mira',
+          media: { status: 'pending', width: 2, height: 1, mimeType: 'image/png' },
+        },
+        local: { previewUrl: 'blob:preview', progress: 0 },
+      })
+      expect(mocks.upload).toHaveBeenCalledWith(
+        'c-1',
+        { file, kind: 'image', durationMs: undefined },
+        expect.any(Object)
+      )
+
+      act(() => reportProgress(0.5))
+      expect(t.thread()[0].local?.progress).toBe(0.5)
+      expect(t.sends()).toHaveLength(0)
+
+      await act(async () => finish({ uploadId: UPLOAD_ID }))
+      await waitFor(() => expect(t.sends()).toHaveLength(1))
+      expect(t.sends()[0]).toMatchObject({
+        msg: { type: 'image', uploadId: UPLOAD_ID, caption: 'Mira' },
+      })
+    })
+
+    it('uploads in parallel but sends in the order they were asked', async () => {
+      const t = setup()
+      const finishers = new Map<string, (value: { uploadId: string }) => void>()
+      mocks.upload.mockImplementation(
+        (_id, upload: { file: File }) =>
+          new Promise((resolve) => finishers.set(upload.file.name, resolve))
+      )
+      await t.loaded()
+
+      act(() => {
+        t.hook.result.current.send({ type: 'image', file: photo('1.png') })
+        t.hook.result.current.send({ type: 'image', file: photo('2.png') })
+      })
+      expect(mocks.upload).toHaveBeenCalledTimes(2)
+
+      // The second file finishes first; it still leaves second.
+      await act(async () => finishers.get('2.png')?.({ uploadId: '2b9f6a3e-5c1d-4f7e-9a2b-3c4d5e6f7a8b' }))
+      await act(async () => finishers.get('1.png')?.({ uploadId: UPLOAD_ID }))
+
+      await waitFor(() => expect(t.sends()).toHaveLength(2))
+      expect(t.sends().map((payload) => (payload as { msg: { uploadId: string } }).msg.uploadId)).toEqual([
+        UPLOAD_ID,
+        '2b9f6a3e-5c1d-4f7e-9a2b-3c4d5e6f7a8b',
+      ])
+    })
+
+    it('fails the row with the API reason when the upload is refused', async () => {
+      const t = setup()
+      mocks.upload.mockRejectedValue(new Error('El video supera 16 MB'))
+      await t.loaded()
+
+      act(() => t.hook.result.current.send({ type: 'video', file: photo('v.mp4') }))
+
+      await waitFor(() => expect(t.thread()[0].status).toBe('failed'))
+      expect(t.sends()).toHaveLength(0)
+    })
+
+    it('retries without uploading the file again', async () => {
+      const t = setup()
+      t.setAck(() => Promise.resolve({ ok: false, code: 'internal', message: 'x' }))
+      await t.loaded()
+
+      act(() => t.hook.result.current.send({ type: 'document', file: photo('a.pdf') }))
+      await waitFor(() => expect(t.thread()[0].status).toBe('failed'))
+
+      t.setAck(() => Promise.resolve({ ok: true }))
+      act(() => t.hook.result.current.retry(t.thread()[0]))
+
+      await waitFor(() => expect(t.sends()).toHaveLength(2))
+      expect(mocks.upload).toHaveBeenCalledTimes(1)
+      expect(t.sends()[1]).toEqual(t.sends()[0])
+      expect(t.thread()[0].status).toBe('pending')
+    })
+  })
+
+  describe('retry from history', () => {
+    it('rebuilds a text send with its original client id', async () => {
+      const t = setup({
+        history: [
+          makeMessage({
+            id: 'server-7',
+            clientMessageId: 'client-7',
+            status: 'failed',
+            sender: { id: 'member-1', type: 'member' },
+            msg: { type: 'text', text: 'Hola de ayer' },
+          }),
+        ],
+      })
+      await waitFor(() => expect(t.thread()).toHaveLength(1))
+
+      act(() => t.hook.result.current.retry(t.thread()[0]))
+
+      await waitFor(() => expect(t.sends()).toHaveLength(1))
+      expect(t.sends()[0]).toEqual({
+        room: 'c-1',
+        companyId: 'company-1',
+        clientMessageId: 'client-7',
+        msg: { type: 'text', text: 'Hola de ayer' },
+      })
+    })
+
+    it('asks to attach the file again for a media row it no longer holds', async () => {
+      const t = setup({
+        history: [
+          messageWith(
+            { type: 'image', media: readyMedia(), caption: null },
+            { id: 'server-8', clientMessageId: 'client-8', status: 'failed', sender: { id: 'member-1', type: 'member' } }
+          ),
+        ],
+      })
+      await waitFor(() => expect(t.thread()).toHaveLength(1))
+
+      act(() => t.hook.result.current.retry(t.thread()[0]))
+
+      expect(mocks.toast.info).toHaveBeenCalledWith('Vuelve a adjuntar el archivo para reenviarlo.')
+      expect(t.sends()).toHaveLength(0)
+    })
+  })
+
+  describe('live patches', () => {
+    it('advances ticks and publishes attachments of this conversation only', async () => {
+      const t = setup({
+        history: [
+          messageWith(
+            { type: 'image', media: readyMedia({ status: 'pending', url: null }), caption: null },
+            { id: 'server-2', status: 'pending', sender: { id: 'member-1', type: 'member' } }
+          ),
+        ],
+      })
+      await waitFor(() => expect(t.thread()).toHaveLength(1))
+      const status = (conversationId: string) => ({
+        id: 'server-2',
+        conversationId,
         clientMessageId: null,
         status: 'sent',
-        at: new Date('2026-10-06T09:00:02'),
+        at: new Date(),
+      })
+
+      act(() => t.fire(ChatSocketEvents.messageStatus, status('c-2')))
+      expect(t.thread()[0].status).toBe('pending')
+
+      act(() => t.fire(ChatSocketEvents.messageStatus, status('c-1')))
+      act(() =>
+        t.fire(ChatSocketEvents.messageAttachment, {
+          id: 'server-2',
+          conversationId: 'c-1',
+          attachmentId: 'att-1',
+          status: 'ready',
+          url: '/attachments/att-1',
+          at: new Date(),
+        })
+      )
+
+      expect(t.thread()[0].status).toBe('sent')
+      expect(t.thread()[0].msg).toMatchObject({
+        media: { status: 'ready', url: '/attachments/att-1' },
       })
     })
-
-    expect(thread(queryClient)[0].status).toBe('sent')
   })
 
-  it('applies a live attachment patch without reloading', async () => {
-    mocks.getMessages.mockResolvedValue([historyImage])
-    const { socket, fire } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
+  describe('room membership', () => {
+    it('joins on open, rejoins after a reconnect and follows a switch', async () => {
+      const t = setup()
+      const joins = () =>
+        t.socket.emit.mock.calls.filter(([event]) => event === ChatSocketEvents.join)
 
-    renderHook(() => useChatThread('c-1', identity), { wrapper })
-    await waitFor(() => expect(thread(queryClient)).toHaveLength(1))
+      await waitFor(() =>
+        expect(t.socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
+          room: 'c-1',
+          companyId: 'company-1',
+        })
+      )
 
-    act(() => {
-      fire(ChatSocketEvents.messageAttachment, {
-        id: 'server-2',
-        conversationId: 'c-1',
-        attachmentId: 'att-1',
-        status: 'ready',
-        url: '/uploads/photo.jpg',
-        mimeType: 'image/jpeg',
-        sizeBytes: 1234,
-        at: new Date('2026-10-06T09:01:02'),
-      })
+      act(() => t.fire('connect'))
+      expect(joins()).toHaveLength(2)
+
+      t.hook.rerender({ id: 'c-2' })
+      await waitFor(() =>
+        expect(t.socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
+          room: 'c-2',
+          companyId: 'company-1',
+        })
+      )
     })
 
-    expect(thread(queryClient)[0].msg.mediaUrl).toBe('/uploads/photo.jpg')
-    expect(thread(queryClient)[0].msg.attachmentStatus).toBe('ready')
-    expect(thread(queryClient)[0].msg.mimeType).toBe('image/jpeg')
-    expect(thread(queryClient)[0].msg.sizeBytes).toBe(1234)
-  })
+    it('joins once the socket connects after opening offline', () => {
+      const t = setup({ connected: false })
 
-  it('ignores live patches from another conversation', async () => {
-    mocks.getMessages.mockResolvedValue([historyMessage])
-    const { socket, fire } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
+      expect(t.socket.emit).not.toHaveBeenCalled()
+      act(() => t.fire('connect'))
 
-    renderHook(() => useChatThread('c-1', identity), { wrapper })
-    await waitFor(() => expect(thread(queryClient)).toHaveLength(1))
-
-    act(() => {
-      fire(ChatSocketEvents.messageStatus, {
-        id: 'server-1',
-        conversationId: 'c-2',
-        clientMessageId: null,
-        status: 'read',
-        at: new Date('2026-10-06T09:00:02'),
-      })
-    })
-
-    expect(thread(queryClient)[0].status).toBe('pending')
-  })
-
-  it('retries a failed send with the same client id and the stored payload', async () => {
-    const { socket, fire, sentPayloads } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
-
-    const { result } = renderHook(() => useChatThread('c-1', identity), {
-      wrapper,
-    })
-    await waitFor(() => expect(mocks.getMessages).toHaveBeenCalledWith('c-1'))
-
-    act(() => result.current.send('Hola Rosa'))
-    const [payload] = sentPayloads()
-    const clientMessageId = thread(queryClient)[0].clientMessageId
-
-    act(() => {
-      fire(ChatSocketEvents.messageStatus, {
-        id: 'server-1',
-        conversationId: 'c-1',
-        clientMessageId,
-        status: 'failed',
-        at: new Date('2026-10-06T09:00:02'),
-      })
-    })
-    expect(thread(queryClient)[0].status).toBe('failed')
-
-    act(() => result.current.retry(thread(queryClient)[0]))
-
-    expect(sentPayloads()).toHaveLength(2)
-    expect(sentPayloads()[1]).toBe(payload)
-    expect(thread(queryClient)[0].status).toBe('pending')
-
-    // Retrying again reuses the same id: the thread still holds one row.
-    act(() => result.current.retry(thread(queryClient)[0]))
-    expect(thread(queryClient)).toHaveLength(1)
-    expect(sentPayloads()[2]).toBe(payload)
-  })
-
-  it('retries a failed message loaded from history with the same client id', async () => {
-    mocks.getMessages.mockResolvedValue([historyFailed])
-    const { socket, sentPayloads } = createThreadSocket()
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper, queryClient } = createWrapper()
-
-    const { result } = renderHook(() => useChatThread('c-1', identity), {
-      wrapper,
-    })
-    await waitFor(() => expect(thread(queryClient)).toHaveLength(1))
-
-    act(() => result.current.retry(thread(queryClient)[0]))
-
-    expect(sentPayloads()).toHaveLength(1)
-    expect(sentPayloads()[0]).toMatchObject({
-      room: 'c-1',
-      companyId: 'company-1',
-      clientMessageId: 'client-7',
-      to: '+51999888777',
-      sender: { id: 'member-1', type: 'member' },
-      msg: { type: 'text', content: { body: 'Hola de ayer' } },
-    })
-    expect(thread(queryClient)[0].status).toBe('pending')
-  })
-
-  it('joins the conversation room on open and rejoins after a reconnect', async () => {
-    const { socket, fire } = createThreadSocket(true)
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper } = createWrapper()
-
-    renderHook(() => useChatThread('c-1', identity), { wrapper })
-
-    await waitFor(() =>
-      expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
+      expect(t.socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
         room: 'c-1',
         companyId: 'company-1',
       })
-    )
-
-    act(() => fire('connect'))
-
-    const joins = socket.emit.mock.calls.filter(
-      ([event]) => event === ChatSocketEvents.join
-    )
-    expect(joins).toHaveLength(2)
-  })
-
-  it('joins the room once the socket connects after opening offline', async () => {
-    const { socket, fire } = createThreadSocket(false)
-    mocks.useSocket.mockReturnValue({ socket, isConnected: false })
-    const { wrapper } = createWrapper()
-
-    renderHook(() => useChatThread('c-1', identity), { wrapper })
-
-    expect(socket.emit).not.toHaveBeenCalledWith(ChatSocketEvents.join, {
-      room: 'c-1',
-      companyId: 'company-1',
     })
-
-    act(() => fire('connect'))
-
-    expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
-      room: 'c-1',
-      companyId: 'company-1',
-    })
-  })
-
-  it('joins the newly opened conversation room when the user switches', async () => {
-    const { socket } = createThreadSocket(true)
-    mocks.useSocket.mockReturnValue({ socket, isConnected: true })
-    const { wrapper } = createWrapper()
-
-    const { rerender } = renderHook(
-      ({ id }: { id: string }) => useChatThread(id, identity),
-      { wrapper, initialProps: { id: 'c-1' } }
-    )
-
-    await waitFor(() =>
-      expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
-        room: 'c-1',
-        companyId: 'company-1',
-      })
-    )
-
-    rerender({ id: 'c-2' })
-
-    await waitFor(() =>
-      expect(socket.emit).toHaveBeenCalledWith(ChatSocketEvents.join, {
-        room: 'c-2',
-        companyId: 'company-1',
-      })
-    )
   })
 })

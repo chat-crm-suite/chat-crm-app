@@ -44,10 +44,16 @@ function advanceStatus(
   return STATUS_RANK[incoming] > STATUS_RANK[current] ? incoming : current
 }
 
+/** Media of a row whose file the API can already serve. */
+function hasServerMedia(message: ChatMessage): boolean {
+  return 'media' in message.msg && message.msg.media.status === 'ready'
+}
+
 /**
  * Adds a message to the thread (or merges it with its existing row). Dedupe is
  * by `id` first and then by `clientMessageId`, so the optimistic pending row
- * and its saved broadcast collapse into one without flicker.
+ * and its saved broadcast collapse into one without flicker: the local file
+ * preview stays until the API serves the file itself.
  */
 export function upsertMessage(
   messages: ChatMessage[],
@@ -57,14 +63,21 @@ export function upsertMessage(
 
   if (index === -1) return sortChronologically([...messages, incoming])
 
-  const next = [...messages]
-  next[index] = {
+  const current = messages[index]
+  const local =
+    incoming.local ?? (hasServerMedia(incoming) ? undefined : current.local)
+  const merged: ChatMessage = {
     ...incoming,
-    status: advanceStatus(next[index].status, incoming.status),
+    status: advanceStatus(current.status, incoming.status),
   }
+  if (local) merged.local = local
 
-  return sortChronologically(next)
+  const updated = [...messages]
+  updated[index] = merged
+
+  return sortChronologically(updated)
 }
+
 
 /**
  * Applies one `conversation:message:status` patch (delivery tick). The row is
@@ -119,17 +132,66 @@ export function applyAttachmentPatch(
   if (index === -1) return messages
 
   const current = messages[index]
-  const next = [...messages]
-  next[index] = {
+  if (!('media' in current.msg)) return messages
+
+  const { media } = current.msg
+  const updated = [...messages]
+  updated[index] = {
     ...current,
     msg: {
       ...current.msg,
-      mediaUrl: patch.url ?? current.msg.mediaUrl ?? null,
-      attachmentStatus: patch.status,
-      mimeType: patch.mimeType ?? current.msg.mimeType ?? null,
-      sizeBytes: patch.sizeBytes ?? current.msg.sizeBytes ?? null,
+      media: {
+        ...media,
+        attachmentId: patch.attachmentId,
+        url: patch.url ?? media.url,
+        status: patch.status,
+        mimeType: patch.mimeType ?? media.mimeType,
+        sizeBytes: patch.sizeBytes ?? media.sizeBytes,
+      },
     },
   }
 
-  return next
+  return updated
+}
+
+/** Upload progress of an optimistic row, in [0, 1]. */
+export function applyUploadProgress(
+  messages: ChatMessage[],
+  clientMessageId: string,
+  progress: number
+): ChatMessage[] {
+  const index = messages.findIndex(
+    (message) => message.clientMessageId === clientMessageId
+  )
+  if (index === -1) return messages
+
+  const updated = [...messages]
+  updated[index] = {
+    ...messages[index],
+    local: { ...messages[index].local, progress },
+  }
+
+  return updated
+}
+
+/**
+ * A send that never reached the API (refused acknowledgement, timeout, failed
+ * upload) fails locally: no server patch will ever arrive for it.
+ */
+export function markMessageFailed(
+  messages: ChatMessage[],
+  ref: MessageRef
+): ChatMessage[] {
+  const index = messages.findIndex((message) => matchesRef(message, ref))
+  if (index === -1) return messages
+
+  const current = messages[index]
+  const updated = [...messages]
+  updated[index] = {
+    ...current,
+    status: 'failed',
+    local: current.local && { ...current.local, progress: undefined },
+  }
+
+  return updated
 }

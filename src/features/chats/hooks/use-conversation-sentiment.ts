@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSocket } from '@/context/socket-provider'
 import { getConversationSentiment } from '@/services/chat.service'
-import { useChats } from '../contexts/chats.provider'
+import { useChats } from '../contexts/chats.context'
 import { ChatSocketEvents as Events } from '../types/socket.api'
 
 /**

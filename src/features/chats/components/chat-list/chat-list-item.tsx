@@ -1,7 +1,7 @@
 import { parsePhoneNumber } from 'react-phone-number-input'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { useChats } from '../../contexts/chats.provider'
+import { useChats } from '../../contexts/chats.context'
 import {
   formatFullStamp,
   formatRelativeTime,

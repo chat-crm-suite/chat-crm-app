@@ -13,6 +13,7 @@ const minutesAgo = (minutes: number) =>
 function makeChat(overrides: Partial<Chat> = {}): Chat {
   return {
     id: 'c-1',
+    channelType: 'whatsapp',
     status: 'open',
     createdAt: new Date('2026-10-01T08:00:00'),
     customer: {
@@ -32,7 +33,8 @@ function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     timestamp: minutesAgo(9 * 60 + 28),
     status: 'read',
     sender: { id: 'customer-1', type: 'customer' },
-    msg: { type: 'text', mediaUrl: null, content: { body: 'Hola' } },
+    clientMessageId: null,
+    msg: { type: 'text', text: 'Hola' },
     ...overrides,
   }
 }

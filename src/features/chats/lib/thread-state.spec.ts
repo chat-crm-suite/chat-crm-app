@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage } from '../types/chat.domain'
+import { makeMessage, messageWith, readyMedia } from '../testing/messages'
 import {
   applyAttachmentPatch,
   applyStatusPatch,
+  applyUploadProgress,
+  markMessageFailed,
   markMessagePending,
   upsertMessage,
 } from './thread-state'
 
-function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
-  return {
-    id: 'm-1',
-    conversationId: 'c-1',
-    timestamp: new Date('2026-10-06T09:00:00'),
-    status: 'delivered',
-    sender: { id: 'customer-1', type: 'customer' },
-    msg: { type: 'text', mediaUrl: null, content: { body: 'Hola' } },
-    ...overrides,
-  }
-}
+const pendingImage = () =>
+  messageWith(
+    {
+      type: 'image',
+      media: readyMedia({ status: 'pending', url: null, attachmentId: null }),
+      caption: 'foto',
+    },
+    { id: 'server-1' }
+  )
 
 describe('upsertMessage', () => {
   it('reconciles the optimistic row with the saved broadcast by clientMessageId', () => {
@@ -89,6 +89,32 @@ describe('upsertMessage', () => {
 
     expect(thread).toHaveLength(1)
     expect(thread[0].status).toBe('sent')
+  })
+
+  it('keeps the local preview until the API serves the file', () => {
+    const optimistic = messageWith(
+      { type: 'image', media: readyMedia({ status: 'pending', url: null }), caption: null },
+      {
+        id: 'client-1',
+        clientMessageId: 'client-1',
+        status: 'pending',
+        local: { previewUrl: 'blob:local', progress: 1 },
+      }
+    )
+    const savedPending = messageWith(
+      { type: 'image', media: readyMedia({ status: 'pending', url: null }), caption: null },
+      { id: 'server-1', clientMessageId: 'client-1', status: 'pending' }
+    )
+    const savedReady = messageWith(
+      { type: 'image', media: readyMedia(), caption: null },
+      { id: 'server-1', clientMessageId: 'client-1', status: 'sent' }
+    )
+
+    const reconciled = upsertMessage([optimistic], savedPending)
+    expect(reconciled[0].local?.previewUrl).toBe('blob:local')
+
+    const served = upsertMessage(reconciled, savedReady)
+    expect(served[0].local).toBeUndefined()
   })
 })
 
@@ -193,45 +219,32 @@ describe('markMessagePending', () => {
 
 describe('applyAttachmentPatch', () => {
   it('publishes the stored file when the async enrichment turns ready', () => {
-    const pending = makeMessage({
-      id: 'server-1',
-      msg: {
-        type: 'image',
-        mediaUrl: null,
-        attachmentStatus: 'pending',
-        content: { caption: 'foto' },
-      },
-    })
-
-    const thread = applyAttachmentPatch([pending], {
+    const thread = applyAttachmentPatch([pendingImage()], {
       id: 'server-1',
       conversationId: 'c-1',
-      attachmentId: 'att-1',
+      attachmentId: 'att-7',
       status: 'ready',
-      url: '/uploads/photo.jpg',
-      mimeType: 'image/jpeg',
+      url: '/attachments/att-7',
+      mimeType: 'image/png',
       sizeBytes: 1234,
       at: new Date('2026-10-06T09:00:02'),
     })
 
-    expect(thread[0].msg.mediaUrl).toBe('/uploads/photo.jpg')
-    expect(thread[0].msg.attachmentStatus).toBe('ready')
-    expect(thread[0].msg.mimeType).toBe('image/jpeg')
-    expect(thread[0].msg.sizeBytes).toBe(1234)
+    expect(thread[0].msg).toMatchObject({
+      type: 'image',
+      caption: 'foto',
+      media: {
+        attachmentId: 'att-7',
+        url: '/attachments/att-7',
+        status: 'ready',
+        mimeType: 'image/png',
+        sizeBytes: 1234,
+      },
+    })
   })
 
   it('marks the attachment failed while the row stays in the thread', () => {
-    const pending = makeMessage({
-      id: 'server-1',
-      msg: {
-        type: 'image',
-        mediaUrl: null,
-        attachmentStatus: 'pending',
-        content: { caption: 'foto' },
-      },
-    })
-
-    const thread = applyAttachmentPatch([pending], {
+    const thread = applyAttachmentPatch([pendingImage()], {
       id: 'server-1',
       conversationId: 'c-1',
       attachmentId: 'att-1',
@@ -241,22 +254,44 @@ describe('applyAttachmentPatch', () => {
     })
 
     expect(thread).toHaveLength(1)
-    expect(thread[0].msg.attachmentStatus).toBe('failed')
-    expect(thread[0].msg.mediaUrl).toBeNull()
+    expect(thread[0].msg).toMatchObject({ media: { status: 'failed', url: null } })
   })
 
-  it('ignores a patch for a message that is not in the thread', () => {
+  it('ignores patches for unknown or text messages', () => {
     const messages = [makeMessage({ id: 'server-1' })]
-
-    const thread = applyAttachmentPatch(messages, {
-      id: 'server-9',
+    const patch = {
       conversationId: 'c-1',
       attachmentId: 'att-9',
-      status: 'ready',
-      url: '/uploads/other.jpg',
+      status: 'ready' as const,
+      url: '/attachments/att-9',
       at: new Date('2026-10-06T09:00:02'),
+    }
+
+    expect(applyAttachmentPatch(messages, { ...patch, id: 'server-9' })).toBe(messages)
+    expect(applyAttachmentPatch(messages, { ...patch, id: 'server-1' })).toBe(messages)
+  })
+})
+
+describe('local send state', () => {
+  const optimistic = () =>
+    makeMessage({
+      id: 'client-1',
+      clientMessageId: 'client-1',
+      status: 'pending',
+      sender: { id: 'member-1', type: 'member' },
+      local: { previewUrl: 'blob:local', progress: 0 },
     })
 
-    expect(thread).toBe(messages)
+  it('records the upload progress of an optimistic row', () => {
+    const thread = applyUploadProgress([optimistic()], 'client-1', 0.4)
+
+    expect(thread[0].local).toEqual({ previewUrl: 'blob:local', progress: 0.4 })
+  })
+
+  it('fails a row the API never queued and clears its progress', () => {
+    const thread = markMessageFailed([optimistic()], { clientMessageId: 'client-1' })
+
+    expect(thread[0].status).toBe('failed')
+    expect(thread[0].local).toEqual({ previewUrl: 'blob:local', progress: undefined })
   })
 })
