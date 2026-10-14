@@ -49,7 +49,7 @@ export function Field({
       <Label htmlFor={children.props.id ?? id} className='text-sm font-medium'>
         {label}
         {optional ? (
-          <span className="text-muted-foreground font-normal">(opcional)</span>
+          <span className="text-muted-foreground font-normal"> (opcional)</span>
         ) : null}
       </Label>
       {control}
