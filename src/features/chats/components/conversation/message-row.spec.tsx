@@ -200,16 +200,26 @@ describe('MessageRow', () => {
       expect(screen.getByText('1:05')).toBeInTheDocument()
     })
 
-    it('plays videos with the native controls', () => {
+    it('covers videos with a play button and the length until started', async () => {
       const { container } = renderRow(
         outgoing({
-          msg: { type: 'video', media: readyMedia({ mimeType: 'video/mp4' }), caption: 'Clip' },
+          msg: {
+            type: 'video',
+            media: readyMedia({ mimeType: 'video/mp4', durationMs: 3_000 }),
+            caption: 'Clip',
+          },
         })
       )
 
       const video = container.querySelector('video')
       expect(video).toHaveAttribute('src', `${API_URL}/attachments/att-1`)
+      expect(video).not.toHaveAttribute('controls')
+      expect(screen.getByText('0:03')).toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Reproducir clip' }))
+
       expect(video).toHaveAttribute('controls')
+      expect(screen.queryByRole('button', { name: 'Reproducir clip' })).not.toBeInTheDocument()
     })
 
     it('offers to re-send a stored sticker from its menu', async () => {

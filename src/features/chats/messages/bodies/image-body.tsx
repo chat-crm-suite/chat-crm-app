@@ -27,7 +27,7 @@ export function ImageBody({
   }
 
   return (
-    <div className='mt-1 w-fit max-w-[min(20.5rem,100%)]'>
+    <div className='mt-1 w-72 max-w-full'>
       <button
         type='button'
         onClick={() => setOpen(true)}
