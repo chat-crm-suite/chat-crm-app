@@ -25,8 +25,10 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedContactsIndexRouteImport } from './routes/_authenticated/contacts/index'
+import { Route as AuthenticatedCustomersIndexRouteImport } from './routes/_authenticated/customers/index'
 import { Route as AuthenticatedSettingsServiceRouteImport } from './routes/_authenticated/settings/service'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
+import { Route as AuthenticatedTeamIndexRouteImport } from './routes/_authenticated/team/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedSettingsIntegrationsWhatsappRouteImport } from './routes/_authenticated/settings/integrations/whatsapp'
 
@@ -111,6 +113,12 @@ const AuthenticatedContactsIndexRoute =
     path: '/contacts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCustomersIndexRoute =
+  AuthenticatedCustomersIndexRouteImport.update({
+    id: '/customers/',
+    path: '/customers/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsServiceRoute =
   AuthenticatedSettingsServiceRouteImport.update({
     id: '/service',
@@ -120,6 +128,11 @@ const AuthenticatedSettingsServiceRoute =
 const AuthenticatedTasksIndexRoute = AuthenticatedTasksIndexRouteImport.update({
   id: '/tasks/',
   path: '/tasks/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTeamIndexRoute = AuthenticatedTeamIndexRouteImport.update({
+  id: '/team/',
+  path: '/team/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
@@ -151,7 +164,9 @@ export interface FileRoutesByFullPath {
   '/apps/': typeof AuthenticatedAppsIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/contacts/': typeof AuthenticatedContactsIndexRoute
+  '/customers/': typeof AuthenticatedCustomersIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
+  '/team/': typeof AuthenticatedTeamIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/settings/integrations/whatsapp': typeof AuthenticatedSettingsIntegrationsWhatsappRoute
 }
@@ -172,7 +187,9 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/contacts': typeof AuthenticatedContactsIndexRoute
+  '/customers': typeof AuthenticatedCustomersIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
+  '/team': typeof AuthenticatedTeamIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/settings/integrations/whatsapp': typeof AuthenticatedSettingsIntegrationsWhatsappRoute
 }
@@ -195,7 +212,9 @@ export interface FileRoutesById {
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/contacts/': typeof AuthenticatedContactsIndexRoute
+  '/_authenticated/customers/': typeof AuthenticatedCustomersIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
+  '/_authenticated/team/': typeof AuthenticatedTeamIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/settings/integrations/whatsapp': typeof AuthenticatedSettingsIntegrationsWhatsappRoute
 }
@@ -218,7 +237,9 @@ export interface FileRouteTypes {
     | '/apps/'
     | '/chats/'
     | '/contacts/'
+    | '/customers/'
     | '/tasks/'
+    | '/team/'
     | '/users/'
     | '/settings/integrations/whatsapp'
   fileRoutesByTo: FileRoutesByTo
@@ -239,7 +260,9 @@ export interface FileRouteTypes {
     | '/apps'
     | '/chats'
     | '/contacts'
+    | '/customers'
     | '/tasks'
+    | '/team'
     | '/users'
     | '/settings/integrations/whatsapp'
   id:
@@ -261,7 +284,9 @@ export interface FileRouteTypes {
     | '/_authenticated/apps/'
     | '/_authenticated/chats/'
     | '/_authenticated/contacts/'
+    | '/_authenticated/customers/'
     | '/_authenticated/tasks/'
+    | '/_authenticated/team/'
     | '/_authenticated/users/'
     | '/_authenticated/settings/integrations/whatsapp'
   fileRoutesById: FileRoutesById
@@ -394,6 +419,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContactsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/customers/': {
+      id: '/_authenticated/customers/'
+      path: '/customers'
+      fullPath: '/customers/'
+      preLoaderRoute: typeof AuthenticatedCustomersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/service': {
       id: '/_authenticated/settings/service'
       path: '/service'
@@ -406,6 +438,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks/'
       preLoaderRoute: typeof AuthenticatedTasksIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/team/': {
+      id: '/_authenticated/team/'
+      path: '/team'
+      fullPath: '/team/'
+      preLoaderRoute: typeof AuthenticatedTeamIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/users/': {
@@ -448,7 +487,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedContactsIndexRoute: typeof AuthenticatedContactsIndexRoute
+  AuthenticatedCustomersIndexRoute: typeof AuthenticatedCustomersIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
+  AuthenticatedTeamIndexRoute: typeof AuthenticatedTeamIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
 
@@ -458,7 +499,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedContactsIndexRoute: AuthenticatedContactsIndexRoute,
+  AuthenticatedCustomersIndexRoute: AuthenticatedCustomersIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
+  AuthenticatedTeamIndexRoute: AuthenticatedTeamIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }
 
