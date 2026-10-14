@@ -21,6 +21,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { authenticatedFetch, obtainSessionCookie } from './contracts-auth.mjs'
+import { shouldSkipSync, writeIfChanged } from './contracts-sync-core.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GENERATED_DIR = path.join(REPO_ROOT, 'src', 'generated')
@@ -56,6 +57,15 @@ function perFileHashes(files = {}) {
   return map
 }
 
+/** Stable fingerprint of a lock, ignoring the volatile `syncedAt`. */
+function readLock() {
+  try {
+    return JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
 async function main() {
   const apiUrl = arg('api-url') || process.env.VITE_API_URL || readViteApiUrl()
 
@@ -79,25 +89,37 @@ async function main() {
   }
 
   const mergedVersion = { ...version, files: manifest.files }
+  const snapshotContent = `${JSON.stringify(snapshot, null, 2)}\n`
+  const versionContent = `${JSON.stringify(mergedVersion, null, 2)}\n`
+  const snapshotPath = path.join(GENERATED_DIR, 'contracts-snapshot.json')
+  const versionPath = path.join(GENERATED_DIR, 'contracts-version.json')
 
-  fs.mkdirSync(GENERATED_DIR, { recursive: true })
-  fs.writeFileSync(
-    path.join(GENERATED_DIR, 'contracts-snapshot.json'),
-    `${JSON.stringify(snapshot, null, 2)}\n`,
-    'utf8',
-  )
-  fs.writeFileSync(
-    path.join(GENERATED_DIR, 'contracts-version.json'),
-    `${JSON.stringify(mergedVersion, null, 2)}\n`,
-    'utf8',
-  )
-
-  const lock = {
+  const nextLock = {
     apiTag: version.tag,
     hash: version.hash,
-    syncedAt: new Date().toISOString(),
     files: perFileHashes(manifest.files),
   }
+
+  // Idempotent: if the lock already matches, do not touch `syncedAt` (or any
+  // file) so a repeated pull leaves the working tree clean. Only re-materialize
+  // the generated files when they are missing or differ.
+  const existing = readLock()
+  if (shouldSkipSync(existing, nextLock)) {
+    const wroteSnapshot = writeIfChanged(snapshotPath, snapshotContent)
+    const wroteVersion = writeIfChanged(versionPath, versionContent)
+
+    console.log(
+      wroteSnapshot || wroteVersion
+        ? `Re-materialized generated contracts (${nextLock.apiTag}, hash ${nextLock.hash}).`
+        : `Contracts already up to date (${nextLock.apiTag}, hash ${nextLock.hash}); nothing changed.`,
+    )
+    return
+  }
+
+  writeIfChanged(snapshotPath, snapshotContent)
+  writeIfChanged(versionPath, versionContent)
+
+  const lock = { ...nextLock, syncedAt: new Date().toISOString() }
   fs.writeFileSync(LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`, 'utf8')
 
   console.log(`Synced contracts from ${apiUrl} (${lock.apiTag}, hash ${lock.hash}).`)

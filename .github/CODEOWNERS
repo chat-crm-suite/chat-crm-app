@@ -9,5 +9,6 @@
 /scripts/contracts-status-core.mjs @lisk0vian
 /scripts/contracts-status.mjs @lisk0vian
 /scripts/contracts-auth.mjs   @lisk0vian
+/scripts/contracts-sync-core.mjs @lisk0vian
 /scripts/sync-contracts.mjs  @lisk0vian
 /src/lib/contracts-sync.ts   @lisk0vian
