@@ -9,7 +9,7 @@ export type ViewOf<K extends MessageViewType> = Extract<MessageView, { type: K }
 export interface MessageBodyProps<K extends MessageViewType> {
   view: ViewOf<K>
   message: ChatMessage
-  /** Sent by the signed-in member (drives the tick and alignment). */
+  /** Sent by the signed-in member (drives the tick). */
   isMine: boolean
   senderName: string
 }
@@ -26,11 +26,6 @@ export interface MessageKind<K extends MessageViewType> {
   /** Text for the chat list preview, or `null` to show the label. */
   preview: (view: ViewOf<K>) => string | null
   Body: ComponentType<MessageBodyProps<K>>
-  /**
-   * How the bubble frames the body: `text` pads it, `media` keeps a thin
-   * frame around a picture, `bare` drops the bubble (stickers).
-   */
-  frame: 'text' | 'media' | 'bare'
 }
 
 export type MessageKinds = { [K in MessageViewType]: MessageKind<K> }

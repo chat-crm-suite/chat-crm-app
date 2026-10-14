@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { ImageLightbox } from '../../components/conversation/image-lightbox'
 import { MediaPlaceholder, UploadProgress } from '../media-placeholder'
 import { mediaFrameStyle, mediaSource } from '../media-source'
-import { MessageMeta } from '../message-meta'
+import { MediaMetaOverlay } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 import { Caption } from './text-body'
 
@@ -19,23 +19,21 @@ export function ImageBody({
 
   if (source.state !== 'ready') {
     return (
-      <div className='flex flex-col gap-1 p-1'>
+      <div className='mt-1'>
         <MediaPlaceholder source={source} label='Imagen' />
-        {view.caption && (
-          <Caption text={view.caption} message={message} isMine={isMine} />
-        )}
+        {view.caption && <Caption text={view.caption} />}
       </div>
     )
   }
 
   return (
-    <>
+    <div className='mt-1 w-fit max-w-[min(20.5rem,100%)]'>
       <button
         type='button'
         onClick={() => setOpen(true)}
         disabled={source.uploading}
         aria-label='Ampliar imagen'
-        className='group/image focus-visible:ring-ring relative block w-[min(18rem,100%)] cursor-zoom-in overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default'
+        className='group/image focus-visible:ring-ring relative block w-[min(18rem,100%)] cursor-zoom-in overflow-hidden rounded-xl border p-0 focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default'
         style={mediaFrameStyle(view.media.width, view.media.height)}
       >
         <img
@@ -43,16 +41,14 @@ export function ImageBody({
           alt={alt}
           loading='lazy'
           decoding='async'
-          className='bg-muted size-full max-h-[22rem] object-cover transition duration-200 motion-safe:group-hover/image:brightness-105'
+          className='bg-muted block size-full max-h-[26rem] object-cover transition duration-200 motion-safe:group-hover/image:brightness-105 motion-safe:group-focus-visible/image:brightness-105'
         />
         {source.uploading && <UploadProgress progress={source.progress} />}
-        {!view.caption && (
-          <MessageMeta message={message} isMine={isMine} variant='overlay' />
+        {!view.caption && !source.uploading && (
+          <MediaMetaOverlay message={message} isMine={isMine} />
         )}
       </button>
-      {view.caption && (
-        <Caption text={view.caption} message={message} isMine={isMine} />
-      )}
+      {view.caption && <Caption text={view.caption} />}
       <ImageLightbox
         open={open}
         onOpenChange={setOpen}
@@ -62,6 +58,6 @@ export function ImageBody({
         senderName={senderName}
         timestamp={new Date(message.timestamp)}
       />
-    </>
+    </div>
   )
 }

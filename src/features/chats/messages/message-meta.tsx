@@ -39,37 +39,23 @@ export function StatusTick({
   }
 }
 
-/**
- * Time and tick of a message. `inline` sits at the end of the text like in
- * WhatsApp; `overlay` floats over media without caption.
- */
-export function MessageMeta({
+/** Time and tick floating over a picture that has no caption. */
+export function MediaMetaOverlay({
   message,
   isMine,
-  variant = 'inline',
-  className,
 }: {
   message: ChatMessage
   isMine: boolean
-  variant?: 'inline' | 'overlay'
-  className?: string
 }) {
   const at = new Date(message.timestamp)
 
   return (
     <span
       data-slot='message-meta'
-      className={cn(
-        'pointer-events-none inline-flex shrink-0 items-center gap-1 text-[11px] leading-none tabular-nums select-none',
-        variant === 'inline' &&
-          'text-muted-foreground relative top-1 float-end ms-3 mt-1.5',
-        variant === 'overlay' &&
-          'bg-foreground/55 text-background absolute end-2 bottom-2 rounded-full px-1.5 py-1',
-        className
-      )}
+      className='bg-foreground/60 text-background pointer-events-none absolute end-2.5 bottom-2.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none tabular-nums select-none'
     >
       <time dateTime={at.toISOString()}>{format(at, 'HH:mm')}</time>
-      {isMine && <StatusTick status={message.status} className='size-3.5' />}
+      {isMine && <StatusTick status={message.status} className='size-3' />}
     </span>
   )
 }

@@ -1,10 +1,10 @@
+import { format } from 'date-fns'
 import { Copy, Download, RefreshCcw, Sticker } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { resolveMediaUrl } from '@/lib/media-url'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
@@ -12,23 +12,14 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-  MessageFooter,
-  MessageHeader,
-} from '@/components/ui/message'
 import { MessageBody } from '../../messages/message-body'
-import { kindOf } from '../../messages/registry'
+import { StatusTick } from '../../messages/message-meta'
 import type { ChatMessage } from '../../types/chat.domain'
 
 /** Identity of the message author as resolved by the thread. */
 export interface SenderView {
   name: string
   initials: string
-  /** The signed-in member: never labelled, like your own WhatsApp bubbles. */
-  isSelf?: boolean
 }
 
 /** A message added moments ago enters with a short, state-driven animation. */
@@ -53,25 +44,22 @@ function downloadUrl(message: ChatMessage): string | undefined {
 export function MessageRow({
   message,
   sender,
-  showSender = true,
   onRetry,
   onResendSticker,
   className,
 }: {
   message: ChatMessage
   sender: SenderView
-  /** First message of a run by the same author: name and avatar show once. */
-  showSender?: boolean
   onRetry: (message: ChatMessage) => void
   /** Re-sends a stored sticker by reference (no upload). */
   onResendSticker?: (sticker: { attachmentId: string; url: string }) => void
   className?: string
 }) {
-  const outgoing = message.sender.type !== 'customer'
+  const at = new Date(message.timestamp)
   const isMine = message.sender.type === 'member'
+  const isPending = message.status === 'pending'
   const isFailed = isMine && message.status === 'failed'
-  const isRecent = Date.now() - new Date(message.timestamp).getTime() < RECENT_WINDOW_MS
-  const { frame } = kindOf(message.msg)
+  const isRecent = Date.now() - at.getTime() < RECENT_WINDOW_MS
   const text = copyableText(message)
   const fileUrl = downloadUrl(message)
   const sticker =
@@ -79,56 +67,45 @@ export function MessageRow({
       ? { attachmentId: message.msg.media.attachmentId, url: fileUrl }
       : null
 
-  const body = (
-    <MessageBody
-      view={message.msg}
-      message={message}
-      isMine={isMine}
-      senderName={sender.name}
-    />
-  )
-
   return (
-    <Message
-      align={outgoing ? 'end' : 'start'}
+    <div
       className={cn(
-        message.status === 'pending' && 'opacity-90',
+        'flex gap-2.5',
+        isPending && 'opacity-70 transition-opacity duration-200',
         isRecent && 'motion-safe:animate-message-in',
         className
       )}
     >
-      {!outgoing && (
-        <MessageAvatar className={cn('size-7 bg-transparent', !showSender && 'invisible')}>
-          <Avatar className='size-7'>
-            <AvatarFallback className='bg-muted text-[10px] font-semibold'>
-              {sender.initials}
-            </AvatarFallback>
-          </Avatar>
-        </MessageAvatar>
-      )}
+      <Avatar className='mt-0.5 size-7 shrink-0'>
+        <AvatarFallback
+          className={cn(
+            'text-[10px] font-semibold',
+            isMine ? 'bg-primary text-primary-foreground' : 'bg-muted'
+          )}
+        >
+          {sender.initials}
+        </AvatarFallback>
+      </Avatar>
 
-      <MessageContent className='gap-1'>
-        {showSender && !sender.isSelf && (
-          <MessageHeader className={cn(outgoing && 'justify-end')}>
-            {sender.name}
-          </MessageHeader>
-        )}
+      <div className='min-w-0 flex-1'>
+        <div className='flex items-baseline gap-2'>
+          <span className='text-xs font-semibold'>{sender.name}</span>
+          <span className='text-muted-foreground flex items-center gap-1 text-[11px] tabular-nums'>
+            <time dateTime={at.toISOString()}>{format(at, 'HH:mm')}</time>
+            {isMine && <StatusTick status={message.status} className='size-3' />}
+          </span>
+        </div>
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            {frame === 'bare' ? (
-              <div className={cn('w-fit', outgoing && 'self-end')}>{body}</div>
-            ) : (
-              <Bubble
-                variant={outgoing ? 'tinted' : 'muted'}
-                align={outgoing ? 'end' : 'start'}
-                className='max-w-[min(80%,36rem)]'
-              >
-                <BubbleContent className={cn(frame === 'media' && 'p-1')}>
-                  {body}
-                </BubbleContent>
-              </Bubble>
-            )}
+            <div className='mt-0.5 w-fit max-w-full text-sm leading-relaxed wrap-break-word'>
+              <MessageBody
+                view={message.msg}
+                message={message}
+                isMine={isMine}
+                senderName={sender.name}
+              />
+            </div>
           </ContextMenuTrigger>
           <ContextMenuContent>
             {text && (
@@ -170,8 +147,7 @@ export function MessageRow({
         </ContextMenu>
 
         {isFailed && (
-          <MessageFooter>
-            <span className='text-destructive me-1 text-xs'>No se envió.</span>
+          <div className='mt-1'>
             <Button
               type='button'
               variant='link'
@@ -182,9 +158,9 @@ export function MessageRow({
               <RefreshCcw className='size-3' />
               Reintentar
             </Button>
-          </MessageFooter>
+          </div>
         )}
-      </MessageContent>
-    </Message>
+      </div>
+    </div>
   )
 }

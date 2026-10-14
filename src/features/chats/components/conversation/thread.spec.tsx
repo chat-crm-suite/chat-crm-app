@@ -73,8 +73,7 @@ describe('ConversationThread', () => {
     })
 
     expect(screen.getByText('Rosa Medina')).toBeInTheDocument()
-    // Own bubbles are not labelled; teammates are.
-    expect(screen.queryByText('Tú')).not.toBeInTheDocument()
+    expect(screen.getByText('Tú')).toBeInTheDocument()
     expect(screen.getByText('Agente')).toBeInTheDocument()
     expect(screen.getByText('Sistema')).toBeInTheDocument()
     expect(screen.getAllByLabelText('Leído')).toHaveLength(2)

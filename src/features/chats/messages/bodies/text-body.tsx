@@ -1,25 +1,15 @@
 import { linkify } from '../linkify'
-import { MessageMeta } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 
-export function TextBody({ view, message, isMine }: MessageBodyProps<'text'>) {
-  return (
-    <p className='whitespace-pre-wrap'>
-      {linkify(view.text)}
-      <MessageMeta message={message} isMine={isMine} />
-    </p>
-  )
+export function TextBody({ view }: MessageBodyProps<'text'>) {
+  return <p className='whitespace-pre-wrap'>{linkify(view.text)}</p>
 }
 
-/** Caption under a picture, video or document, with the message time. */
-export function Caption({
-  text,
-  ...meta
-}: { text: string } & Pick<MessageBodyProps<'text'>, 'message' | 'isMine'>) {
+/** Caption under a picture, video or document. */
+export function Caption({ text }: { text: string }) {
   return (
-    <p className='px-2 pt-1.5 pb-1 whitespace-pre-wrap'>
+    <p className='text-muted-foreground mt-1 text-xs whitespace-pre-wrap'>
       {linkify(text)}
-      <MessageMeta {...meta} />
     </p>
   )
 }

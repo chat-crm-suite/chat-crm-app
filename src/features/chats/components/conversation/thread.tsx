@@ -102,7 +102,7 @@ function resolveSender(
 
   if (isMine) {
     const memberName = currentMemberName ?? 'Tú'
-    return { name: 'Tú', initials: initials(memberName), isSelf: true }
+    return { name: 'Tú', initials: initials(memberName) }
   }
 
   return { name: 'Agente', initials: initials('Agente') }
@@ -180,11 +180,10 @@ export function ConversationThread({
                     </MessageScrollerItem>
                   ) : (
                     <MessageScrollerItem key={row.id} messageId={row.id}>
-                      <div className='flex flex-col gap-1'>
-                        {row.messages.map((message, index) => (
+                      <div className='flex flex-col gap-3'>
+                        {row.messages.map((message) => (
                           <MessageRow
                             key={message.id}
-                            showSender={index === 0}
                             message={message}
                             sender={resolveSender(message, {
                               customerName,

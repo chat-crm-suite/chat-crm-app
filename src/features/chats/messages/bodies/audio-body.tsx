@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { MediaPlaceholder } from '../media-placeholder'
 import { mediaSource } from '../media-source'
-import { MessageMeta } from '../message-meta'
 import type { MessageBodyProps } from '../message-kind'
 import { formatClock, useAudioPlayer } from '../use-audio-player'
 
@@ -14,7 +13,7 @@ import { formatClock, useAudioPlayer } from '../use-audio-player'
  * playback speed. The `<audio>` element stays native (no waveform decoding),
  * so long recordings cost nothing until played.
  */
-export function AudioBody({ view, message, isMine }: MessageBodyProps<'audio'>) {
+export function AudioBody({ view, message }: MessageBodyProps<'audio'>) {
   const source = mediaSource(message, view.media)
   const player = useAudioPlayer(
     source.state === 'ready' ? source.src : null,
@@ -24,7 +23,7 @@ export function AudioBody({ view, message, isMine }: MessageBodyProps<'audio'>) 
   const Icon = view.voice ? Mic : Headphones
 
   if (source.state !== 'ready') {
-    return <MediaPlaceholder source={source} label={label} className='m-1' />
+    return <MediaPlaceholder source={source} label={label} className='mt-1' />
   }
 
   const shown = player.isPlaying || player.currentTime > 0
@@ -32,7 +31,7 @@ export function AudioBody({ view, message, isMine }: MessageBodyProps<'audio'>) 
     : player.duration
 
   return (
-    <div className='flex w-[min(17rem,72vw)] flex-col gap-0.5 px-2 pt-2 pb-1'>
+    <div className='bg-muted/40 mt-1 flex w-[min(20rem,100%)] flex-col gap-0.5 rounded-xl border px-2.5 pt-2 pb-1.5'>
       <audio ref={player.audioRef} src={source.src} preload='metadata' />
       <div className='flex items-center gap-2'>
         <span
@@ -70,20 +69,15 @@ export function AudioBody({ view, message, isMine }: MessageBodyProps<'audio'>) 
             type='button'
             onClick={player.cycleRate}
             aria-label={`Velocidad ${player.rate}x`}
-            className="bg-muted text-foreground/80 hover:bg-muted/70 focus-visible:ring-ring relative h-6 min-w-9 shrink-0 rounded-full px-1.5 text-[11px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
+            className="bg-background text-foreground/80 hover:bg-background/70 focus-visible:ring-ring relative h-6 min-w-9 shrink-0 rounded-full px-1.5 text-[11px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
           >
             {player.rate}×
           </button>
         )}
       </div>
-      <div className='text-muted-foreground flex items-center justify-between ps-[5.5rem] text-[11px] tabular-nums'>
-        <span>{formatClock(shown)}</span>
-        <MessageMeta
-          message={message}
-          isMine={isMine}
-          className='static float-none ms-0 mt-0'
-        />
-      </div>
+      <span className='text-muted-foreground ps-[5.5rem] text-[11px] tabular-nums'>
+        {formatClock(shown)}
+      </span>
     </div>
   )
 }
