@@ -1,5 +1,6 @@
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { FileText, ImagePlus, Paperclip, SendHorizontal, WifiOff } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { FileText, ImagePlus, Mic, Paperclip, SendHorizontal, WifiOff } from 'lucide-react'
+import { toast } from 'sonner'
 import type { ChannelCapabilities } from '@chat-crm/contracts'
 
 import { cn } from '@/lib/utils'
@@ -23,11 +24,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import type { ComposerAttachments } from '../../hooks/use-composer-attachments'
+import { canRecordVoice, useVoiceRecorder } from '../../hooks/use-voice-recorder'
 import { acceptFor, type AttachIntent } from '../../lib/attachment-candidate'
 import type { OutgoingDraft } from '../../lib/outgoing-draft'
 import type { ConversationStatus } from '../../types/chat.domain'
 import { AttachmentTray } from './attachment-tray'
 import { QuickReplies } from './quick-replies'
+import { RecordingBar } from './recording-bar'
 import { ResolvedNotice } from './resolved-notice'
 
 export function Composer({
@@ -37,7 +40,6 @@ export function Composer({
   capabilities,
   status = 'open',
   locked,
-  voiceSlot,
   className,
 }: {
   connected: boolean
@@ -48,8 +50,6 @@ export function Composer({
   status?: ConversationStatus
   /** Free-form sending is closed (e.g. the 24 h window expired): why. */
   locked?: ReactNode
-  /** Rendered instead of the send button while the field is empty. */
-  voiceSlot?: (field: { disabled: boolean }) => ReactNode
   className?: string
 }) {
   const [value, setValue] = useState('')
@@ -63,6 +63,24 @@ export function Composer({
   const disabled = !connected || !!locked
   const canAttach = !disabled && !!capabilities
   const hasText = value.trim().length > 0
+  const recorder = useVoiceRecorder()
+  const [canRecord] = useState(canRecordVoice)
+  const isRecording = recorder.state !== 'idle' && recorder.state !== 'denied'
+
+  useEffect(() => {
+    if (recorder.state !== 'denied') return
+    toast.error('No hay acceso al micrófono', {
+      description:
+        'Permite el micrófono desde el icono de la barra de direcciones del navegador y vuelve a intentarlo.',
+    })
+    recorder.dismissDenied()
+  }, [recorder])
+
+  const sendVoice = async () => {
+    const note = await recorder.finish()
+    if (!note || disabled) return
+    onSend({ type: 'audio', file: note.file, voice: true, durationMs: note.durationMs })
+  }
 
   // The textarea is controlled: the caret can only land once React has written
   // the spliced value, so apply the pending offset right after that commit.
@@ -128,7 +146,9 @@ export function Composer({
       {fileInput('media', mediaInput)}
       {fileInput('document', documentInput)}
 
-      {attachments.items.length > 0 ? (
+      {isRecording ? (
+        <RecordingBar recorder={recorder} onSend={() => void sendVoice()} disabled={disabled} />
+      ) : attachments.items.length > 0 ? (
         <AttachmentTray
           attachments={attachments}
           onSend={sendFiles}
@@ -206,8 +226,23 @@ export function Composer({
               </DropdownMenu>
             </InputGroupAddon>
             <InputGroupAddon align='inline-end' className='self-end pb-1.5'>
-              {!hasText && voiceSlot ? (
-                voiceSlot({ disabled: !canAttach })
+              {!hasText && canRecord && capabilities?.media.audio ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type='button'
+                      size='icon'
+                      variant='secondary'
+                      onClick={() => void recorder.start()}
+                      disabled={!canAttach}
+                      aria-label='Grabar nota de voz'
+                      className='size-11 shrink-0 rounded-full sm:size-9'
+                    >
+                      <Mic className='size-4' />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Grabar nota de voz</TooltipContent>
+                </Tooltip>
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>

@@ -267,4 +267,72 @@ describe('Composer', () => {
     expect(onSend).toHaveBeenCalledWith(text('Mensaje con el caso resuelto'))
     expect(field).toHaveValue('')
   })
+
+  describe('voice notes', () => {
+    class Recorder {
+      static isTypeSupported = (mime: string) => mime.startsWith('audio/webm')
+      state = 'inactive'
+      mimeType: string
+      ondataavailable: ((event: { data: Blob }) => void) | null = null
+      onstop: (() => void) | null = null
+      constructor(_stream: unknown, options: { mimeType: string }) {
+        this.mimeType = options.mimeType
+      }
+      start() {
+        this.state = 'recording'
+      }
+      pause() {
+        this.state = 'paused'
+      }
+      resume() {
+        this.state = 'recording'
+      }
+      stop() {
+        this.ondataavailable?.({ data: new Blob(['opus']) })
+        this.state = 'inactive'
+        this.onstop?.()
+      }
+    }
+
+    beforeAll(() => {
+      vi.stubGlobal('MediaRecorder', Recorder)
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia: () => Promise.resolve({ getTracks: () => [{ stop: vi.fn() }] }) },
+      })
+    })
+
+    it('swaps send for the mic while the field is empty', async () => {
+      const { user } = setup()
+
+      expect(screen.getByRole('button', { name: 'Grabar nota de voz' })).toBeInTheDocument()
+      await user.type(screen.getByPlaceholderText('Escribe un mensaje…'), 'Hola')
+      expect(screen.queryByRole('button', { name: 'Grabar nota de voz' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Enviar mensaje' })).toBeEnabled()
+    })
+
+    it('records and sends a voice note', async () => {
+      const { onSend, user } = setup()
+
+      await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
+      expect(await screen.findByRole('group', { name: 'Grabando nota de voz' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Enviar nota de voz' }))
+
+      expect(onSend).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'audio', voice: true, file: expect.any(File) as File })
+      )
+      expect(screen.queryByRole('group', { name: 'Grabando nota de voz' })).not.toBeInTheDocument()
+    })
+
+    it('discards a recording without sending', async () => {
+      const { onSend, user } = setup()
+
+      await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
+      await user.click(await screen.findByRole('button', { name: 'Descartar nota de voz' }))
+
+      expect(onSend).not.toHaveBeenCalled()
+      expect(screen.getByPlaceholderText('Escribe un mensaje…')).toBeInTheDocument()
+    })
+  })
 })
