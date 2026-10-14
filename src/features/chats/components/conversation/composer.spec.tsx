@@ -1,9 +1,26 @@
 import type { ComponentProps } from 'react'
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { channelCapabilities } from '@chat-crm/contracts'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { useComposerAttachments } from '../../hooks/use-composer-attachments'
 import { Composer } from './composer'
+
+const toast = vi.hoisted(() => ({ error: vi.fn() }))
+vi.mock('sonner', () => ({ toast }))
+
+const whatsapp = channelCapabilities('whatsapp')
+
+type HarnessProps = Omit<ComponentProps<typeof Composer>, 'attachments' | 'capabilities'>
+
+/** The real tray hook, as the chat box wires it. */
+function Harness(props: HarnessProps) {
+  const attachments = useComposerAttachments(whatsapp)
+  return <Composer {...props} attachments={attachments} capabilities={whatsapp} />
+}
+
+const file = (name: string, type: string) => new File(['x'], name, { type })
 
 /**
  * Drafts from the Phase 3 copy (greeting, sending the quote, requesting the
@@ -17,14 +34,18 @@ const DRAFTS = {
   receipt: '¿Podrías enviarnos el comprobante de pago, por favor?',
 } as const
 
-const setup = (
-  connected = true,
-  props: Partial<ComponentProps<typeof Composer>> = {}
-) => {
+const setup = (connected = true, props: Partial<HarnessProps> = {}) => {
   const onSend = vi.fn()
-  render(<Composer connected={connected} onSend={onSend} {...props} />)
+  render(<Harness connected={connected} onSend={onSend} {...props} />)
   return { onSend, user: userEvent.setup() }
 }
+
+const text = (value: string) => ({ type: 'text', text: value })
+
+beforeAll(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:thumb')
+  URL.revokeObjectURL = vi.fn()
+})
 
 describe('Composer', () => {
   it('sends the trimmed draft on Enter and clears the field', async () => {
@@ -33,7 +54,7 @@ describe('Composer', () => {
 
     await user.type(field, '  Hola Rosa  {Enter}')
 
-    expect(onSend).toHaveBeenCalledWith('Hola Rosa')
+    expect(onSend).toHaveBeenCalledWith(text('Hola Rosa'))
     expect(field).toHaveValue('')
   })
 
@@ -67,15 +88,81 @@ describe('Composer', () => {
     expect(screen.getByText(/sin conexión/i)).toBeInTheDocument()
   })
 
-  it('keeps attachment actions disabled until the API supports them', () => {
-    setup()
+  it('offers photos, videos and documents from the attach menu', async () => {
+    const { user } = setup()
 
-    expect(
-      screen.getByRole('button', { name: 'Enviar imagen (próximamente)' })
-    ).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'Adjuntar archivo (próximamente)' })
-    ).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Adjuntar' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'Fotos y videos' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Documento' })).toBeInTheDocument()
+    expect(screen.getByTestId('media-input')).toHaveAttribute(
+      'accept',
+      'image/jpeg,image/png,video/mp4,video/3gpp'
+    )
+  })
+
+  it('opens the tray with the picked files and sends them with their captions', async () => {
+    const { onSend, user } = setup()
+    const photo = file('foto.png', 'image/png')
+    const pdf = file('cotizacion.pdf', 'application/pdf')
+
+    await user.upload(screen.getByTestId('media-input'), photo)
+    await user.upload(screen.getByTestId('document-input'), pdf)
+
+    expect(screen.getByRole('region', { name: 'Archivos para enviar' })).toBeInTheDocument()
+    // The last added file is selected: its caption is the one typed into.
+    await user.type(
+      screen.getByRole('textbox', { name: 'Comentario para cotizacion.pdf' }),
+      'Te paso la cotización'
+    )
+    await user.click(screen.getByRole('button', { name: 'Archivo 1 de 2: foto.png' }))
+    await user.keyboard('Mira{Enter}')
+
+    expect(onSend).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      type: 'image', file: photo, caption: 'Mira',
+    }))
+    expect(onSend).toHaveBeenNthCalledWith(2, {
+      type: 'document', file: pdf, caption: 'Te paso la cotización',
+    })
+    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+  })
+
+  it('takes files pasted into the field', () => {
+    setup()
+    const photo = file('captura.png', 'image/png')
+
+    fireEvent.paste(screen.getByPlaceholderText('Escribe un mensaje…'), {
+      clipboardData: { files: [photo] },
+    })
+
+    expect(screen.getByRole('region', { name: 'Archivos para enviar' })).toBeInTheDocument()
+  })
+
+  it('explains why a file cannot be sent and keeps the composer as is', async () => {
+    setup()
+    // The input `accept` would filter it out of a real picker.
+    const user = userEvent.setup({ applyAccept: false })
+
+    await user.upload(
+      screen.getByTestId('document-input'),
+      file('virus.exe', 'application/x-msdownload')
+    )
+
+    expect(toast.error).toHaveBeenCalledWith('No se puede enviar este archivo', {
+      description: expect.stringContaining('virus.exe') as string,
+    })
+    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+  })
+
+  it('discards the tray with Escape', async () => {
+    const { onSend, user } = setup()
+
+    await user.upload(screen.getByTestId('media-input'), file('a.png', 'image/png'))
+    await user.click(screen.getByRole('textbox', { name: 'Comentario para a.png' }))
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+    expect(onSend).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -134,7 +221,7 @@ describe('Composer', () => {
 
     await user.keyboard('{Enter}')
 
-    expect(onSend).toHaveBeenCalledWith(DRAFTS.greeting)
+    expect(onSend).toHaveBeenCalledWith(text(DRAFTS.greeting))
     expect(field).toHaveValue('')
   })
 
@@ -177,7 +264,7 @@ describe('Composer', () => {
 
     await user.type(field, 'Mensaje con el caso resuelto{Enter}')
 
-    expect(onSend).toHaveBeenCalledWith('Mensaje con el caso resuelto')
+    expect(onSend).toHaveBeenCalledWith(text('Mensaje con el caso resuelto'))
     expect(field).toHaveValue('')
   })
 })

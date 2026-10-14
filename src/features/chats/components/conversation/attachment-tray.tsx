@@ -1,4 +1,12 @@
 import { useEffect, useRef } from 'react'
+import {
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { FileText, Film, Headphones, Plus, SendHorizontal, X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -79,6 +87,16 @@ export function AttachmentTray({
   disabled: boolean
 }) {
   const { items, selected } = attachments
+  // A click selects, a short drag (or a press on touch) reorders; on the
+  // keyboard Enter selects and Space picks the thumbnail up to move it.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: { start: ['Space'], cancel: ['Escape'], end: ['Space'] },
+    })
+  )
   const captionRef = useRef<HTMLTextAreaElement>(null)
   const canCaption = selected?.kind !== 'audio'
 
@@ -144,6 +162,7 @@ export function AttachmentTray({
             onValueChange={attachments.reorder}
             getItemValue={(item) => item.id}
             orientation='horizontal'
+            sensors={sensors}
           >
             <SortableContent
               aria-label='Orden de envío'

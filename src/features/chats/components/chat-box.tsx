@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { channelCapabilities } from '@chat-crm/contracts'
 import { claimChat } from '@/services/chat.service'
-import { MessagesSquare } from 'lucide-react'
+import { FileUp, MessagesSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -15,6 +16,8 @@ import { useSocket } from '@/context/socket-provider'
 import { Button } from '@/components/ui/button'
 import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
+import { useComposerAttachments } from '../hooks/use-composer-attachments'
+import { useFileDrop } from '../hooks/use-file-drop'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
 import { AssignedUser } from './assigned-user'
@@ -61,6 +64,17 @@ export const ChatBox = () => {
     companyId: auth.company.id,
     sender: { id: memberId ?? '', type: 'member' },
   })
+
+  const capabilities = channelCapabilities(chat?.channelType)
+  const attachments = useComposerAttachments(capabilities)
+  const drop = useFileDrop({
+    onFiles: (files) => attachments.add(files),
+    disabled: !isConnected || !capabilities,
+  })
+
+  // A tray belongs to one conversation: switching chats discards it.
+  const { clear: clearAttachments } = attachments
+  useEffect(() => clearAttachments(), [chat?.id, clearAttachments])
 
   // Real customer tone of the open conversation: REST + live refetch, synced
   // into the chats context that feeds the tone control.
@@ -122,8 +136,25 @@ export const ChatBox = () => {
       )}
     >
       <div className='flex min-h-0 flex-1 flex-col @rail/card:flex-row'>
-        {/* Conversation column */}
-        <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
+        {/* Conversation column (also the drop zone for files) */}
+        <div
+          className='relative flex min-h-0 min-w-0 flex-1 flex-col'
+          {...drop.dropProps}
+        >
+          {drop.isDragging && (
+            <div
+              aria-hidden
+              className='bg-background/85 border-primary pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0'
+            >
+              <span className='bg-primary/10 text-primary grid size-14 place-items-center rounded-full'>
+                <FileUp className='size-7' />
+              </span>
+              <p className='text-sm font-medium'>Suelta los archivos aquí</p>
+              <p className='text-muted-foreground text-xs'>
+                Fotos y videos se envían como media; lo demás, como documento.
+              </p>
+            </div>
+          )}
           {/* Top Part */}
           <CaseHeader
             chat={chat}
@@ -150,7 +181,9 @@ export const ChatBox = () => {
 
           <Composer
             connected={isConnected}
-            onSend={(text) => thread.send({ type: 'text', text })}
+            onSend={thread.send}
+            attachments={attachments}
+            capabilities={capabilities}
             status={chat.status}
           />
         </div>
