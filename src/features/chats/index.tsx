@@ -19,7 +19,7 @@ import {
 } from './components'
 import { Search } from './components/icons'
 import { ChatsProvider } from './contexts/chats.provider'
-import { getMessageStrategy } from './strategies/message.strategy'
+import { messageTypeOf, previewOf } from './messages/registry'
 import type { Chat, ChatMessage } from './types/chat.domain'
 import { ChatSocketEvents as Events } from './types/socket.api'
 
@@ -41,13 +41,11 @@ export function Chats() {
           chats[chatIndex] = {
             ...chats[chatIndex],
             preview: {
-              content: getMessageStrategy(newMessage.msg.type).getContent(
-                newMessage.msg.content
-              ),
+              content: previewOf(newMessage.msg),
               datetime: newMessage.timestamp,
               // Same shape as the REST list: the type labels attachments
               // whose content is empty.
-              type: newMessage.msg.type,
+              type: messageTypeOf(newMessage.msg),
             },
           }
           return chats

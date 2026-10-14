@@ -12,7 +12,8 @@ function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     timestamp: new Date('2026-10-06T09:12:00'),
     status: 'read',
     sender: { id: 'customer-1', type: 'customer' },
-    msg: { type: 'text', mediaUrl: null, content: { body: 'Hola' } },
+    clientMessageId: null,
+    msg: { type: 'text', text: 'Hola' },
     ...overrides,
   }
 }
@@ -72,7 +73,8 @@ describe('ConversationThread', () => {
     })
 
     expect(screen.getByText('Rosa Medina')).toBeInTheDocument()
-    expect(screen.getByText('Tú')).toBeInTheDocument()
+    // Own bubbles are not labelled; teammates are.
+    expect(screen.queryByText('Tú')).not.toBeInTheDocument()
     expect(screen.getByText('Agente')).toBeInTheDocument()
     expect(screen.getByText('Sistema')).toBeInTheDocument()
     expect(screen.getAllByLabelText('Leído')).toHaveLength(2)

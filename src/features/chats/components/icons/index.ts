@@ -1,12 +1,8 @@
 export {
   CloudOff,
   Edit,
-  FileText,
-  Film,
-  Image as ImageIcon,
   MessageSquareText,
   MessagesSquare,
-  Music,
   Plus,
   RefreshCw,
   Search,

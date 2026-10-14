@@ -9,9 +9,19 @@ type Handler = (...args: unknown[]) => void
  */
 export function createFakeSocket(connected = true) {
   const listeners = new Map<string, Set<Handler>>()
+  /** Answer of `timeout(ms).emitWithAck(...)`; acknowledges by default. */
+  let ack: (event: string, payload: unknown) => Promise<unknown> = () =>
+    Promise.resolve({ ok: true })
   const socket = {
     connected,
     emit: vi.fn(),
+    timeout: vi.fn(() => ({
+      emitWithAck: (event: string, payload: unknown) => {
+        // Recorded like a plain emit so `emittedPayloads` sees every send.
+        socket.emit(event, payload)
+        return ack(event, payload)
+      },
+    })),
     on: vi.fn((event: string, handler: Handler) => {
       const handlers = listeners.get(event) ?? new Set<Handler>()
       handlers.add(handler)
@@ -29,7 +39,12 @@ export function createFakeSocket(connected = true) {
     for (const handler of listeners.get(event) ?? []) handler(...args)
   }
 
-  return { socket, fire }
+  /** Programs the acknowledgement the server answers next sends with. */
+  const setAck = (next: (event: string, payload: unknown) => Promise<unknown>) => {
+    ack = next
+  }
+
+  return { socket, fire, setAck }
 }
 
 export type FakeSocket = ReturnType<typeof createFakeSocket>['socket']

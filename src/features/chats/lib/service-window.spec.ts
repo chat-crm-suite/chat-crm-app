@@ -16,7 +16,8 @@ function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     timestamp: new Date('2026-10-06T08:32:00'),
     status: 'read',
     sender: { id: 'customer-1', type: 'customer' },
-    msg: { type: 'text', mediaUrl: null, content: { body: 'Hola' } },
+    clientMessageId: null,
+    msg: { type: 'text', text: 'Hola' },
     ...overrides,
   }
 }

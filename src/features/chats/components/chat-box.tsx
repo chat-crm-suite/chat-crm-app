@@ -60,7 +60,6 @@ export const ChatBox = () => {
   const thread = useChatThread(chat?.id, {
     companyId: auth.company.id,
     sender: { id: memberId ?? '', type: 'member' },
-    to: chat?.customer?.phone ?? '',
   })
 
   // Real customer tone of the open conversation: REST + live refetch, synced
@@ -151,7 +150,7 @@ export const ChatBox = () => {
 
           <Composer
             connected={isConnected}
-            onSend={thread.send}
+            onSend={(text) => thread.send({ type: 'text', text })}
             status={chat.status}
           />
         </div>

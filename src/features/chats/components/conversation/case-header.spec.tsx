@@ -15,6 +15,7 @@ const CONVERSATION_ID = '0199b7f0-2f3a-7c1e-9d4b-6a7c8e9f0a1b'
 function makeChat(overrides: Partial<Chat> = {}): Chat {
   return {
     id: CONVERSATION_ID,
+    channelType: 'whatsapp',
     status: 'open',
     createdAt: new Date('2026-10-01T08:00:00'),
     customer: {
