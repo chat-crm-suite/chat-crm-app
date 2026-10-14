@@ -32,6 +32,7 @@ export interface ContractsStatusResult {
   exitCode: number
   changes: ContractChange[]
   uncommitted: string[]
+  detail?: string | null
   lock?: ContractsLock | null
   manifest?: ContractsManifest | null
 }
@@ -56,6 +57,7 @@ export declare function evaluateContractsStatus(input: {
   lock: ContractsLock | null
   manifest: ContractsManifest | null
   uncommitted?: string[]
+  detail?: string | null
 }): ContractsStatusResult
 
 export declare function renderContractsStatus(

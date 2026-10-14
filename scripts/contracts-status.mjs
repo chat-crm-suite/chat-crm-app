@@ -4,7 +4,10 @@
  * remote tarball). Point it at dev (localhost) or prod with the same command.
  *
  * Usage:
- *   pnpm contracts:status [--api-url URL] [--token TOKEN] [--verbose]
+ *   pnpm contracts:status [--api-url URL] [-u USER] [-p PASS] [--verbose]
+ *
+ * Credentials are flags (-u/-p) → env (API_USERNAME/API_PASSWORD) → prompt, and
+ * live only in memory for this run.
  *
  * Exit codes: 0 in sync · 1 drift/uncommitted · 2 not initialized/unverifiable.
  */
@@ -13,6 +16,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { authenticatedFetch, obtainSessionCookie } from './contracts-auth.mjs'
 import { evaluateContractsStatus, renderContractsStatus } from './contracts-status-core.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -54,27 +58,36 @@ function uncommittedContracts() {
   }
 }
 
-async function fetchManifest(apiUrl, token) {
-  const url = `${apiUrl.replace(/\/$/, '')}/contracts/manifest`
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  try {
-    const response = await fetch(url, { headers })
-    if (!response.ok) return null
-    return await response.json()
-  } catch {
-    return null
-  }
+async function fetchManifest(apiUrl, cookie) {
+  const response = await authenticatedFetch(apiUrl, '/contracts/manifest', cookie)
+  if (!response.ok) throw new Error(`/contracts/manifest -> HTTP ${response.status}`)
+  return response.json()
 }
 
 async function main() {
   const verbose = process.argv.includes('--verbose')
   const apiUrl = arg('api-url') || process.env.VITE_API_URL || readViteApiUrl() || 'http://localhost:3000'
-  const token = arg('token') || process.env.API_TOKEN || null
 
   const lock = readLock()
-  const manifest = lock ? await fetchManifest(apiUrl, token) : null
 
-  const result = evaluateContractsStatus({ lock, manifest, uncommitted: uncommittedContracts() })
+  let manifest = null
+  let detail = null
+
+  if (lock) {
+    try {
+      const cookie = await obtainSessionCookie({ apiUrl })
+      manifest = await fetchManifest(apiUrl, cookie)
+    } catch (error) {
+      detail = error.message
+    }
+  }
+
+  const result = evaluateContractsStatus({
+    lock,
+    manifest,
+    uncommitted: uncommittedContracts(),
+    detail,
+  })
   console.log(renderContractsStatus(result, { verbose }))
   process.exit(result.exitCode)
 }

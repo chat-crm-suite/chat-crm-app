@@ -1,9 +1,12 @@
 /**
- * `pnpm contracts:sync` — downloads the contracts snapshot/version from the
+ * `pnpm contracts:pull` — downloads the contracts snapshot/version from the
  * backend endpoint and writes the local generated artifacts + lockfile.
  *
  * Usage:
- *   pnpm contracts:sync [--api-url URL] [--token TOKEN]
+ *   pnpm contracts:pull [--api-url URL] [-u USER] [-p PASS]
+ *
+ * Credentials are flags (-u/-p) → env (API_USERNAME/API_PASSWORD) → prompt, and
+ * live only in memory for this run.
  *
  * Writes:
  *   src/generated/contracts-snapshot.json   (full snapshot, for reference/diff)
@@ -16,6 +19,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { authenticatedFetch, obtainSessionCookie } from './contracts-auth.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GENERATED_DIR = path.join(REPO_ROOT, 'src', 'generated')
@@ -35,15 +40,11 @@ function readViteApiUrl() {
   return match ? match[1].trim().replace(/^["']|["']$/g, '') : null
 }
 
-async function getJson(apiUrl, route, token) {
-  const url = `${apiUrl.replace(/\/$/, '')}${route}`
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  const response = await fetch(url, { headers })
-
+async function getJson(apiUrl, route, cookie) {
+  const response = await authenticatedFetch(apiUrl, route, cookie)
   if (!response.ok) {
     throw new Error(`${route} -> HTTP ${response.status}`)
   }
-
   return response.json()
 }
 
@@ -57,7 +58,6 @@ function perFileHashes(files = {}) {
 
 async function main() {
   const apiUrl = arg('api-url') || process.env.VITE_API_URL || readViteApiUrl()
-  const token = arg('token') || process.env.API_TOKEN || null
 
   if (!apiUrl || apiUrl === true) {
     console.error('Missing backend URL. Pass --api-url or set VITE_API_URL.')
@@ -65,17 +65,20 @@ async function main() {
   }
 
   let version
+  let manifest
   let snapshot
   try {
-    version = await getJson(apiUrl, '/contracts/version', token)
-    const manifest = await getJson(apiUrl, '/contracts/manifest', token)
-    snapshot = await getJson(apiUrl, '/contracts/snapshot', token)
-    version = { ...version, files: manifest.files }
+    const cookie = await obtainSessionCookie({ apiUrl })
+    version = await getJson(apiUrl, '/contracts/version', cookie)
+    manifest = await getJson(apiUrl, '/contracts/manifest', cookie)
+    snapshot = await getJson(apiUrl, '/contracts/snapshot', cookie)
   } catch (error) {
-    console.error(`Could not reach the backend contracts endpoint (${apiUrl}).`)
+    console.error(`Could not fetch contracts from the backend (${apiUrl}).`)
     console.error(`  ${error.message}`)
     process.exit(2)
   }
+
+  const mergedVersion = { ...version, files: manifest.files }
 
   fs.mkdirSync(GENERATED_DIR, { recursive: true })
   fs.writeFileSync(
@@ -85,7 +88,7 @@ async function main() {
   )
   fs.writeFileSync(
     path.join(GENERATED_DIR, 'contracts-version.json'),
-    `${JSON.stringify(version, null, 2)}\n`,
+    `${JSON.stringify(mergedVersion, null, 2)}\n`,
     'utf8',
   )
 
@@ -93,7 +96,7 @@ async function main() {
     apiTag: version.tag,
     hash: version.hash,
     syncedAt: new Date().toISOString(),
-    files: perFileHashes(version.files),
+    files: perFileHashes(manifest.files),
   }
   fs.writeFileSync(LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`, 'utf8')
 

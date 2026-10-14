@@ -90,13 +90,13 @@ export function diffContractFiles(lockFiles, manifestFiles) {
 /**
  * @param {{ lock: ContractsLock|null, manifest: ContractsManifest|null, uncommitted?: string[] }} input
  */
-export function evaluateContractsStatus({ lock, manifest, uncommitted = [] }) {
+export function evaluateContractsStatus({ lock, manifest, uncommitted = [], detail = null }) {
   if (!lock) {
-    return { state: CONTRACT_STATES.NOT_INITIALIZED, exitCode: 2, changes: [], uncommitted }
+    return { state: CONTRACT_STATES.NOT_INITIALIZED, exitCode: 2, changes: [], uncommitted, detail }
   }
 
   if (!manifest) {
-    return { state: CONTRACT_STATES.UNVERIFIABLE, exitCode: 2, changes: [], uncommitted }
+    return { state: CONTRACT_STATES.UNVERIFIABLE, exitCode: 2, changes: [], uncommitted, detail }
   }
 
   const outOfSync = lock.hash !== manifest.hash
@@ -161,7 +161,8 @@ export function renderContractsStatus(result, options = {}) {
   }
 
   if (result.state === CONTRACT_STATES.UNVERIFIABLE) {
-    return `${badge} Contracts ${label}\n\n  Could not reach the backend contracts endpoint.\n  Next:  check the API URL / VPN / token, then retry`
+    const reason = result.detail ? `\n  Reason: ${result.detail}` : ''
+    return `${badge} Contracts ${label}\n\n  Could not reach the backend contracts endpoint.${reason}\n  Next:  check the API URL / VPN / credentials, then retry`
   }
 
   const lines = [`${badge} Contracts ${label}`, '']
