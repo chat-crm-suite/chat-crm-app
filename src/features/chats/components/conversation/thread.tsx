@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ComponentProps } from 'react'
 import { format } from 'date-fns'
 import { ArrowDownIcon, MessageSquareDashed } from 'lucide-react'
 
@@ -115,6 +115,7 @@ export function ConversationThread({
   currentMemberId,
   currentMemberName,
   onRetry,
+  onResendSticker,
   className,
 }: {
   messages: ChatMessage[]
@@ -123,6 +124,7 @@ export function ConversationThread({
   currentMemberId?: string
   currentMemberName?: string
   onRetry: (message: ChatMessage) => void
+  onResendSticker?: ComponentProps<typeof MessageRow>['onResendSticker']
   className?: string
 }) {
   const rows = useMemo(() => buildRows(messages), [messages])
@@ -190,6 +192,7 @@ export function ConversationThread({
                               currentMemberName,
                             })}
                             onRetry={onRetry}
+                            onResendSticker={onResendSticker}
                           />
                         ))}
                       </div>

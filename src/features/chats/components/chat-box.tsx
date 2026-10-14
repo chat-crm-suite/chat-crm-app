@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useComposerAttachments } from '../hooks/use-composer-attachments'
+import { recentStickers } from '../lib/recent-stickers'
 import { useFileDrop } from '../hooks/use-file-drop'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
@@ -177,6 +178,9 @@ export const ChatBox = () => {
             currentMemberId={memberId}
             currentMemberName={memberName}
             onRetry={thread.retry}
+            onResendSticker={(sticker) =>
+              thread.send({ type: 'sticker', attachmentId: sticker.attachmentId, previewUrl: sticker.url })
+            }
           />
 
           <Composer
@@ -184,6 +188,7 @@ export const ChatBox = () => {
             onSend={thread.send}
             attachments={attachments}
             capabilities={capabilities}
+            recentStickers={recentStickers(thread.messages)}
             status={chat.status}
           />
         </div>

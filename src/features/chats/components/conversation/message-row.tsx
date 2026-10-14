@@ -1,4 +1,4 @@
-import { Copy, Download, RefreshCcw } from 'lucide-react'
+import { Copy, Download, RefreshCcw, Sticker } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -55,6 +55,7 @@ export function MessageRow({
   sender,
   showSender = true,
   onRetry,
+  onResendSticker,
   className,
 }: {
   message: ChatMessage
@@ -62,6 +63,8 @@ export function MessageRow({
   /** First message of a run by the same author: name and avatar show once. */
   showSender?: boolean
   onRetry: (message: ChatMessage) => void
+  /** Re-sends a stored sticker by reference (no upload). */
+  onResendSticker?: (sticker: { attachmentId: string; url: string }) => void
   className?: string
 }) {
   const outgoing = message.sender.type !== 'customer'
@@ -71,6 +74,10 @@ export function MessageRow({
   const { frame } = kindOf(message.msg)
   const text = copyableText(message)
   const fileUrl = downloadUrl(message)
+  const sticker =
+    message.msg.type === 'sticker' && message.msg.media.attachmentId && fileUrl
+      ? { attachmentId: message.msg.media.attachmentId, url: fileUrl }
+      : null
 
   const body = (
     <MessageBody
@@ -142,6 +149,12 @@ export function MessageRow({
                   <Download />
                   Descargar
                 </a>
+              </ContextMenuItem>
+            )}
+            {sticker && onResendSticker && (
+              <ContextMenuItem onSelect={() => onResendSticker(sticker)}>
+                <Sticker />
+                Enviar este sticker
               </ContextMenuItem>
             )}
             {isFailed && (

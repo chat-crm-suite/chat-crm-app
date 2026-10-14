@@ -268,6 +268,31 @@ describe('Composer', () => {
     expect(field).toHaveValue('')
   })
 
+  describe('stickers', () => {
+    it('re-sends a sticker of the conversation by reference', async () => {
+      const { onSend, user } = setup(true, {
+        recentStickers: [{ attachmentId: 'att-9', url: 'http://api/attachments/att-9' }],
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Stickers' }))
+      await user.click(await screen.findByRole('listitem', { name: 'Enviar este sticker' }))
+
+      expect(onSend).toHaveBeenCalledWith({
+        type: 'sticker',
+        attachmentId: 'att-9',
+        previewUrl: 'http://api/attachments/att-9',
+      })
+    })
+
+    it('explains where stickers come from when there are none yet', async () => {
+      const { user } = setup()
+
+      await user.click(screen.getByRole('button', { name: 'Stickers' }))
+
+      expect(await screen.findByText('Aún no hay stickers')).toBeInTheDocument()
+    })
+  })
+
   describe('voice notes', () => {
     class Recorder {
       static isTypeSupported = (mime: string) => mime.startsWith('audio/webm')

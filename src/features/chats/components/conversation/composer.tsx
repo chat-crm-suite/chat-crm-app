@@ -31,6 +31,8 @@ import type { ConversationStatus } from '../../types/chat.domain'
 import { AttachmentTray } from './attachment-tray'
 import { QuickReplies } from './quick-replies'
 import { RecordingBar } from './recording-bar'
+import type { RecentSticker } from '../../lib/recent-stickers'
+import { StickerPicker } from './sticker-picker'
 import { ResolvedNotice } from './resolved-notice'
 
 export function Composer({
@@ -40,6 +42,7 @@ export function Composer({
   capabilities,
   status = 'open',
   locked,
+  recentStickers = [],
   className,
 }: {
   connected: boolean
@@ -50,6 +53,8 @@ export function Composer({
   status?: ConversationStatus
   /** Free-form sending is closed (e.g. the 24 h window expired): why. */
   locked?: ReactNode
+  /** Stickers already in the conversation, re-sendable without upload. */
+  recentStickers?: RecentSticker[]
   className?: string
 }) {
   const [value, setValue] = useState('')
@@ -224,6 +229,12 @@ export function Composer({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <StickerPicker
+                recent={recentStickers}
+                rules={capabilities?.sticker}
+                disabled={!canAttach}
+                onSend={onSend}
+              />
             </InputGroupAddon>
             <InputGroupAddon align='inline-end' className='self-end pb-1.5'>
               {!hasText && canRecord && capabilities?.media.audio ? (

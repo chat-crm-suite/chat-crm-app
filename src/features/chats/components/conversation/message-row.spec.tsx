@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { API_URL } from '@/lib/http'
@@ -227,6 +227,28 @@ describe('MessageRow', () => {
       const video = container.querySelector('video')
       expect(video).toHaveAttribute('src', `${API_URL}/attachments/att-1`)
       expect(video).toHaveAttribute('controls')
+    })
+
+    it('offers to re-send a stored sticker from its menu', async () => {
+      const onResendSticker = vi.fn()
+      render(
+        <MessageRow
+          message={makeMessage({
+            msg: { type: 'sticker', media: readyMedia({ attachmentId: 'att-9', mimeType: 'image/webp' }) },
+          })}
+          sender={customer}
+          onRetry={vi.fn()}
+          onResendSticker={onResendSticker}
+        />
+      )
+
+      fireEvent.contextMenu(screen.getByRole('img', { name: 'Sticker' }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Enviar este sticker' }))
+
+      expect(onResendSticker).toHaveBeenCalledWith({
+        attachmentId: 'att-9',
+        url: `${API_URL}/attachments/att-1`,
+      })
     })
 
     it('draws stickers without a bubble', () => {
