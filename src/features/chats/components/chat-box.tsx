@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { channelCapabilities } from '@chat-crm/contracts'
 import { claimChat } from '@/services/chat.service'
@@ -86,6 +86,8 @@ export const ChatBox = () => {
     replyWindow?.kind === 'expired' || replyWindow?.kind === 'none'
       ? replyWindow.kind
       : null
+
+  const stickers = useMemo(() => recentStickers(thread.messages), [thread.messages])
 
   // A tray belongs to one conversation: switching chats discards it.
   const { clear: clearAttachments } = attachments
@@ -202,7 +204,7 @@ export const ChatBox = () => {
             onSend={thread.send}
             attachments={attachments}
             capabilities={capabilities}
-            recentStickers={recentStickers(thread.messages)}
+            recentStickers={stickers}
             locked={windowClosed && <ReplyWindowNotice reason={windowClosed} />}
             status={chat.status}
           />

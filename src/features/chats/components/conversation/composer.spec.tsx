@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { channelCapabilities } from '@chat-crm/contracts'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { useComposerAttachments } from '../../hooks/use-composer-attachments'
@@ -126,6 +126,8 @@ describe('Composer', () => {
       type: 'document', file: pdf, caption: 'Te paso la cotización',
     })
     expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+    // Typing continues in the message field.
+    expect(screen.getByPlaceholderText('Escribe un mensaje…')).toHaveFocus()
   })
 
   it('takes files pasted into the field', () => {
@@ -287,7 +289,8 @@ describe('Composer', () => {
       })
 
       await user.click(screen.getByRole('button', { name: 'Stickers' }))
-      await user.click(await screen.findByRole('listitem', { name: 'Enviar este sticker' }))
+      const list = await screen.findByRole('list', { name: 'Stickers de esta conversación' })
+      await user.click(within(list).getByRole('button', { name: 'Enviar sticker 1' }))
 
       expect(onSend).toHaveBeenCalledWith({
         type: 'sticker',
@@ -353,6 +356,8 @@ describe('Composer', () => {
 
       await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
       expect(await screen.findByRole('group', { name: 'Grabando nota de voz' })).toBeInTheDocument()
+      // The mic is gone: focus moves into the bar, so the keyboard keeps working.
+      expect(screen.getByRole('button', { name: 'Pausar grabación' })).toHaveFocus()
 
       await user.click(screen.getByRole('button', { name: 'Enviar nota de voz' }))
 
@@ -366,9 +371,11 @@ describe('Composer', () => {
       const { onSend, user } = setup()
 
       await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
-      await user.click(await screen.findByRole('button', { name: 'Descartar nota de voz' }))
+      await screen.findByRole('group', { name: 'Grabando nota de voz' })
+      await user.keyboard('{Escape}')
 
       expect(onSend).not.toHaveBeenCalled()
+      expect(screen.getByPlaceholderText('Escribe un mensaje…')).toHaveFocus()
       expect(screen.getByPlaceholderText('Escribe un mensaje…')).toBeInTheDocument()
     })
   })

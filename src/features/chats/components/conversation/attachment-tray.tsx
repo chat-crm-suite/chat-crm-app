@@ -112,7 +112,10 @@ export function AttachmentTray({
       aria-label='Archivos para enviar'
       className='bg-card flex max-h-[min(36rem,70dvh)] flex-col overflow-hidden rounded-2xl border shadow-sm'
       onKeyDown={(event) => {
-        if (event.key === 'Escape') attachments.clear()
+        if (event.key !== 'Escape') return
+        // Escape while moving a thumbnail only cancels the move.
+        if ((event.target as HTMLElement).closest('[data-dragging]')) return
+        attachments.clear()
       }}
     >
       <header className='flex items-center gap-2 border-b px-2 py-1.5'>
@@ -191,6 +194,8 @@ export function AttachmentTray({
                     aria-label={`Quitar ${item.file.name}`}
                     className={cn(
                       'bg-foreground text-background absolute -end-1 -top-1 grid size-5 place-items-center rounded-full shadow transition-opacity',
+                      // 20 px dot, 44 px hit area.
+                      "after:absolute after:-inset-3 after:content-['']",
                       'opacity-0 group-hover/thumb:opacity-100 focus-visible:opacity-100 max-sm:opacity-100',
                       item.id === selected.id && 'opacity-100'
                     )}

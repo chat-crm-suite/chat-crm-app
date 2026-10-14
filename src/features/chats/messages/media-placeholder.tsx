@@ -17,7 +17,6 @@ export function MediaPlaceholder({
   if (source.state === 'loading') {
     return (
       <span
-        role='status'
         className={cn(
           'bg-muted/50 text-muted-foreground flex min-h-14 w-fit items-center gap-2 rounded-lg px-3 py-2 text-xs',
           className

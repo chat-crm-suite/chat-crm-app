@@ -69,23 +69,26 @@ export function StickerPicker({
       <PopoverContent align='start' side='top' className='w-80 p-3'>
         <p className='mb-2 text-sm font-medium'>Stickers de esta conversación</p>
         {recent.length ? (
-          <div role='list' className='grid max-h-56 grid-cols-4 gap-1 overflow-y-auto'>
-            {recent.map((sticker) => (
-              <button
-                key={sticker.attachmentId}
-                type='button'
-                role='listitem'
-                aria-label='Enviar este sticker'
-                onClick={() => {
-                  onSend({ type: 'sticker', attachmentId: sticker.attachmentId, previewUrl: sticker.url })
-                  setOpen(false)
-                }}
-                className='hover:bg-muted focus-visible:ring-ring aspect-square rounded-lg p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none'
-              >
-                <img src={sticker.url} alt='' loading='lazy' className='size-full object-contain' />
-              </button>
+          <ul
+            aria-label='Stickers de esta conversación'
+            className='grid max-h-56 grid-cols-4 gap-1 overflow-y-auto'
+          >
+            {recent.map((sticker, index) => (
+              <li key={sticker.attachmentId}>
+                <button
+                  type='button'
+                  aria-label={`Enviar sticker ${index + 1}`}
+                  onClick={() => {
+                    onSend({ type: 'sticker', attachmentId: sticker.attachmentId, previewUrl: sticker.url })
+                    setOpen(false)
+                  }}
+                  className='hover:bg-muted focus-visible:ring-ring aspect-square w-full rounded-lg p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none'
+                >
+                  <img src={sticker.url} alt='' loading='lazy' className='size-full object-contain' />
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
           <Empty className='border-0 p-4'>
             <EmptyHeader>

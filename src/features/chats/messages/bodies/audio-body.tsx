@@ -70,7 +70,7 @@ export function AudioBody({ view, message, isMine }: MessageBodyProps<'audio'>) 
             type='button'
             onClick={player.cycleRate}
             aria-label={`Velocidad ${player.rate}x`}
-            className='bg-muted text-foreground/80 hover:bg-muted/70 focus-visible:ring-ring h-6 min-w-9 shrink-0 rounded-full px-1.5 text-[11px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none'
+            className="bg-muted text-foreground/80 hover:bg-muted/70 focus-visible:ring-ring relative h-6 min-w-9 shrink-0 rounded-full px-1.5 text-[11px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
           >
             {player.rate}×
           </button>

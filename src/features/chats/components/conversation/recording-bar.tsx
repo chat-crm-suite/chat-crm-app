@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Pause, Play, SendHorizontal, Trash2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -23,6 +24,12 @@ export function RecordingBar({
   const { state } = recorder
   const recording = state === 'recording'
   const requesting = state === 'requesting'
+  const toggleRef = useRef<HTMLButtonElement>(null)
+
+  // The mic button that started it is gone: keep keyboard focus in the bar.
+  useEffect(() => {
+    if (!requesting) toggleRef.current?.focus()
+  }, [requesting])
 
   return (
     <div
@@ -74,6 +81,7 @@ export function RecordingBar({
       </div>
 
       <Button
+        ref={toggleRef}
         type='button'
         variant='ghost'
         size='icon'

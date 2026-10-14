@@ -71,6 +71,14 @@ export function Composer({
   const recorder = useVoiceRecorder()
   const [canRecord] = useState(canRecordVoice)
   const isRecording = recorder.state !== 'idle' && recorder.state !== 'denied'
+  const mode = isRecording ? 'recording' : attachments.items.length ? 'tray' : 'field'
+  const previousMode = useRef(mode)
+
+  // Back from the tray or the recorder, typing continues where it was.
+  useEffect(() => {
+    if (mode === 'field' && previousMode.current !== 'field') fieldRef.current?.focus()
+    previousMode.current = mode
+  }, [mode])
 
   useEffect(() => {
     if (recorder.state !== 'denied') return
@@ -106,7 +114,6 @@ export function Composer({
   const sendFiles = () => {
     if (disabled) return
     for (const draft of attachments.take()) onSend(draft)
-    fieldRef.current?.focus()
   }
 
   /**
