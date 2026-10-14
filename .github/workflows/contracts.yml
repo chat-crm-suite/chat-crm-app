@@ -42,10 +42,11 @@ jobs:
       - name: Verify contracts are in sync
         env:
           CONTRACTS_API_URL: ${{ github.event.inputs.api_url || secrets.CONTRACTS_API_URL }}
-          CONTRACTS_API_TOKEN: ${{ secrets.CONTRACTS_API_TOKEN }}
+          API_USERNAME: ${{ secrets.CONTRACTS_API_USERNAME }}
+          API_PASSWORD: ${{ secrets.CONTRACTS_API_PASSWORD }}
         run: |
           if [ -z "$CONTRACTS_API_URL" ]; then
             echo "CONTRACTS_API_URL is not set; skipping (opt-in job)."
             exit 0
           fi
-          node scripts/contracts-status.mjs --api-url "$CONTRACTS_API_URL" --token "$CONTRACTS_API_TOKEN"
+          node scripts/contracts-status.mjs --api-url "$CONTRACTS_API_URL"
