@@ -23,6 +23,17 @@ function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
 }
 
 describe('serviceWindowState', () => {
+  it("uses the channel's own window length when given", () => {
+    // Last customer message at 08:32; a 12 h window closed at 20:32 the same day.
+    expect(serviceWindowState([makeMessage()], NOW, 12 * 60 * 60 * 1000)).toEqual({
+      kind: 'open',
+      remainingMs: (2 * 60 + 32) * 60 * 1000,
+    })
+    expect(serviceWindowState([makeMessage()], NOW, 60 * 60 * 1000)).toEqual({
+      kind: 'expired',
+    })
+  })
+
   it('reports the remaining window from the last customer message', () => {
     const state = serviceWindowState([makeMessage()], NOW)
 

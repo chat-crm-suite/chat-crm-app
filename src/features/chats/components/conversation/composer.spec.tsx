@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 
 import { useComposerAttachments } from '../../hooks/use-composer-attachments'
 import { Composer } from './composer'
+import { ReplyWindowNotice } from './reply-window-notice'
 
 const toast = vi.hoisted(() => ({ error: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
@@ -266,6 +267,17 @@ describe('Composer', () => {
 
     expect(onSend).toHaveBeenCalledWith(text('Mensaje con el caso resuelto'))
     expect(field).toHaveValue('')
+  })
+
+  it('locks free-form sending when the reply window is closed, and says why', () => {
+    setup(true, { locked: <ReplyWindowNotice reason='expired' /> })
+
+    expect(screen.getByText('Ventana de 24 h cerrada')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Envío de texto libre cerrado')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Adjuntar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Stickers' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Saludo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enviar plantilla (próximamente)' })).toBeDisabled()
   })
 
   describe('stickers', () => {

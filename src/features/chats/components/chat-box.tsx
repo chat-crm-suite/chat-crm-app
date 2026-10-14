@@ -18,6 +18,9 @@ import { useChats } from '../contexts/chats.provider'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useComposerAttachments } from '../hooks/use-composer-attachments'
 import { recentStickers } from '../lib/recent-stickers'
+import { serviceWindowState } from '../lib/service-window'
+import { useNow } from '../hooks/use-now'
+import { ReplyWindowNotice } from './conversation/reply-window-notice'
 import { useFileDrop } from '../hooks/use-file-drop'
 import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
@@ -72,6 +75,17 @@ export const ChatBox = () => {
     onFiles: (files) => attachments.add(files),
     disabled: !isConnected || !capabilities,
   })
+
+  // Free-form replies only inside the channel's window (checked every 30 s).
+  const now = useNow(30_000)
+  const replyWindow =
+    capabilities?.replyWindowMs && !thread.isLoading
+      ? serviceWindowState(thread.messages, now, capabilities.replyWindowMs)
+      : null
+  const windowClosed =
+    replyWindow?.kind === 'expired' || replyWindow?.kind === 'none'
+      ? replyWindow.kind
+      : null
 
   // A tray belongs to one conversation: switching chats discards it.
   const { clear: clearAttachments } = attachments
@@ -189,6 +203,7 @@ export const ChatBox = () => {
             attachments={attachments}
             capabilities={capabilities}
             recentStickers={recentStickers(thread.messages)}
+            locked={windowClosed && <ReplyWindowNotice reason={windowClosed} />}
             status={chat.status}
           />
         </div>
