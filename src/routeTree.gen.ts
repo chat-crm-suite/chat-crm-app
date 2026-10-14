@@ -25,6 +25,7 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedContactsIndexRouteImport } from './routes/_authenticated/contacts/index'
+import { Route as AuthenticatedSettingsServiceRouteImport } from './routes/_authenticated/settings/service'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedSettingsIntegrationsWhatsappRouteImport } from './routes/_authenticated/settings/integrations/whatsapp'
@@ -110,6 +111,12 @@ const AuthenticatedContactsIndexRoute =
     path: '/contacts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsServiceRoute =
+  AuthenticatedSettingsServiceRouteImport.update({
+    id: '/service',
+    path: '/service',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedTasksIndexRoute = AuthenticatedTasksIndexRouteImport.update({
   id: '/tasks/',
   path: '/tasks/',
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/setup': typeof setupSetupRoute
+  '/settings/service': typeof AuthenticatedSettingsServiceRoute
   '/apps/': typeof AuthenticatedAppsIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/contacts/': typeof AuthenticatedContactsIndexRoute
@@ -160,6 +168,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/setup': typeof setupSetupRoute
   '/': typeof AuthenticatedIndexRoute
+  '/settings/service': typeof AuthenticatedSettingsServiceRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/contacts': typeof AuthenticatedContactsIndexRoute
@@ -182,6 +191,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/(setup)/setup': typeof setupSetupRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/settings/service': typeof AuthenticatedSettingsServiceRoute
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/contacts/': typeof AuthenticatedContactsIndexRoute
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/setup'
+    | '/settings/service'
     | '/apps/'
     | '/chats/'
     | '/contacts/'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/setup'
     | '/'
+    | '/settings/service'
     | '/apps'
     | '/chats'
     | '/contacts'
@@ -245,6 +257,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/(setup)/setup'
     | '/_authenticated/'
+    | '/_authenticated/settings/service'
     | '/_authenticated/apps/'
     | '/_authenticated/chats/'
     | '/_authenticated/contacts/'
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContactsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/service': {
+      id: '/_authenticated/settings/service'
+      path: '/service'
+      fullPath: '/settings/service'
+      preLoaderRoute: typeof AuthenticatedSettingsServiceRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/tasks/': {
       id: '/_authenticated/tasks/'
       path: '/tasks'
@@ -406,11 +426,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedSettingsRouteRouteChildren {
+  AuthenticatedSettingsServiceRoute: typeof AuthenticatedSettingsServiceRoute
   AuthenticatedSettingsIntegrationsWhatsappRoute: typeof AuthenticatedSettingsIntegrationsWhatsappRoute
 }
 
 const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
   {
+    AuthenticatedSettingsServiceRoute: AuthenticatedSettingsServiceRoute,
     AuthenticatedSettingsIntegrationsWhatsappRoute:
       AuthenticatedSettingsIntegrationsWhatsappRoute,
   }

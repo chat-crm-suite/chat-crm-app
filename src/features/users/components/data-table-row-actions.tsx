@@ -1,7 +1,7 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
 import { Trash2, UserPen } from 'lucide-react'
-import { useAuthStore } from '@/stores/auth-store'
+import { useMemberRole } from '@/hooks/use-member-role'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,14 +19,8 @@ type DataTableRowActionsProps = {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { user, company } = useAuthStore().auth
   const { setOpen, setCurrentRow } = useUsers()
-  // v2: role lives in memberships (per company), not on the user.
-  const isAdmin =
-    user?.isPlatformAdmin ||
-    user?.memberships?.some(
-      (m) => m.role === 'admin' && (!company?.id || m.companyId === company.id)
-    )
+  const { isAdmin } = useMemberRole()
   return (
     <>
       <DropdownMenu modal={false}>

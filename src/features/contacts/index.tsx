@@ -1,4 +1,4 @@
-import { useAuthStore } from '@/stores/auth-store'
+import { useMemberRole } from '@/hooks/use-member-role'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -11,12 +11,7 @@ import { ContactsDialogs } from './components/contacts-dialogs'
 import { ContactsPrimaryButtons } from './components/contacts-primary-buttons'
 
 export function Contacts() {
-  const { user, company } = useAuthStore().auth
-  const isAdmin =
-    user?.memberships.some(
-      (membership) =>
-        membership.companyId === company.id && membership.role === 'admin'
-    ) ?? false
+  const { isAdmin } = useMemberRole()
 
   return (
     <ContactsProvider>

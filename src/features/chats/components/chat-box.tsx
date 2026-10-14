@@ -26,6 +26,7 @@ import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
 import { AssignedUser } from './assigned-user'
 import { CaseHeader } from './conversation/case-header'
+import { ResolveCaseButton } from './conversation/resolve-case-button'
 import { CaseRail } from './conversation/case-rail'
 import { Composer } from './conversation/composer'
 import { ConversationThread } from './conversation/thread'
@@ -179,6 +180,7 @@ export const ChatBox = () => {
             taking={claim.isPending}
             onTake={() => claim.mutate()}
             onOpenDetails={() => setDetailsOpen(true)}
+            resolveAction={<ResolveCaseButton conversationId={chat.id} />}
             onBack={() => {
               setChatSelected(null)
               setMobile(false)
