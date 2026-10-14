@@ -1,6 +1,8 @@
 import { Outlet } from "@tanstack/react-router";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { NoCompanies } from "@/components/layout/no-companies";
+import { ShellEffects } from "@/components/layout/shell-effects";
 import { SkipToMain } from "@/components/skip-to-main";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LayoutProvider } from "@/context/layout-provider";
@@ -8,6 +10,7 @@ import { SearchProvider } from "@/context/search-provider";
 import { WhatsappSetupBanner } from "@/features/setup/components/whatsapp-banner";
 import { getCookie } from "@/lib/cookies";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode;
@@ -15,10 +18,16 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie("sidebar_state") !== "false";
+  const hasCompanies = useAuthStore((state) => state.auth.companies.length > 0);
+
+  // No active membership: nothing in the app can load without a company.
+  if (!hasCompanies) return <NoCompanies />;
+
   return (
     <SearchProvider>
       <LayoutProvider>
         <SidebarProvider defaultOpen={defaultOpen}>
+          <ShellEffects />
           <SkipToMain />
           <AppSidebar />
           <SidebarInset

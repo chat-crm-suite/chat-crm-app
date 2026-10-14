@@ -1,220 +1,162 @@
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Switch } from '@/components/ui/switch'
+  NOTIFICATION_TYPES,
+  type NotificationPreferences,
+  type NotificationType,
+} from '@chat-crm/contracts'
+import { toast } from 'sonner'
+import {
+  desktopPermission,
+  readLocalNotificationPrefs,
+  writeLocalNotificationPrefs,
+  type LocalNotificationPrefs,
+} from '@/lib/local-notification-prefs'
+import { FormSection } from '@/components/form-kit'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  getNotificationPreferences,
+  saveNotificationPreferences,
+} from '@/services/notification-preferences.service'
+import { SwitchList, SwitchRow } from '../components/switch-row'
+import { NOTIFICATION_COPY, NOTIFICATION_TYPE_COPY } from '../copy'
 
-const notificationsFormSchema = z.object({
-  type: z.enum(['all', 'mentions', 'none'], {
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select a notification type.'
-        : undefined,
-  }),
-  mobile: z.boolean().default(false).optional(),
-  communication_emails: z.boolean().default(false).optional(),
-  social_emails: z.boolean().default(false).optional(),
-  marketing_emails: z.boolean().default(false).optional(),
-  security_emails: z.boolean(),
-})
+export const NOTIFICATION_PREFS_KEY = ['notifications', 'preferences'] as const
 
-type NotificationsFormValues = z.infer<typeof notificationsFormSchema>
-
-// This can come from your database or API.
-const defaultValues: Partial<NotificationsFormValues> = {
-  communication_emails: false,
-  marketing_emails: false,
-  social_emails: true,
-  security_emails: true,
-}
-
+/**
+ * Per-type switches are stored on the server (muted types are never created
+ * for the member) and apply instantly: the switch flips first and goes back if
+ * the save fails. Sound and desktop alerts are per browser.
+ */
 export function NotificationsForm() {
-  const form = useForm<NotificationsFormValues>({
-    resolver: zodResolver(notificationsFormSchema),
-    defaultValues,
+  const queryClient = useQueryClient()
+  const prefs = useQuery({
+    queryKey: NOTIFICATION_PREFS_KEY,
+    queryFn: getNotificationPreferences,
   })
 
+  const save = useMutation({
+    mutationFn: (next: NotificationPreferences) =>
+      saveNotificationPreferences(next),
+    onMutate: async (next: NotificationPreferences) => {
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_PREFS_KEY })
+      const previous = queryClient.getQueryData<NotificationPreferences>(
+        NOTIFICATION_PREFS_KEY
+      )
+      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, next)
+      return { previous }
+    },
+    onError: (_error, _next, context) => {
+      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, context?.previous)
+      toast.error(NOTIFICATION_COPY.saveFailed)
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, saved)
+    },
+  })
+
+  const setEnabled = (type: NotificationType, enabled: boolean) => {
+    const muted = new Set(prefs.data?.muted ?? [])
+    if (enabled) muted.delete(type)
+    else muted.add(type)
+    // Keep the contract order so the payload does not depend on click order.
+    save.mutate({ muted: NOTIFICATION_TYPES.filter((t) => muted.has(t)) })
+  }
+
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
-        className='space-y-8'
+    <div className='space-y-10'>
+      <FormSection
+        title={NOTIFICATION_COPY.serverSection}
+        description={NOTIFICATION_COPY.serverSectionHint}
       >
-        <FormField
-          control={form.control}
-          name='type'
-          render={({ field }) => (
-            <FormItem className='relative space-y-3'>
-              <FormLabel>Notify me about...</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className='flex flex-col gap-2'
-                >
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='all' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>
-                      All new messages
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='mentions' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>
-                      Direct messages and mentions
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='none' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>Nothing</FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {prefs.isPending ? (
+          <Skeleton className='h-52 w-full rounded-xl' />
+        ) : prefs.isError ? (
+          <p className='text-muted-foreground text-sm'>
+            {NOTIFICATION_COPY.loadFailed}{' '}
+            <Button
+              variant='link'
+              className='h-auto p-0'
+              onClick={() => void prefs.refetch()}
+            >
+              {NOTIFICATION_COPY.retry}
+            </Button>
+          </p>
+        ) : (
+          <SwitchList>
+            {NOTIFICATION_TYPES.map((type) => (
+              <SwitchRow
+                key={type}
+                label={NOTIFICATION_TYPE_COPY[type].label}
+                description={NOTIFICATION_TYPE_COPY[type].description}
+                checked={!prefs.data.muted.includes(type)}
+                onCheckedChange={(enabled) => setEnabled(type, enabled)}
+              />
+            ))}
+          </SwitchList>
+        )}
+      </FormSection>
+
+      <DeviceNotifications />
+    </div>
+  )
+}
+
+function DeviceNotifications() {
+  const [local, setLocal] = useState<LocalNotificationPrefs>(
+    readLocalNotificationPrefs
+  )
+  const [permission, setPermission] = useState(desktopPermission)
+
+  const update = (patch: Partial<LocalNotificationPrefs>) => {
+    const next = { ...local, ...patch }
+    setLocal(next)
+    writeLocalNotificationPrefs(next)
+  }
+
+  const toggleDesktop = async (enabled: boolean) => {
+    if (!enabled) return update({ desktop: false })
+
+    let current = desktopPermission()
+    if (current === 'default') {
+      current = await Notification.requestPermission()
+      setPermission(current)
+    }
+    if (current === 'granted') return update({ desktop: true })
+
+    toast.error(NOTIFICATION_COPY.desktopBlocked)
+  }
+
+  const unsupported = permission === 'unsupported'
+  const desktopOn = local.desktop && permission === 'granted'
+
+  return (
+    <FormSection
+      title={NOTIFICATION_COPY.deviceSection}
+      description={NOTIFICATION_COPY.deviceSectionHint}
+    >
+      <SwitchList>
+        <SwitchRow
+          label={NOTIFICATION_COPY.sound}
+          description={NOTIFICATION_COPY.soundHint}
+          checked={local.sound}
+          onCheckedChange={(sound) => update({ sound })}
         />
-        <div className='relative'>
-          <h3 className='mb-4 text-lg font-medium'>Email Notifications</h3>
-          <div className='space-y-4'>
-            <FormField
-              control={form.control}
-              name='communication_emails'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      Communication emails
-                    </FormLabel>
-                    <FormDescription>
-                      Receive emails about your account activity.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='marketing_emails'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      Marketing emails
-                    </FormLabel>
-                    <FormDescription>
-                      Receive emails about new products, features, and more.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='social_emails'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>Social emails</FormLabel>
-                    <FormDescription>
-                      Receive emails for friend requests, follows, and more.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='security_emails'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>Security emails</FormLabel>
-                    <FormDescription>
-                      Receive emails about your account activity and security.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled
-                      aria-readonly
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <FormField
-          control={form.control}
-          name='mobile'
-          render={({ field }) => (
-            <FormItem className='relative flex flex-row items-start'>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className='space-y-1 leading-none'>
-                <FormLabel>
-                  Use different settings for my mobile devices
-                </FormLabel>
-                <FormDescription>
-                  You can manage your mobile notifications in the{' '}
-                  <Link
-                    to='/settings'
-                    className='underline decoration-dashed underline-offset-4 hover:decoration-solid'
-                  >
-                    mobile settings
-                  </Link>{' '}
-                  page.
-                </FormDescription>
-              </div>
-            </FormItem>
-          )}
+        <SwitchRow
+          label={NOTIFICATION_COPY.desktop}
+          description={
+            unsupported
+              ? NOTIFICATION_COPY.desktopUnsupported
+              : permission === 'denied'
+                ? NOTIFICATION_COPY.desktopBlocked
+                : NOTIFICATION_COPY.desktopHint
+          }
+          checked={desktopOn}
+          disabled={unsupported || permission === 'denied'}
+          onCheckedChange={(enabled) => void toggleDesktop(enabled)}
         />
-        <Button type='submit'>Update notifications</Button>
-      </form>
-    </Form>
+      </SwitchList>
+    </FormSection>
   )
 }

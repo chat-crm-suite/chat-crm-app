@@ -50,11 +50,11 @@ export function NavGroup({ title, items }: NavGroupProps) {
           const key = `${item.title}-${'url' in item ? item.url : 'collapsible'}`
 
           if (!isNavCollapsible(item)) {
-            // item es NavLink aquí
+            // `item` is a NavLink here
             return <SidebarMenuLink key={key} item={item} href={href} />
           }
 
-          // item es NavCollapsible aquí
+          // `item` is a NavCollapsible here
           if (state === 'collapsed' && !isMobile) {
             return (
               <SidebarMenuCollapsedDropdown key={key} item={item} href={href} />
@@ -119,7 +119,7 @@ function SidebarMenuCollapsible({
             {item.items.map((subItem) => {
               const key = `${subItem.title}-${'url' in subItem ? subItem.url : 'collapsible'}`
               if (isNavCollapsible(subItem)) {
-                // recursión: subItem es NavCollapsible
+                // recursion: `subItem` is a NavCollapsible
                 return (
                   <SidebarMenuCollapsible
                     key={key}
@@ -180,7 +180,7 @@ function SidebarMenuCollapsedDropdown({
           {item.items.map((sub) => {
             const key = `${sub.title}-${'url' in sub ? sub.url : 'collapsible'}`
             if (isNavCollapsible(sub)) {
-              // para submenus anidados, renderizamos su título y sus hijos (simplemente)
+              // nested submenus render their title and their children
               return (
                 <div key={key} className='px-2 py-1'>
                   <DropdownMenuLabel>{sub.title}</DropdownMenuLabel>
@@ -226,12 +226,20 @@ function SidebarMenuCollapsedDropdown({
 }
 
 function checkIsActive(href: string, item: NavItem, mainNav = false): boolean {
+  const path = href.split('?')[0]
+  const url = 'url' in item ? (item.url as string | undefined) : undefined
+
+  // A link is active on its own page and on pages nested under it
+  // (/settings/security keeps "Ajustes" lit); "/" only matches itself.
+  const isOwnPage =
+    !!url && (path === url || (url !== '/' && path.startsWith(`${url}/`)))
+
   return (
-    ('url' in item && (href === (item.url as string) || href.split('?')[0] === (item.url as string))) ||
+    isOwnPage ||
     (!!item?.items?.some((i) => checkIsActive(href, i))) ||
     (mainNav &&
-      'url' in item &&
+      !!url &&
       href.split('/')[1] !== '' &&
-      href.split('/')[1] === (item.url as string)?.split('/')[1])
+      href.split('/')[1] === url.split('/')[1])
   )
 }

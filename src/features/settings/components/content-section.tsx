@@ -1,22 +1,26 @@
-import { Separator } from '@/components/ui/separator'
+import type { ReactNode } from 'react'
 
 type ContentSectionProps = {
   title: string
   desc: string
-  children: React.JSX.Element
+  children: ReactNode
 }
 
+/**
+ * One settings page: a title that says where you are, one sentence on what
+ * the page is for, then the forms. The page scrolls with the window (no inner
+ * scroller) so the sticky save bar always sticks to the viewport.
+ */
 export function ContentSection({ title, desc, children }: ContentSectionProps) {
   return (
-    <div className='flex flex-1 flex-col'>
-      <div className='flex-none'>
-        <h3 className='text-lg font-medium'>{title}</h3>
-        <p className='text-muted-foreground text-sm'>{desc}</p>
-      </div>
-      <Separator className='my-4 flex-none' />
-      <div className='faded-bottom h-full w-full overflow-y-auto scroll-smooth pe-4 pb-12'>
-        <div className='-mx-1 px-1.5 lg:max-w-xl'>{children}</div>
-      </div>
-    </div>
+    <section className='space-y-8'>
+      <header className='space-y-1'>
+        <h2 className='text-xl font-semibold tracking-tight'>{title}</h2>
+        <p className='text-muted-foreground max-w-prose text-sm text-pretty'>
+          {desc}
+        </p>
+      </header>
+      {children}
+    </section>
   )
 }

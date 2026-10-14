@@ -1,177 +1,136 @@
-import { z } from 'zod'
-import { useFieldArray, useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { useMemo } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
+import { useForm } from 'react-hook-form'
+import { UpdateProfileSchema, type UpdateProfileInput } from '@chat-crm/contracts'
+import { toast } from 'sonner'
+import { contractResolver } from '@/lib/contract-resolver'
+import { useAuthStore } from '@/stores/auth-store'
+import { Field, FormSection } from '@/components/form-kit'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { updateProfile } from '@/services/profile.service'
+import { PROFILE_COPY, SAVED_TOAST } from '../copy'
+import { ControlledPhone } from '../components/controlled-inputs'
+import { SaveBar } from '../components/save-bar'
+import { syncSessionUser } from '../lib/session-user'
+import { AvatarPicker } from './avatar-picker'
 
-const profileFormSchema = z.object({
-  username: z
-    .string('Please enter your username.')
-    .min(2, 'Username must be at least 2 characters.')
-    .max(30, 'Username must not be longer than 30 characters.'),
-  email: z.email({
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select an email to display.'
-        : undefined,
-  }),
-  bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.url('Please enter a valid URL.'),
-      })
-    )
-    .optional(),
-})
+type ProfileValues = {
+  firstName: string
+  lastName: string
+  phoneNumber: string
+  email: string
+}
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+const FORM_ID = 'profile-form'
 
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: 'I own a computer.',
-  urls: [
-    { value: 'https://shadcn.com' },
-    { value: 'http://twitter.com/shadcn' },
-  ],
+/** What the API accepts: the username is never part of it. */
+export function toProfilePayload(values: ProfileValues): UpdateProfileInput {
+  return {
+    firstName: values.firstName.trim(),
+    lastName: values.lastName.trim(),
+    phoneNumber: values.phoneNumber,
+    email: values.email.trim() || undefined,
+  }
 }
 
 export function ProfileForm() {
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues,
-    mode: 'onChange',
+  const user = useAuthStore((state) => state.auth.user)
+  const queryClient = useQueryClient()
+
+  const defaults = useMemo<ProfileValues>(
+    () => ({
+      firstName: user?.firstName ?? '',
+      lastName: user?.lastName ?? '',
+      phoneNumber: user?.phoneNumber ?? '',
+      email: user?.email ?? '',
+    }),
+    [user?.firstName, user?.lastName, user?.phoneNumber, user?.email]
+  )
+
+  const form = useForm<ProfileValues>({
+    defaultValues: defaults,
+    resolver: contractResolver<ProfileValues>(UpdateProfileSchema, {
+      toPayload: toProfilePayload,
+    }),
+  })
+  const { control, register, handleSubmit, reset, setError, formState } = form
+
+  const save = useMutation({
+    mutationFn: (values: ProfileValues) =>
+      updateProfile(toProfilePayload(values)),
+    onSuccess: (account, values) => {
+      syncSessionUser(queryClient, account)
+      reset(values)
+      toast.success(SAVED_TOAST)
+    },
+    onError: (error) => {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        setError('email', { message: PROFILE_COPY.emailTaken })
+        return
+      }
+      toast.error(PROFILE_COPY.saveFailed)
+    },
   })
 
-  const { fields, append } = useFieldArray({
-    name: 'urls',
-    control: form.control,
-  })
+  if (!user) return null
+  const { errors, isDirty } = formState
 
   return (
-    <Form {...form}>
+    <div className='space-y-10'>
+      <AvatarPicker />
+
       <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
-        className='space-y-8'
+        id={FORM_ID}
+        noValidate
+        onSubmit={handleSubmit((values) => save.mutate(values))}
+        className='space-y-10'
       >
-        <FormField
-          control={form.control}
-          name='username'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder='shadcn' {...field} />
-              </FormControl>
-              <FormDescription>
-                This is your public display name. It can be your real name or a
-                pseudonym. You can only change this once every 30 days.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='email'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a verified email to display' />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value='m@example.com'>m@example.com</SelectItem>
-                  <SelectItem value='m@google.com'>m@google.com</SelectItem>
-                  <SelectItem value='m@support.com'>m@support.com</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                You can manage verified email addresses in your{' '}
-                <Link to='/'>email settings</Link>.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='bio'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder='Tell us a little bit about yourself'
-                  className='resize-none'
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                You can <span>@mention</span> other users and organizations to
-                link to them.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div>
-          {fields.map((field, index) => (
-            <FormField
-              control={form.control}
-              key={field.id}
-              name={`urls.${index}.value`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={cn(index !== 0 && 'sr-only')}>
-                    URLs
-                  </FormLabel>
-                  <FormDescription className={cn(index !== 0 && 'sr-only')}>
-                    Add links to your website, blog, or social media profiles.
-                  </FormDescription>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ))}
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            className='mt-2'
-            onClick={() => append({ value: '' })}
+        <FormSection
+          title={PROFILE_COPY.personalSection}
+          description={PROFILE_COPY.personalSectionHint}
+          columns={2}
+        >
+          <Field
+            label={PROFILE_COPY.firstName}
+            error={errors.firstName?.message}
           >
-            Add URL
-          </Button>
-        </div>
-        <Button type='submit'>Update profile</Button>
+            <Input autoComplete='given-name' {...register('firstName')} />
+          </Field>
+          <Field
+            label={PROFILE_COPY.lastName}
+            error={errors.lastName?.message}
+          >
+            <Input autoComplete='family-name' {...register('lastName')} />
+          </Field>
+          <Field
+            label={PROFILE_COPY.phone}
+            error={errors.phoneNumber?.message}
+          >
+            <ControlledPhone control={control} name='phoneNumber' />
+          </Field>
+          <Field
+            label={PROFILE_COPY.email}
+            hint={PROFILE_COPY.emailHint}
+            error={errors.email?.message}
+          >
+            <Input type='email' autoComplete='email' {...register('email')} />
+          </Field>
+        </FormSection>
+
+        <FormSection title='Acceso'>
+          <Field label={PROFILE_COPY.username} hint={PROFILE_COPY.usernameHint}>
+            <Input value={user.username} readOnly disabled />
+          </Field>
+        </FormSection>
       </form>
-    </Form>
+
+      <SaveBar
+        dirty={isDirty}
+        saving={save.isPending}
+        formId={FORM_ID}
+        onDiscard={() => reset(defaults)}
+      />
+    </div>
   )
 }
