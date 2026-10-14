@@ -18,6 +18,7 @@ import {
   ThemeSwitch,
 } from './components'
 import { Search } from './components/icons'
+import { OpenConversationFromSearch } from './components/open-conversation-from-search'
 import { ChatsProvider } from './contexts/chats.provider'
 import { messageTypeOf, previewOf } from './messages/registry'
 import type { Chat, ChatMessage } from './types/chat.domain'
@@ -119,6 +120,7 @@ export function Chats() {
             <ChatList /> {/* Left Side */}
             <ChatBox /> {/* Right Side */}
             <ClientChatDialog />
+            <OpenConversationFromSearch />
           </ChatsProvider>
         </section>
       </Main>

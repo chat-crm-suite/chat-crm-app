@@ -7,6 +7,7 @@ import {
   UserCog,
   Plug,
   MessageSquare,
+  Clock,
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { ConfigDrawer } from '@/components/config-drawer'
@@ -42,6 +43,11 @@ const sidebarNavItems = [
     title: 'Display',
     href: '/settings/display',
     icon: <Monitor size={18} />,
+  },
+  {
+    title: 'Horario y atención',
+    href: '/settings/service',
+    icon: <Clock size={18} />,
   },
   {
     title: 'Integrations',

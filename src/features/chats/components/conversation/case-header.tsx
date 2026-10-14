@@ -26,13 +26,18 @@ export type CaseHeaderProps = {
    * rendered between Take and Resolve so the header stays a single row.
    */
   children?: ReactNode
+  /**
+   * Resolve control with its own data (the case query). Without it the
+   * header keeps the disabled placeholder.
+   */
+  resolveAction?: ReactNode
 }
 
 /**
  * Conversation header: identity block (name + real status pill, short case id
  * and phone) plus the case actions. Status copy is shared with the case rail;
- * Resolve and the options menu have no API behind them yet, so they ship
- * visibly disabled with a "Próximamente" hint instead of looking functional.
+ * Resolve comes in as `resolveAction`; the options menu has no API behind it
+ * yet, so it ships visibly disabled with a "Próximamente" hint.
  * Below `desktop` the header also carries the only trigger for the case
  * detail sheet, since the rail is not inline there.
  */
@@ -44,6 +49,7 @@ export function CaseHeader({
   onBack,
   onOpenDetails,
   children,
+  resolveAction,
 }: CaseHeaderProps) {
   const customerName = chat.customer?.displayName ?? 'Cliente'
   const phone = formatPhone(chat.customer?.phone)
@@ -104,21 +110,21 @@ export function CaseHeader({
           </Button>
         )}
         {children}
-        {/* TODO(#11): enable when the API close endpoint ships. On phones the
-            disabled placeholder yields its slot to the case-detail trigger, so
-            the customer name keeps room in the single header row; the
-            "coming soon" signal stays in the options menu. */}
-        <Button
-          type='button'
-          size='sm'
-          className='h-11 w-11 justify-center rounded-full px-0 text-xs max-sm:hidden sm:h-8 sm:w-auto sm:px-3'
-          disabled
-          title='Próximamente: resolver el caso'
-          aria-label='Resolver (próximamente)'
-        >
-          <CircleCheck className='size-3.5' />
-          <span className='hidden desktop:inline'>Resolver</span>
-        </Button>
+        {/* On phones the resolve control yields its slot to the case-detail
+            trigger, so the customer name keeps room in the single header row. */}
+        {resolveAction ?? (
+          <Button
+            type='button'
+            size='sm'
+            className='h-11 w-11 justify-center rounded-full px-0 text-xs max-sm:hidden sm:h-8 sm:w-auto sm:px-3'
+            disabled
+            title='Próximamente: resolver el caso'
+            aria-label='Resolver (próximamente)'
+          >
+            <CircleCheck className='size-3.5' />
+            <span className='desktop:inline hidden'>Resolver</span>
+          </Button>
+        )}
         {/* Case detail: the rail is inline from `desktop` up, so this trigger
             only exists where the relationship is a sheet. */}
         {onOpenDetails && (
@@ -126,7 +132,7 @@ export function CaseHeader({
             type='button'
             variant='ghost'
             size='icon'
-            className='size-11 @rail/card:hidden sm:size-8'
+            className='@rail/card:hidden size-11 sm:size-8'
             title='Detalle del caso'
             aria-label='Detalle del caso'
             onClick={onOpenDetails}

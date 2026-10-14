@@ -1,4 +1,4 @@
-import { useAuthStore } from '@/stores/auth-store'
+import { useMemberRole } from '@/hooks/use-member-role'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -11,13 +11,7 @@ import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersProvider } from './components/users-provider'
 
 export function Users() {
-  const { user, company } = useAuthStore().auth
-  // v2: role lives in memberships (per company), not on the user.
-  const isAdmin =
-    user?.isPlatformAdmin ||
-    user?.memberships?.some(
-      (m) => m.role === 'admin' && (!company?.id || m.companyId === company.id)
-    )
+  const { isAdmin } = useMemberRole()
 
   return (
     <UsersProvider>

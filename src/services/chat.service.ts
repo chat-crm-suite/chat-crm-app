@@ -1,5 +1,10 @@
 import {
+  CaseSchema,
   CompanyMemberResponseSchema,
+  CurrentCaseSchema,
+  type Case,
+  type CloseCaseInput,
+  type CurrentCase,
   ConversationSentimentSchema,
   type CompanyMemberResponse,
   type ConversationSentiment,
@@ -80,4 +85,32 @@ export const getConversationSentiment = async (
   }
 
   return data as ConversationSentiment
+}
+
+/** Latest support case of a conversation (`GET /conversations/:id/case`). */
+export const getCurrentCase = async (
+  conversationId: string
+): Promise<CurrentCase> => {
+  const { data } = await conversations.get(`/${conversationId}/case`)
+
+  // Dev-only runtime check: catches API/contract drift immediately.
+  if (import.meta.env.DEV) {
+    return CurrentCaseSchema.parse(data)
+  }
+
+  return data as CurrentCase
+}
+
+/** Resolves the open case (`POST /conversations/:id/close`, 409 if none). */
+export const closeCase = async (
+  conversationId: string,
+  input: CloseCaseInput = {}
+): Promise<Case> => {
+  const { data } = await conversations.post(`/${conversationId}/close`, input)
+
+  if (import.meta.env.DEV) {
+    return CaseSchema.parse(data)
+  }
+
+  return data as Case
 }
