@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { API_URL } from '@/lib/http'
@@ -20,6 +20,43 @@ const outgoing = (overrides: Partial<ChatMessage> = {}) =>
 
 const renderRow = (message: ChatMessage, sender: SenderView = mine) =>
   render(<MessageRow message={message} sender={sender} onRetry={vi.fn()} />)
+
+/** A minimal animated WebP: VP8X with the animation flag and one ANMF. */
+function animatedSticker(frameMs: number) {
+  const frame = [
+    ...'ANMF'.split('').map((c) => c.charCodeAt(0)),
+    16, 0, 0, 0,
+    ...Array(12).fill(0), frameMs & 0xff, (frameMs >> 8) & 0xff, 0, 0,
+  ]
+  const body = [
+    ...'WEBPVP8X'.split('').map((c) => c.charCodeAt(0)),
+    10, 0, 0, 0, 0x02, ...Array(9).fill(0),
+    ...frame,
+  ]
+  return new Uint8Array([
+    ...'RIFF'.split('').map((c) => c.charCodeAt(0)),
+    body.length, 0, 0, 0,
+    ...body,
+  ])
+}
+
+/** Every sticker file the row probes answers with these bytes. */
+function fetchSticker(bytes: Uint8Array) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(bytes as BodyInit))
+  )
+}
+
+beforeEach(() => {
+  fetchSticker(new Uint8Array(32))
+  URL.createObjectURL = vi.fn(() => 'blob:sticker')
+  URL.revokeObjectURL = vi.fn()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('MessageRow', () => {
   describe('ticks and retry', () => {
@@ -235,7 +272,7 @@ describe('MessageRow', () => {
         />
       )
 
-      fireEvent.contextMenu(screen.getByRole('img', { name: 'Sticker' }))
+      fireEvent.contextMenu(await screen.findByRole('img', { name: 'Sticker' }))
       await userEvent.click(await screen.findByRole('menuitem', { name: 'Enviar este sticker' }))
 
       expect(onResendSticker).toHaveBeenCalledWith({
@@ -244,12 +281,35 @@ describe('MessageRow', () => {
       })
     })
 
-    it('draws stickers without a frame', () => {
+    it('draws stickers without a frame', async () => {
       renderRow(
         outgoing({ msg: { type: 'sticker', media: readyMedia({ mimeType: 'image/webp' }) } })
       )
 
-      expect(screen.getByRole('img', { name: 'Sticker' })).toHaveClass('object-contain')
+      expect(await screen.findByRole('img', { name: 'Sticker' })).toHaveClass('object-contain')
+    })
+
+    it('replays an animated sticker a few loops when touched, then rests', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      fetchSticker(animatedSticker(500))
+      renderRow(
+        outgoing({
+          msg: {
+            type: 'sticker',
+            media: readyMedia({ url: '/attachments/animated', mimeType: 'image/webp' }),
+          },
+        })
+      )
+
+      const sticker = await screen.findByRole('img', { name: 'Sticker animado' })
+      expect(sticker.querySelector('img')).toBeNull()
+
+      fireEvent.click(sticker)
+      expect(sticker.querySelector('img')).toHaveAttribute('src', 'blob:sticker')
+
+      await act(() => vi.advanceTimersByTimeAsync(1500))
+      expect(sticker.querySelector('img')).toBeNull()
+      vi.useRealTimers()
     })
 
     it('names kinds it cannot render and keeps their text', () => {
