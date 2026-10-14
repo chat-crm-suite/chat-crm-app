@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '../api'
 import { chatBuilder } from '../builders/chat.builder'
-import { useChats } from '../contexts/chats.provider'
+import { useChats } from '../contexts/chats.context'
 import type { Client } from '../types/client.api'
 
 const customerName = (client: Client) =>

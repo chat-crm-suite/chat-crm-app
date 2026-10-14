@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useSocket } from '@/context/socket-provider'
-import { useChats } from '../../contexts/chats.provider'
+import { useChats } from '../../contexts/chats.context'
 import type { ChatListView } from '../../types/chat.domain'
 import { Plus, SearchIcon, X } from '../icons'
 
