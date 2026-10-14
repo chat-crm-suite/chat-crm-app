@@ -114,6 +114,7 @@ export function CreateCompanySheet({ open, onOpenChange }: Props) {
           result.initialPassword ? (
             <SecretRevealCard
               secret={result.initialPassword}
+              lostHint='Si se pierde, un administrador de la empresa podrá generar una nueva desde Equipo.'
               title={CREATE_COPY.passwordTitle(adminLabel)}
               description={
                 <>

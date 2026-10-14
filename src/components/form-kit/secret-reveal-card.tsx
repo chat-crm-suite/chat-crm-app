@@ -10,6 +10,8 @@ type SecretRevealCardProps = {
   description: ReactNode
   /** Label of the closing button. */
   doneLabel?: string
+  /** What to do if the secret gets lost (depends on who can regenerate it). */
+  lostHint?: string
   onDone: () => void
 }
 
@@ -26,6 +28,7 @@ export function SecretRevealCard({
   title,
   description,
   doneLabel = 'Listo, ya la guardé',
+  lostHint = 'Si se pierde, podrás generar una nueva desde el menú de la fila.',
   onDone,
 }: SecretRevealCardProps) {
   const [visible, setVisible] = useState(false)
@@ -90,8 +93,7 @@ export function SecretRevealCard({
 
       <p className='text-muted-foreground flex items-start gap-2 text-[13px]'>
         <ShieldAlert aria-hidden className='mt-0.5 size-4 shrink-0' />
-        Esta contraseña no se volverá a mostrar. Si se pierde, podrás generar
-        una nueva desde el menú de la fila.
+        Esta contraseña no se volverá a mostrar. {lostHint}
       </p>
 
       <Button

@@ -130,6 +130,21 @@ describe('SecretRevealCard', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('lets the caller say how a lost secret is recovered', () => {
+    render(
+      <SecretRevealCard
+        secret={secret}
+        title='Contraseña de Ana'
+        description='Entrégasela a Ana.'
+        lostHint='Pídele a un administrador una nueva.'
+        onDone={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText(/Pídele a un administrador una nueva/)).toBeVisible()
+    expect(screen.queryByText(/menú de la fila/)).not.toBeInTheDocument()
+  })
+
   it('copies without revealing and enables closing', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
