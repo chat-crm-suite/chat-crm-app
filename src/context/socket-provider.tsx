@@ -8,6 +8,10 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { refreshSession } from '@/lib/http'
 import {
+  readLocalNotificationPrefs,
+  shouldShowDesktopNotification,
+} from '@/lib/local-notification-prefs'
+import {
   notificationToastPayload,
   prependNotification,
   resolveErrorToast,
@@ -109,10 +113,8 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         return next
       })
 
-      if (
-        typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted'
-      ) {
+      // Desktop alerts and sound follow the per-browser choice in Ajustes.
+      if (shouldShowDesktopNotification()) {
         new Notification(title, { body: body ?? 'Vista no disponible' })
       }
 
@@ -120,8 +122,10 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         prependNotification(previous, notification)
       )
 
-      const audio = new Audio('/sounds/alert.mp3')
-      void audio.play().catch(() => undefined)
+      if (readLocalNotificationPrefs().sound) {
+        const audio = new Audio('/sounds/alert.mp3')
+        void audio.play().catch(() => undefined)
+      }
 
       toast.info(title, { position: 'top-right', description: body })
     })

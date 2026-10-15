@@ -13,6 +13,8 @@ declare module "@tanstack/react-table" {
     range?: [number, number];
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+    /** Right-align numeric/action columns in `DataGrid`. */
+    align?: "right";
   }
 }
 
