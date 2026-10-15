@@ -13,9 +13,19 @@ import {
 } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 
+/** Notification as returned by GET /notifications. */
+interface NotificationItem {
+  id: string
+  title: string
+  body: string
+  createdAt: string
+  readAt?: string | null
+}
+
 export const NotificationBell = () => {
   const { notifications, isLoading } = useNotifications()
-  const [readMessages, setReadMessages] = useState<number[]>([])
+  const typedNotifications = notifications as NotificationItem[]
+  const [readMessages, setReadMessages] = useState<string[]>([])
   const queryClient = useQueryClient()
   const { mutate } = useMutation({
     mutationFn: (notifs: string[]) => maskAsRead(notifs),
@@ -28,13 +38,13 @@ export const NotificationBell = () => {
   })
 
   const handleMarkAllRead = () => {
-    const noReadNotifications = notifications
-      .filter((n: any) => !n.readAt)
-      ?.map((n: any) => n.id)
+    const noReadNotifications = typedNotifications
+      .filter((n) => !n.readAt)
+      .map((n) => n.id)
     mutate(noReadNotifications)
   }
 
-  const handleMarkSingleRead = (id: number) => {
+  const handleMarkSingleRead = (id: string) => {
     if (!readMessages.includes(id)) {
       setReadMessages((prev) => [...prev, id])
     }
@@ -45,7 +55,7 @@ export const NotificationBell = () => {
       <PopoverTrigger asChild>
         <Button variant='ghost' size='icon' className='relative rounded-full'>
           <BellIcon />
-          {notifications.some((n: any) => !n?.readAt) && (
+          {typedNotifications.some((n) => !n?.readAt) && (
             <span className='absolute -top-0 -right-0 size-2 animate-bounce rounded-full bg-sky-600 dark:bg-sky-400' />
           )}
           <span className='sr-only'>Notifications</span>
@@ -59,7 +69,7 @@ export const NotificationBell = () => {
               variant='secondary'
               className='h-7 rounded-full px-2 py-1 text-xs'
               onClick={handleMarkAllRead}
-              disabled={isLoading || notifications.length === 0}
+              disabled={isLoading || typedNotifications.length === 0}
             >
               {'Mark all as read'}
             </Button>
@@ -70,12 +80,12 @@ export const NotificationBell = () => {
               <span className='text-muted-foreground text-center text-sm'>
                 Loading...
               </span>
-            ) : notifications.length === 0 ? (
+            ) : typedNotifications.length === 0 ? (
               <span className='text-muted-foreground text-center text-sm'>
                 No notifications
               </span>
             ) : (
-              notifications.map((item: any) => (
+              typedNotifications.map((item) => (
                 <li
                   key={item.id}
                   className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5'

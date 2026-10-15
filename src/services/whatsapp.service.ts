@@ -55,6 +55,7 @@ export const saveConfig = async (
  */
 export const sendTemplate = async (_to: string) => {
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.warn('[whatsapp] sendTemplate is not implemented in API v2')
   }
   return null
