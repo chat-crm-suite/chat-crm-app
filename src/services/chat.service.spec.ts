@@ -9,6 +9,7 @@ vi.mock('@/lib/http', () => ({
 import {
   assignMember,
   claimChat,
+  getConversationSentiment,
   getNeedsResponseChats,
   getUnassignedChats,
 } from './chat.service'
@@ -55,5 +56,27 @@ describe('chat.service conversation operations', () => {
     expect(get).toHaveBeenCalledWith('/needs-response', {
       params: { minutes: 30 },
     })
+  })
+
+  it('fetches the tone of a conversation through GET /conversations/:id/sentiment', async () => {
+    const sentiment = {
+      avgPos: 0.52,
+      avgNeu: 0.31,
+      avgNeg: 0.17,
+      totalMessages: 48,
+      dominant: 'POS' as const,
+    }
+    get.mockResolvedValue({ data: sentiment })
+
+    await expect(getConversationSentiment('conversation-1')).resolves.toEqual(
+      sentiment
+    )
+    expect(get).toHaveBeenCalledWith('/conversation-1/sentiment')
+  })
+
+  it('rejects a tone payload that drifts from the shared contract in dev', async () => {
+    get.mockResolvedValue({ data: { avgPos: 0.52, dominant: 'POS' } })
+
+    await expect(getConversationSentiment('conversation-1')).rejects.toThrow()
   })
 })

@@ -1,162 +1,158 @@
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { ChevronDownIcon } from '@radix-ui/react-icons'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { fonts } from '@/config/fonts'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
-import { useFont } from '@/context/font-provider'
+import { Check } from 'lucide-react'
 import { useTheme } from '@/context/theme-provider'
-import { Button, buttonVariants } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { cn } from '@/lib/utils'
+import { FormSection } from '@/components/form-kit'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { APPEARANCE_COPY } from '../copy'
+import { TEXT_SIZES, useTextSize, type TextSize } from '../lib/text-size'
 
-const appearanceFormSchema = z.object({
-  theme: z.enum(['light', 'dark']),
-  font: z.enum(fonts),
-})
+type ThemeChoice = 'light' | 'dark' | 'system'
+const THEMES: ThemeChoice[] = ['light', 'dark', 'system']
 
-type AppearanceFormValues = z.infer<typeof appearanceFormSchema>
+const SWATCH = {
+  light: {
+    page: 'oklch(0.9911 0 0)',
+    panel: 'oklch(0.9461 0 0)',
+    line: 'oklch(0.86 0 0)',
+  },
+  dark: {
+    page: 'oklch(0.13 0 0)',
+    panel: 'oklch(0.2603 0 0)',
+    line: 'oklch(0.4 0 0)',
+  },
+} as const
 
+const PRIMARY = 'oklch(0.8348 0.1302 160.908)'
+
+/** A miniature of the app (sidebar, one mint action, two lines of text). */
+function Miniature({ mode }: { mode: 'light' | 'dark' }) {
+  const colors = SWATCH[mode]
+  return (
+    <span
+      aria-hidden
+      className='flex h-full w-full gap-1.5 p-2'
+      style={{ backgroundColor: colors.page }}
+    >
+      <span
+        className='h-full w-4 rounded-sm'
+        style={{ backgroundColor: colors.panel }}
+      />
+      <span className='flex flex-1 flex-col gap-1.5 pt-0.5'>
+        <span
+          className='h-1.5 w-3/4 rounded-full'
+          style={{ backgroundColor: colors.line }}
+        />
+        <span
+          className='h-1.5 w-1/2 rounded-full'
+          style={{ backgroundColor: colors.line }}
+        />
+        <span
+          className='mt-auto h-3 w-8 rounded-sm'
+          style={{ backgroundColor: PRIMARY }}
+        />
+      </span>
+    </span>
+  )
+}
+
+function ThemePreview({ choice }: { choice: ThemeChoice }) {
+  if (choice !== 'system') return <Miniature mode={choice} />
+
+  // "Igual que el sistema": the same window, half light and half dark.
+  return (
+    <span aria-hidden className='relative block h-full w-full'>
+      <span className='absolute inset-0'>
+        <Miniature mode='light' />
+      </span>
+      <span
+        className='absolute inset-0'
+        style={{ clipPath: 'polygon(55% 0, 100% 0, 100% 100%, 35% 100%)' }}
+      >
+        <Miniature mode='dark' />
+      </span>
+    </span>
+  )
+}
+
+const TILE =
+  'group has-[:focus-visible]:ring-ring/60 relative flex cursor-pointer flex-col gap-2 rounded-xl border p-2 transition-colors has-[:focus-visible]:ring-[3px] has-[[data-state=checked]]:border-foreground has-[[data-state=checked]]:ring-1 has-[[data-state=checked]]:ring-foreground hover:bg-muted/40'
+
+/** Check mark on the chosen tile: the border alone is too faint to carry it. */
+function Chosen() {
+  return (
+    <span
+      aria-hidden
+      className='bg-primary text-primary-foreground absolute end-2 top-2 z-10 hidden size-5 items-center justify-center rounded-full group-has-[[data-state=checked]]:flex'
+    >
+      <Check className='size-3.5' />
+    </span>
+  )
+}
+
+const SAMPLE_PX: Record<TextSize, string> = {
+  normal: 'text-sm',
+  large: 'text-base',
+  larger: 'text-xl',
+}
+
+/** Theme and text size: both apply the moment they are picked. */
 export function AppearanceForm() {
-  const { font, setFont } = useFont()
   const { theme, setTheme } = useTheme()
-
-  // This can come from your database or API.
-  const defaultValues: Partial<AppearanceFormValues> = {
-    theme: theme as 'light' | 'dark',
-    font,
-  }
-
-  const form = useForm<AppearanceFormValues>({
-    resolver: zodResolver(appearanceFormSchema),
-    defaultValues,
-  })
-
-  function onSubmit(data: AppearanceFormValues) {
-    if (data.font != font) setFont(data.font)
-    if (data.theme != theme) setTheme(data.theme)
-
-    showSubmittedData(data)
-  }
+  const { size, setSize } = useTextSize()
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
-        <FormField
-          control={form.control}
-          name='font'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Font</FormLabel>
-              <div className='relative w-max'>
-                <FormControl>
-                  <select
-                    className={cn(
-                      buttonVariants({ variant: 'outline' }),
-                      'w-[200px] appearance-none font-normal capitalize',
-                      'dark:bg-background dark:hover:bg-background'
-                    )}
-                    {...field}
-                  >
-                    {fonts.map((font) => (
-                      <option key={font} value={font}>
-                        {font}
-                      </option>
-                    ))}
-                  </select>
-                </FormControl>
-                <ChevronDownIcon className='absolute end-3 top-2.5 h-4 w-4 opacity-50' />
-              </div>
-              <FormDescription className='font-manrope'>
-                Set the font you want to use in the dashboard.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='theme'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Theme</FormLabel>
-              <FormDescription>
-                Select the theme for the dashboard.
-              </FormDescription>
-              <FormMessage />
-              <RadioGroup
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                className='grid max-w-md grid-cols-2 gap-8 pt-2'
-              >
-                <FormItem>
-                  <FormLabel className='[&:has([data-state=checked])>div]:border-primary'>
-                    <FormControl>
-                      <RadioGroupItem value='light' className='sr-only' />
-                    </FormControl>
-                    <div className='border-muted hover:border-accent items-center rounded-md border-2 p-1'>
-                      <div className='space-y-2 rounded-sm bg-[#ecedef] p-2'>
-                        <div className='space-y-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-2 w-[80px] rounded-lg bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
-                        </div>
-                      </div>
-                    </div>
-                    <span className='block w-full p-2 text-center font-normal'>
-                      Light
-                    </span>
-                  </FormLabel>
-                </FormItem>
-                <FormItem>
-                  <FormLabel className='[&:has([data-state=checked])>div]:border-primary'>
-                    <FormControl>
-                      <RadioGroupItem value='dark' className='sr-only' />
-                    </FormControl>
-                    <div className='border-muted bg-popover hover:bg-accent hover:text-accent-foreground items-center rounded-md border-2 p-1'>
-                      <div className='space-y-2 rounded-sm bg-slate-950 p-2'>
-                        <div className='space-y-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-2 w-[80px] rounded-lg bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
-                        </div>
-                      </div>
-                    </div>
-                    <span className='block w-full p-2 text-center font-normal'>
-                      Dark
-                    </span>
-                  </FormLabel>
-                </FormItem>
-              </RadioGroup>
-            </FormItem>
-          )}
-        />
+    <div className='space-y-10'>
+      <FormSection
+        title={APPEARANCE_COPY.themeSection}
+        description={APPEARANCE_COPY.themeHint}
+      >
+        <RadioGroup
+          value={theme}
+          onValueChange={(value) => setTheme(value as ThemeChoice)}
+          aria-label={APPEARANCE_COPY.themeSection}
+          className='grid grid-cols-3 gap-3'
+        >
+          {THEMES.map((choice) => (
+            <label key={choice} className={TILE}>
+              <RadioGroupItem value={choice} className='sr-only' />
+              <Chosen />
+              <span className='border-border/60 block h-20 overflow-hidden rounded-md border'>
+                <ThemePreview choice={choice} />
+              </span>
+              <span className='px-1 pb-0.5 text-center text-[13px] font-medium'>
+                {APPEARANCE_COPY.themes[choice]}
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
+      </FormSection>
 
-        <Button type='submit'>Update preferences</Button>
-      </form>
-    </Form>
+      <FormSection
+        title={APPEARANCE_COPY.textSection}
+        description={APPEARANCE_COPY.textHint}
+      >
+        <RadioGroup
+          value={size}
+          onValueChange={(value) => setSize(value as TextSize)}
+          aria-label={APPEARANCE_COPY.textSection}
+          className='grid grid-cols-3 gap-3'
+        >
+          {TEXT_SIZES.map((choice) => (
+            <label key={choice} className={cn(TILE, 'items-center py-3')}>
+              <RadioGroupItem value={choice} className='sr-only' />
+              <Chosen />
+              <span aria-hidden className='flex h-8 items-end'>
+                <span className={cn('font-medium leading-none', SAMPLE_PX[choice])}>
+                  Aa
+                </span>
+              </span>
+              <span className='text-[13px] font-medium'>
+                {APPEARANCE_COPY.textSizes[choice]}
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
+      </FormSection>
+    </div>
   )
 }

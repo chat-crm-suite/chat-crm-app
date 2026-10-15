@@ -1,6 +1,13 @@
 import {
+  CaseSchema,
   CompanyMemberResponseSchema,
+  CurrentCaseSchema,
+  type Case,
+  type CloseCaseInput,
+  type CurrentCase,
+  ConversationSentimentSchema,
   type CompanyMemberResponse,
+  type ConversationSentiment,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
 import type { Chat } from '@/features/chats/types/chat.domain'
@@ -9,25 +16,16 @@ const conversations = client('/conversations')
 const companyMembers = client('/company-members')
 
 export const getChatList = async (): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/list')
+  const response = await conversations.get<Chat[]>('/list')
 
-    return response?.data ?? []
-  } catch (error) {
-    console.error('Error al obtener la lista de conversaciones:', error)
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Cola de conversaciones sin asignar de la empresa (para reclamar). */
 export const getUnassignedChats = async (): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/unassigned')
+  const response = await conversations.get<Chat[]>('/unassigned')
 
-    return response?.data ?? []
-  } catch {
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Reclama una conversación libre para el miembro actual (409 si es de otro). */
@@ -39,15 +37,11 @@ export const claimChat = async (conversationId: string) => {
 
 /** Conversaciones cuyo último mensaje es del cliente y llevan `minutes` sin respuesta. */
 export const getNeedsResponseChats = async (minutes = 15): Promise<Chat[]> => {
-  try {
-    const response = await conversations.get<Chat[]>('/needs-response', {
-      params: { minutes },
-    })
+  const response = await conversations.get<Chat[]>('/needs-response', {
+    params: { minutes },
+  })
 
-    return response?.data ?? []
-  } catch {
-    return []
-  }
+  return response?.data ?? []
 }
 
 /** Asignación manual / reasignación por member id (solo supervisores pueden quitar dueño). */
@@ -77,4 +71,46 @@ export const searchCompanyMembers = async (
   }
 
   return (data ?? []) as CompanyMemberResponse[]
+}
+
+/** Customer tone of a conversation (`GET /conversations/:id/sentiment`). */
+export const getConversationSentiment = async (
+  conversationId: string
+): Promise<ConversationSentiment> => {
+  const { data } = await conversations.get(`/${conversationId}/sentiment`)
+
+  // Dev-only runtime check: catches API/contract drift immediately.
+  if (import.meta.env.DEV) {
+    return ConversationSentimentSchema.parse(data)
+  }
+
+  return data as ConversationSentiment
+}
+
+/** Latest support case of a conversation (`GET /conversations/:id/case`). */
+export const getCurrentCase = async (
+  conversationId: string
+): Promise<CurrentCase> => {
+  const { data } = await conversations.get(`/${conversationId}/case`)
+
+  // Dev-only runtime check: catches API/contract drift immediately.
+  if (import.meta.env.DEV) {
+    return CurrentCaseSchema.parse(data)
+  }
+
+  return data as CurrentCase
+}
+
+/** Resolves the open case (`POST /conversations/:id/close`, 409 if none). */
+export const closeCase = async (
+  conversationId: string,
+  input: CloseCaseInput = {}
+): Promise<Case> => {
+  const { data } = await conversations.post(`/${conversationId}/close`, input)
+
+  if (import.meta.env.DEV) {
+    return CaseSchema.parse(data)
+  }
+
+  return data as Case
 }

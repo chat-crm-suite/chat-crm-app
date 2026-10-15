@@ -84,6 +84,8 @@ pnpm dev              # http://localhost:5173
 | `pnpm test` · `pnpm test:watch` | Vitest |
 | `pnpm lint` | ESLint |
 | `pnpm contracts:sync` | Regenerate the path to the shared contracts |
+| `pnpm contracts:pull` | Download the backend contracts snapshot into `src/generated/` + `contracts.lock.json` (endpoint-only) |
+| `pnpm contracts:status` | Report whether this app is in sync with a backend (`--api-url`, `--token`, `--verbose`) |
 
 ## Project structure
 
@@ -96,6 +98,26 @@ src/
 ├── stores/       Zustand stores
 ├── lib/          HTTP, i18n, formatting and helpers
 └── locales/      en.yml · es.yml
+```
+
+## Development
+
+### Agent skills
+
+`.agents/` and `.claude/` are installed, gitignored directories (never committed).
+`skills-lock.json` is the source of truth, like `package.json` for npm dependencies.
+
+```sh
+pnpm skills:install                     # install every skill in the lock
+pnpm skills:install -- --skill tdd      # install one skill
+pnpm skills:check                       # verify installed skills without network
+```
+
+To add or update a skill, use the [skills.sh](https://www.skills.sh/) CLI (it updates the lockfile), then commit
+only the lock:
+
+```sh
+pnpm dlx skills@latest add <owner/repo> --skill <name> -a opencode -a claude-code --copy -y
 ```
 
 ## Production

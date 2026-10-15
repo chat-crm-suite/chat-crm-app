@@ -69,6 +69,7 @@ export function DataTableToolbar<TData>({
     </div>
   )
 }
+
 interface DataTableToolbarFilterProps<TData> {
   column: Column<TData>
 }
@@ -76,110 +77,113 @@ interface DataTableToolbarFilterProps<TData> {
 function DataTableToolbarFilter<TData>({
   column,
 }: DataTableToolbarFilterProps<TData>) {
-  {
-    const columnMeta = column.columnDef.meta
+  const columnMeta = column.columnDef.meta
 
-    const onFilterRender = React.useCallback(() => {
-      if (!columnMeta?.variant) return null
-      const globalFilterValue = (column.getFilterValue() as string) ?? ''
+  if (!columnMeta?.variant) return null
 
-      switch (columnMeta.variant) {
-        case 'text': {
-          const [localValue, setLocalValue] = React.useState(globalFilterValue)
-          const applyGlobalFilter = useDebouncedCallback((value: string) => {
-            column.setFilterValue(value || undefined)
-          }, DEBOUNCE_MS)
-
-          React.useEffect(() => {
-            applyGlobalFilter(localValue)
-          }, [localValue, applyGlobalFilter])
-
-          React.useEffect(() => {
-            if (globalFilterValue !== localValue) {
-              setLocalValue(globalFilterValue)
-            }
-          }, [globalFilterValue])
-
-          return (
-            <Input
-              placeholder={columnMeta.placeholder ?? columnMeta.label}
-              value={localValue}
-              onChange={(event) => setLocalValue(event.target.value)}
-              className='h-8 w-40 lg:w-56'
-            />
-          )
-        }
-
-        case 'number': {
-          const [localValue, setLocalValue] = React.useState(globalFilterValue)
-
-          const applyGlobalFilter = useDebouncedCallback((value: string) => {
-            column.setFilterValue(value || undefined)
-          }, DEBOUNCE_MS)
-
-          React.useEffect(() => {
-            applyGlobalFilter(localValue)
-          }, [localValue, applyGlobalFilter])
-
-          React.useEffect(() => {
-            if (globalFilterValue !== localValue) {
-              setLocalValue(globalFilterValue)
-            }
-          }, [globalFilterValue])
-
-          return (
-            <div className='relative'>
-              <Input
-                type='number'
-                inputMode='numeric'
-                placeholder={columnMeta.placeholder ?? columnMeta.label}
-                value={localValue}
-                onChange={(event) => setLocalValue(event.target.value)}
-                className={cn('h-8 w-[120px]', columnMeta.unit && 'pr-8')}
-              />
-              {columnMeta.unit && (
-                <span className='bg-accent text-muted-foreground absolute top-0 right-0 bottom-0 flex items-center rounded-r-md px-2 text-sm'>
-                  {columnMeta.unit}
-                </span>
-              )}
-            </div>
-          )
-        }
-
-        case 'range':
-          return (
-            <DataTableSliderFilter
-              column={column}
-              title={columnMeta.label ?? column.id}
-            />
-          )
-
-        case 'date':
-        case 'dateRange':
-          return (
-            <DataTableDateFilter
-              column={column}
-              title={columnMeta.label ?? column.id}
-              multiple={columnMeta.variant === 'dateRange'}
-            />
-          )
-
-        case 'select':
-        case 'multiSelect':
-          return (
-            <DataTableFacetedFilter
-              column={column}
-              title={columnMeta.label ?? column.id}
-              options={columnMeta.options ?? []}
-              multiple={columnMeta.variant === 'multiSelect'}
-            />
-          )
-
-        default:
-          return null
-      }
-    }, [column, columnMeta])
-
-    return onFilterRender()
+  switch (columnMeta.variant) {
+    case 'text':
+      return <DataTableTextFilter column={column} />
+    case 'number':
+      return <DataTableNumberFilter column={column} />
+    case 'range':
+      return (
+        <DataTableSliderFilter
+          column={column}
+          title={columnMeta.label ?? column.id}
+        />
+      )
+    case 'date':
+    case 'dateRange':
+      return (
+        <DataTableDateFilter
+          column={column}
+          title={columnMeta.label ?? column.id}
+          multiple={columnMeta.variant === 'dateRange'}
+        />
+      )
+    case 'select':
+    case 'multiSelect':
+      return (
+        <DataTableFacetedFilter
+          column={column}
+          title={columnMeta.label ?? column.id}
+          options={columnMeta.options ?? []}
+          multiple={columnMeta.variant === 'multiSelect'}
+        />
+      )
+    default:
+      return null
   }
+}
+
+/** Debounced text filter: keeps a local value, pushes it to the column. */
+function DataTableTextFilter<TData>({ column }: DataTableToolbarFilterProps<TData>) {
+  const columnMeta = column.columnDef.meta
+  const globalFilterValue = (column.getFilterValue() as string) ?? ''
+  const [localValue, setLocalValue] = React.useState(globalFilterValue)
+
+  const applyGlobalFilter = useDebouncedCallback((value: string) => {
+    column.setFilterValue(value || undefined)
+  }, DEBOUNCE_MS)
+
+  React.useEffect(() => {
+    applyGlobalFilter(localValue)
+  }, [localValue, applyGlobalFilter])
+
+  React.useEffect(() => {
+    if (globalFilterValue !== localValue) {
+      setLocalValue(globalFilterValue)
+    }
+  }, [globalFilterValue])
+
+  return (
+    <Input
+      placeholder={columnMeta?.placeholder ?? columnMeta?.label}
+      value={localValue}
+      onChange={(event) => setLocalValue(event.target.value)}
+      className='h-8 w-40 lg:w-56'
+    />
+  )
+}
+
+/** Debounced numeric filter with an optional unit suffix. */
+function DataTableNumberFilter<TData>({
+  column,
+}: DataTableToolbarFilterProps<TData>) {
+  const columnMeta = column.columnDef.meta
+  const globalFilterValue = (column.getFilterValue() as string) ?? ''
+  const [localValue, setLocalValue] = React.useState(globalFilterValue)
+
+  const applyGlobalFilter = useDebouncedCallback((value: string) => {
+    column.setFilterValue(value || undefined)
+  }, DEBOUNCE_MS)
+
+  React.useEffect(() => {
+    applyGlobalFilter(localValue)
+  }, [localValue, applyGlobalFilter])
+
+  React.useEffect(() => {
+    if (globalFilterValue !== localValue) {
+      setLocalValue(globalFilterValue)
+    }
+  }, [globalFilterValue])
+
+  return (
+    <div className='relative'>
+      <Input
+        type='number'
+        inputMode='numeric'
+        placeholder={columnMeta?.placeholder ?? columnMeta?.label}
+        value={localValue}
+        onChange={(event) => setLocalValue(event.target.value)}
+        className={cn('h-8 w-[120px]', columnMeta?.unit && 'pr-8')}
+      />
+      {columnMeta?.unit && (
+        <span className='bg-accent text-muted-foreground absolute top-0 right-0 bottom-0 flex items-center rounded-r-md px-2 text-sm'>
+          {columnMeta.unit}
+        </span>
+      )}
+    </div>
+  )
 }

@@ -1,0 +1,52 @@
+# Verifies that this app is in sync with the backend contracts, endpoint-only.
+#
+# Opt-in on purpose: it runs manually until the repo sets the two secrets
+# (`CONTRACTS_API_URL`, `CONTRACTS_API_TOKEN`) and uncomments the pull_request
+# trigger. See AGENTS.md, "Contracts sync verification".
+#
+# It only calls `pnpm contracts:status` (no extra tooling): exit 1 fails the job
+# when the lockfile and the running backend diverge.
+name: contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: Backend base URL (overrides the secret)
+        required: false
+  # Uncomment when the secrets below exist and the gate should block PRs:
+  # pull_request:
+  #   paths:
+  #     - 'src/generated/**'
+  #     - 'contracts.lock.json'
+  #     - 'scripts/contracts-*.mjs'
+  #     - 'src/lib/contracts-sync.ts'
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify contracts are in sync
+        env:
+          CONTRACTS_API_URL: ${{ github.event.inputs.api_url || secrets.CONTRACTS_API_URL }}
+          API_USERNAME: ${{ secrets.CONTRACTS_API_USERNAME }}
+          API_PASSWORD: ${{ secrets.CONTRACTS_API_PASSWORD }}
+        run: |
+          if [ -z "$CONTRACTS_API_URL" ]; then
+            echo "CONTRACTS_API_URL is not set; skipping (opt-in job)."
+            exit 0
+          fi
+          node scripts/contracts-status.mjs --api-url "$CONTRACTS_API_URL"

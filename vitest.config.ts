@@ -21,7 +21,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // `src/**` covers the app; `scripts/**/*.spec.mjs` covers the build-time
+    // tooling (contracts resolver) with plain Node tests.
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.spec.mjs'],
     css: false,
   },
 })

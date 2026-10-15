@@ -1,89 +1,18 @@
-import {
-  LayoutDashboard,
-  ListTodo,
-  Settings,
-  UserCog,
-  Users,
-  MessagesSquare,
-  Plug,
-  MessageSquare,
-  NotebookTabs,
-  House,
-} from 'lucide-react'
+import { sidebarGroups, type CommandContext } from '@/lib/commands'
+import { type NavGroup } from '../types'
 
-import { type SidebarData } from '../types'
-
-export const sidebarData: SidebarData = {
-  user: {
-    name: 'Chat CRM',
-    email: 'soporte@chat-crm',
-    avatar: '',
-  },
-  teams: [
-    {
-      name: 'Chat CRM',
-      logo: House,
-      plan: 'CRM',
-    },
-  ],
-  navGroups: [
-    {
-      title: 'General',
-      items: [
-        {
-          title: 'Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'Tasks',
-          url: '/tasks',
-          icon: ListTodo,
-        },
-        {
-          title: 'Contacts',
-          url: '/contacts',
-          icon: NotebookTabs,
-        },
-        {
-          title: 'Chats',
-          url: '/chats',
-          // badge: '3', // TODO: This is for chat notifications
-          icon: MessagesSquare,
-        },
-        {
-          title: 'Users',
-          url: '/users',
-          icon: Users,
-        },
-      ],
-    },
-    {
-      title: 'Other',
-      items: [
-        {
-          title: 'Settings',
-          icon: Settings,
-          items: [
-            {
-              title: 'Profile',
-              url: '/settings',
-              icon: UserCog,
-            },
-            {
-              title: 'Integrations',
-              icon: Plug,
-              items: [
-                {
-                  title: 'WhatsApp',
-                  url: '/settings/integrations/whatsapp',
-                  icon: MessageSquare,
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ],
+/**
+ * Sidebar groups for the person's role. Built from the command registry so the
+ * sidebar, the settings nav and Ctrl+K always agree on what exists and who may
+ * see it.
+ */
+export function buildSidebarGroups(context: CommandContext): NavGroup[] {
+  return sidebarGroups(context).map((group) => ({
+    title: group.title,
+    items: group.items.flatMap((command) =>
+      command.kind === 'navigate'
+        ? [{ title: command.title, url: command.to, icon: command.icon }]
+        : []
+    ),
+  }))
 }

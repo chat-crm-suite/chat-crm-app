@@ -84,6 +84,8 @@ Los valores `VITE_*` se fijan al compilar: si cambian, hay que volver a compilar
 | `pnpm test` · `pnpm test:watch` | Vitest |
 | `pnpm lint` | ESLint |
 | `pnpm contracts:sync` | Regenera la ruta a los contratos compartidos |
+| `pnpm contracts:pull` | Descarga el snapshot de contratos del backend a `src/generated/` + `contracts.lock.json` (solo endpoint) |
+| `pnpm contracts:status` | Informa si la app está sincronizada con un backend (`--api-url`, `--token`, `--verbose`) |
 
 ## Estructura del proyecto
 
@@ -96,6 +98,26 @@ src/
 ├── stores/       Stores de Zustand
 ├── lib/          HTTP, i18n, formato y utilidades
 └── locales/      en.yml · es.yml
+```
+
+## Desarrollo
+
+### Skills de agentes
+
+`.agents/` y `.claude/` son directorios instalados e ignorados por git (nunca se suben).
+`skills-lock.json` es la fuente de verdad, como `package.json` para las dependencias de npm.
+
+```sh
+pnpm skills:install                     # instala todas las skills del lock
+pnpm skills:install -- --skill tdd      # instala una skill
+pnpm skills:check                       # verifica las skills instaladas sin red
+```
+
+Para agregar o actualizar una skill, usa la CLI de [skills.sh](https://www.skills.sh/) (actualiza el lockfile) y
+sube solo el lock:
+
+```sh
+pnpm dlx skills@latest add <owner/repo> --skill <name> -a opencode -a claude-code --copy -y
 ```
 
 ## Producción

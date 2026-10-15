@@ -2,6 +2,34 @@
   --positive: oklch(0.571 0.181 145.0);
   --neutro: oklch(0.549 0.000 0.0);
   --negative: oklch(0.55 0.2 20);
+  --warning: oklch(0.6 0.13 70);
+  /* Analytics: first-response SLA states, XmR limits and channel spend. */
+  --sla-ok: oklch(0.62 0.12 165);
+  --sla-risk: oklch(0.74 0.15 80);
+  --sla-breach: oklch(0.56 0.17 33);
+  --control-limit: oklch(0.66 0.02 265);
+  --spend: oklch(0.56 0.17 262);
+  /* Analytics categorical series (CVD-validated trio, fixed order). */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  /* Chat-list avatar tints: one deterministic hue per customer monogram. */
+  --avatar-tint-1-bg: oklch(0.93 0.05 25);
+  --avatar-tint-1-fg: oklch(0.42 0.11 25);
+  --avatar-tint-2-bg: oklch(0.93 0.05 70);
+  --avatar-tint-2-fg: oklch(0.42 0.11 70);
+  --avatar-tint-3-bg: oklch(0.93 0.05 120);
+  --avatar-tint-3-fg: oklch(0.42 0.11 120);
+  --avatar-tint-4-bg: oklch(0.93 0.05 160);
+  --avatar-tint-4-fg: oklch(0.42 0.11 160);
+  --avatar-tint-5-bg: oklch(0.93 0.05 195);
+  --avatar-tint-5-fg: oklch(0.42 0.11 195);
+  --avatar-tint-6-bg: oklch(0.93 0.05 250);
+  --avatar-tint-6-fg: oklch(0.42 0.11 250);
+  --avatar-tint-7-bg: oklch(0.93 0.05 300);
+  --avatar-tint-7-fg: oklch(0.42 0.11 300);
+  --avatar-tint-8-bg: oklch(0.93 0.05 340);
+  --avatar-tint-8-fg: oklch(0.42 0.11 340);
   --background: oklch(0.9911 0 0);
   --foreground: oklch(0.2046 0 0);
   --card: oklch(0.9911 0 0);
@@ -19,7 +47,7 @@
   --destructive: oklch(0.5523 0.1927 32.7272);
   --destructive-foreground: oklch(0.9934 0.0032 17.2118);
   --border: oklch(0.9037 0 0);
-  --input: oklch(0.9731 0 0);
+  --input: oklch(0.86 0 0);
   --ring: oklch(0.8348 0.1302 160.9080);
   --chart-1: oklch(0.8348 0.1302 160.9080);
   --chart-2: oklch(0.6231 0.1880 259.8145);
@@ -34,7 +62,7 @@
   --sidebar-accent-foreground: oklch(0.2435 0 0);
   --sidebar-border: oklch(0.9037 0 0);
   --sidebar-ring: oklch(0.8348 0.1302 160.9080);
-  --font-sans: Outfit, sans-serif;
+  --font-sans: 'Outfit Variable', Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: monospace;
   --radius: 0.5rem;
@@ -60,6 +88,31 @@
   --positive: oklch(0.571 0.181 145.0);
   --neutro: oklch(0.549 0.000 0.0);
   --negative: oklch(0.55 0.2 20);
+  --warning: oklch(0.8 0.13 75);
+  --sla-ok: oklch(0.72 0.13 165);
+  --sla-risk: oklch(0.8 0.14 82);
+  --sla-breach: oklch(0.68 0.17 33);
+  --control-limit: oklch(0.6 0.02 265);
+  --spend: oklch(0.7 0.14 260);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --avatar-tint-1-bg: oklch(0.3 0.055 25);
+  --avatar-tint-1-fg: oklch(0.84 0.09 25);
+  --avatar-tint-2-bg: oklch(0.3 0.055 70);
+  --avatar-tint-2-fg: oklch(0.84 0.09 70);
+  --avatar-tint-3-bg: oklch(0.3 0.055 120);
+  --avatar-tint-3-fg: oklch(0.84 0.09 120);
+  --avatar-tint-4-bg: oklch(0.3 0.055 160);
+  --avatar-tint-4-fg: oklch(0.84 0.09 160);
+  --avatar-tint-5-bg: oklch(0.3 0.055 195);
+  --avatar-tint-5-fg: oklch(0.84 0.09 195);
+  --avatar-tint-6-bg: oklch(0.3 0.055 250);
+  --avatar-tint-6-fg: oklch(0.84 0.09 250);
+  --avatar-tint-7-bg: oklch(0.3 0.055 300);
+  --avatar-tint-7-fg: oklch(0.84 0.09 300);
+  --avatar-tint-8-bg: oklch(0.3 0.055 340);
+  --avatar-tint-8-fg: oklch(0.84 0.09 340);
   --background: oklch(0.1822 0 0);
   --foreground: oklch(0.9288 0.0126 255.5078);
   --card: oklch(0.2046 0 0);
@@ -92,7 +145,7 @@
   --sidebar-accent-foreground: oklch(0.9851 0 0);
   --sidebar-border: oklch(0.2809 0 0);
   --sidebar-ring: oklch(0.8003 0.1821 151.7110);
-  --font-sans: Outfit, sans-serif;
+  --font-sans: 'Outfit Variable', Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: monospace;
   --radius: 0.5rem;
@@ -129,6 +182,15 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-sla-ok: var(--sla-ok);
+  --color-sla-risk: var(--sla-risk);
+  --color-sla-breach: var(--sla-breach);
+  --color-control-limit: var(--control-limit);
+  --color-spend: var(--spend);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -170,6 +232,35 @@
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
   --tracking-wider: calc(var(--tracking-normal) + 0.05em);
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+}
+
+/*
+ * Product breakpoints (mobile-first), added on top of Tailwind's defaults.
+ * - `tablet` (768px): where the app sidebar joins the layout. It is the same
+ *   value as Tailwind's `md`, but the name states the product meaning; the
+ *   sheet-side decision in `case-rail.tsx` mirrors it in JS (`matchMedia`
+ *   cannot read CSS variables reliably).
+ * - `desktop` (1280px): the chat list takes its widest step.
+ * `sm` (640px) stays as the phone/rest split for touch targets and the chat
+ * overlay.
+ */
+@theme {
+  --breakpoint-tablet: 48rem;
+  --breakpoint-desktop: 80rem;
+}
+
+/*
+ * Container size for the case rail. A viewport breakpoint cannot decide this
+ * one: the room left for the thread depends on the (user-collapsible) app
+ * sidebar and the chat list, not on the window. Measured under the real
+ * layout: the case header has a 611px min-content and the rail is 288px, so
+ * the rail only goes inline from 58rem of chat card — which in turn is why the
+ * chat list must not widen at `2xl` (the outer content is capped at 1280px, so
+ * a wider list would leave the card below the threshold and the rail would
+ * never dock).
+ */
+@theme {
+  --container-rail: 58rem;
 }
 
 body {

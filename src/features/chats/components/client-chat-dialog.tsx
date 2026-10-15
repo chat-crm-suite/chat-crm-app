@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '../api'
 import { chatBuilder } from '../builders/chat.builder'
-import { useChats } from '../contexts/chats.provider'
+import { useChats } from '../contexts/chats.context'
 import type { Client } from '../types/client.api'
 
 const customerName = (client: Client) =>
@@ -36,7 +36,7 @@ export function ClientChatDialog() {
   const [debouncedSearch] = useDebounce(searchTerm, 400)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', debouncedSearch],
     queryFn: () => api.queries.clients.search(debouncedSearch),
     placeholderData: (prev) => prev,
   })

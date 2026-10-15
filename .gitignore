@@ -53,3 +53,7 @@ tsconfig.contracts.json
 coverage-ui.json
 __pycache__/
 *.pyc
+
+# Agent skills (installed from skills-lock.json via `pnpm skills:install`, never committed)
+.agents/
+.claude/

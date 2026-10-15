@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import {
+  consumeSelfInitiatedAssignment,
+  resolveAssignmentToast,
+} from '@/lib/socket-taxonomy'
 import { useSocket } from '@/context/socket-provider'
 import {
   ChatBox,
@@ -14,8 +18,9 @@ import {
   ThemeSwitch,
 } from './components'
 import { Search } from './components/icons'
+import { OpenConversationFromSearch } from './components/open-conversation-from-search'
 import { ChatsProvider } from './contexts/chats.provider'
-import { getMessageStrategy } from './strategies/message.strategy'
+import { messageTypeOf, previewOf } from './messages/registry'
 import type { Chat, ChatMessage } from './types/chat.domain'
 import { ChatSocketEvents as Events } from './types/socket.api'
 
@@ -29,62 +34,70 @@ export function Chats() {
     const handleNewMessage = (newMessage: ChatMessage) => {
       queryClient.setQueryData(['chat', 'list'], (oldChats: Chat[] = []) => {
         // Change preview
-        const chatIndex = oldChats.findIndex((c) => c.id === newMessage.conversationId)
+        const chatIndex = oldChats.findIndex(
+          (c) => c.id === newMessage.conversationId
+        )
         if (chatIndex !== -1) {
           const chats = [...oldChats]
           chats[chatIndex] = {
             ...chats[chatIndex],
             preview: {
-              content: getMessageStrategy(newMessage.msg.type).getContent(
-                newMessage.msg.content
-              ),
+              content: previewOf(newMessage.msg),
               datetime: newMessage.timestamp,
+              // Same shape as the REST list: the type labels attachments
+              // whose content is empty.
+              type: messageTypeOf(newMessage.msg),
             },
           }
           return chats
         }
         return oldChats
       })
-
-      // Update chat messages
-      queryClient.setQueryData(
-        ['chat', newMessage.conversationId, 'messages'],
-        (oldMessages: ChatMessage[] | undefined) => {
-          if (!oldMessages) return [newMessage]
-          return [...oldMessages, newMessage]
-        }
-      )
+      // The open thread cache is owned by `useChatThread`.
     }
 
     socket.on(Events.broadcast, handleNewMessage)
 
-    // Asignación automática: refrescar listas al recibir eventos del backend.
-    const handleAssigned = () => {
+    // Assignment: always refresh the lists; the toast is skipped when the
+    // event echoes this client's own action (claim/self-assignment, already
+    // announced by the mutation). `notification:new` is handled only in the
+    // socket-provider.
+    const handleAssigned = (payload: unknown) => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
+
+      const decision = resolveAssignmentToast('assigned', payload, {
+        isSelfInitiated: consumeSelfInitiatedAssignment,
+      })
+      if (decision) {
+        toast[decision.type](decision.title, {
+          description: decision.description,
+          id: decision.id,
+        })
+      }
     }
-    const handleUnassigned = () => {
+    const handleUnassigned = (payload: unknown) => {
       void queryClient.invalidateQueries({ queryKey: ['chat', 'unassigned'] })
-      void queryClient.invalidateQueries({ queryKey: ['chat', 'needsResponse'] })
+      void queryClient.invalidateQueries({
+        queryKey: ['chat', 'needsResponse'],
+      })
+
+      const decision = resolveAssignmentToast('unassigned', payload)
+      if (decision) {
+        toast[decision.type](decision.title, {
+          description: decision.description,
+          id: decision.id,
+        })
+      }
     }
 
     socket.on(Events.assigned, handleAssigned)
     socket.on(Events.unassigned, handleUnassigned)
 
-    const handleNotification = (notification: {
-      title?: string
-      body?: string
-    }) => {
-      toast.info(notification.body ?? notification.title ?? '')
-    }
-
-    socket.on(Events.notification, handleNotification)
-
     return () => {
       socket.off(Events.broadcast, handleNewMessage)
       socket.off(Events.assigned, handleAssigned)
       socket.off(Events.unassigned, handleUnassigned)
-      socket.off(Events.notification, handleNotification)
     }
   }, [socket, queryClient])
 
@@ -107,6 +120,7 @@ export function Chats() {
             <ChatList /> {/* Left Side */}
             <ChatBox /> {/* Right Side */}
             <ClientChatDialog />
+            <OpenConversationFromSearch />
           </ChatsProvider>
         </section>
       </Main>

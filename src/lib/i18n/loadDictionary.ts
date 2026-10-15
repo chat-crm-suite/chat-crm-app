@@ -11,6 +11,7 @@ export const loadDictionary = async (lang: string) => {
   const file = files[path];
 
   if (!file) {
+    // eslint-disable-next-line no-console
     console.warn(`No dictionary found for lang: "${lang}"`);
     return {};
   }

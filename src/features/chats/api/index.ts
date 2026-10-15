@@ -1,5 +1,8 @@
 import { searchClient } from './client.operations'
-import { getMessagesByConversationId } from './message.operations'
+import {
+  getMessagesByConversationId,
+  uploadAttachment,
+} from './message.operations'
 
 export const api = {
   queries: {
@@ -9,6 +12,11 @@ export const api = {
     messages: {
       get: (conversationId: string) =>
         getMessagesByConversationId(conversationId),
+    },
+  },
+  commands: {
+    messages: {
+      upload: uploadAttachment,
     },
   },
 }
