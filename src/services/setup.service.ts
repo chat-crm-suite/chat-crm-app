@@ -10,6 +10,7 @@ import {
 } from '@chat-crm/contracts'
 
 import { API_URL, client } from '@/lib/http'
+import { parseContract } from '@/lib/contract-parse'
 
 export type {
   CreateSetupInput,
@@ -29,10 +30,8 @@ export const getWebhookUrl = () => `${API_URL}${WEBHOOK_PATH}`
 export const getSetupStatus = async (): Promise<SetupStatus> => {
   const { data } = await setup.get('/status')
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) return SetupStatusSchema.parse(data)
-
-  return data as SetupStatus
+  // Contract parse: coerces wire values (dates); strict in dev, tolerant in prod.
+    return parseContract(SetupStatusSchema, data)
 }
 
 export const runSetup = async (
@@ -40,9 +39,7 @@ export const runSetup = async (
 ): Promise<SetupResult> => {
   const { data } = await setup.post('', payload)
 
-  if (import.meta.env.DEV) return SetupResultSchema.parse(data)
-
-  return data as SetupResult
+    return parseContract(SetupResultSchema, data)
 }
 
 /** Server-side check of ONE wizard step before moving on (`POST /setup/validate`). */
@@ -51,7 +48,5 @@ export const validateSetupStep = async (
 ): Promise<SetupStepResult> => {
   const { data } = await setup.post('/validate', input)
 
-  if (import.meta.env.DEV) return SetupStepResultSchema.parse(data)
-
-  return data as SetupStepResult
+    return parseContract(SetupStepResultSchema, data)
 }

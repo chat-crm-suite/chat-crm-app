@@ -6,20 +6,18 @@ import {
   type WhatsAppConfigResponse,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
+import { parseContract } from '@/lib/contract-parse'
 
 const ws = client('/channels')
 
 const configResponse = ChannelResponseSchema.nullable()
 
 /**
- * Dev-only runtime check: if the API drifts from the shared contract the form
- * fails immediately in development instead of rendering wrong data.
+ * Contract parse: coerces wire values (dates); a drift fails immediately in
+ * development and is only logged in production.
  */
-const parseConfigResponse = (data: unknown): ChannelResponse | null => {
-  if (import.meta.env.DEV) return configResponse.parse(data)
-
-  return data as ChannelResponse | null
-}
+const parseConfigResponse = (data: unknown): ChannelResponse | null =>
+  parseContract(configResponse, data)
 
 const whatsAppConfigResponse = WhatsAppConfigResponseSchema.nullable()
 
@@ -29,9 +27,7 @@ export const getConfig = async (
 ): Promise<WhatsAppConfigResponse | null> => {
   const { data } = await ws.get(`/whatsapp/config`)
 
-  if (import.meta.env.DEV) return whatsAppConfigResponse.parse(data)
-
-  return data as WhatsAppConfigResponse | null
+    return parseContract(whatsAppConfigResponse, data)
 }
 
 export const saveConfig = async (

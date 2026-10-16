@@ -6,6 +6,7 @@ import {
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
 import type { ChatMessage } from '../types/chat.domain'
+import { parseContract } from '@/lib/contract-parse'
 
 const conversations = client('/conversations')
 
@@ -14,10 +15,7 @@ export const getMessagesByConversationId = async (
 ): Promise<ChatMessage[]> => {
   const { data } = await conversations.get<unknown>(`/${conversationId}/messages`)
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) return ConversationMessageSchema.array().parse(data)
-
-  return (data ?? []) as ChatMessage[]
+  return parseContract(ConversationMessageSchema.array(), data ?? []) as ChatMessage[]
 }
 
 export interface UploadOptions {
@@ -48,7 +46,5 @@ export const uploadAttachment = async (
     },
   })
 
-  if (import.meta.env.DEV) return StagedUploadSchema.parse(data)
-
-  return data as StagedUpload
+    return parseContract(StagedUploadSchema, data)
 }

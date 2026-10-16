@@ -2,14 +2,13 @@ import {
   CustomerResponseSchema,
   type CustomerResponse,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const customers = client('/customers')
 
 const parse = (data: unknown): CustomerResponse[] =>
-  import.meta.env.DEV
-    ? CustomerResponseSchema.array().parse(data)
-    : (data as CustomerResponse[])
+  parseContract(CustomerResponseSchema.array(), data)
 
 /** `GET /customers/search?q=`: a handful of matches for Ctrl+K. */
 export const searchCustomers = async (

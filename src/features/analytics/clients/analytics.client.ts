@@ -14,8 +14,8 @@ import {
   type PerformanceExportQuery,
   type SentimentAnalyticsQuery,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
-import { devParse } from '../lib/dev-parse'
 
 /**
  * `/analytics/*` client. Plain functions (never import-time promises), so
@@ -28,22 +28,22 @@ type RangeParams = Partial<AnalyticsRangeQuery>
 
 export const getLiveSnapshot = async (channel: ChannelFilter = 'all') => {
   const { data } = await analytics.get('/live', { params: { channel } })
-  return devParse(LiveSnapshotSchema, data)
+  return parseContract(LiveSnapshotSchema, data)
 }
 
 export const getReadiness = async () => {
   const { data } = await analytics.get('/readiness')
-  return devParse(AnalyticsReadinessSchema, data)
+  return parseContract(AnalyticsReadinessSchema, data)
 }
 
 export const getMyPerformance = async (params: RangeParams) => {
   const { data } = await analytics.get('/me', { params })
-  return devParse(MyPerformanceSchema, data)
+  return parseContract(MyPerformanceSchema, data)
 }
 
 export const getAgentsPerformance = async (params: RangeParams) => {
   const { data } = await analytics.get('/agents', { params })
-  return devParse(AgentsPerformanceSchema, data)
+  return parseContract(AgentsPerformanceSchema, data)
 }
 
 export const getAgentControl = async (
@@ -53,22 +53,22 @@ export const getAgentControl = async (
   const { data } = await analytics.get(`/agents/${memberId}/control`, {
     params,
   })
-  return devParse(AgentControlSchema, data)
+  return parseContract(AgentControlSchema, data)
 }
 
 export const getStaffing = async (channel: ChannelFilter = 'all') => {
   const { data } = await analytics.get('/staffing', { params: { channel } })
-  return devParse(StaffingSchema, data)
+  return parseContract(StaffingSchema, data)
 }
 
 export const getVolume = async (params: RangeParams) => {
   const { data } = await analytics.get('/volume', { params })
-  return devParse(VolumeSchema, data)
+  return parseContract(VolumeSchema, data)
 }
 
 export const getDelivery = async (params: RangeParams) => {
   const { data } = await analytics.get('/delivery', { params })
-  return devParse(DeliverySchema, data)
+  return parseContract(DeliverySchema, data)
 }
 
 /** Answers 409 `ia_unavailable` while the IA is off: callers gate on status. */
@@ -76,7 +76,7 @@ export const getSentimentAnalytics = async (
   params: Partial<SentimentAnalyticsQuery>
 ) => {
   const { data } = await analytics.get('/sentiment', { params })
-  return devParse(SentimentAnalyticsSchema, data)
+  return parseContract(SentimentAnalyticsSchema, data)
 }
 
 /** Downloads the monthly performance sheet as a CSV file. */
