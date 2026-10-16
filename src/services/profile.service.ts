@@ -6,19 +6,18 @@ import {
   type ChangePasswordInput,
   type UpdateProfileInput,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const users = client('/users')
 const auth = client('/auth')
 
-// Dev-only runtime checks: they catch API/contract drift immediately.
+// Contract parse: coerces wire values (dates); strict in dev, tolerant in prod.
 const parseUser = (data: unknown): AuthUser =>
-  import.meta.env.DEV ? AuthUserSchema.parse(data) : (data as AuthUser)
+  parseContract(AuthUserSchema, data)
 
 const parseAvatar = (data: unknown): AvatarUploadResult =>
-  import.meta.env.DEV
-    ? AvatarUploadResultSchema.parse(data)
-    : (data as AvatarUploadResult)
+  parseContract(AvatarUploadResultSchema, data)
 
 /** `PATCH /users/me`: names, phone and email (never the username). */
 export const updateProfile = async (

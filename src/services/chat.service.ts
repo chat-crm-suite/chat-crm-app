@@ -9,6 +9,7 @@ import {
   type CompanyMemberResponse,
   type ConversationSentiment,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 import type { Chat } from '@/features/chats/types/chat.domain'
 
@@ -65,12 +66,7 @@ export const searchCompanyMembers = async (
     params: { q: search, limit: 20 },
   })
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) {
-    return CompanyMemberResponseSchema.array().parse(data)
-  }
-
-  return (data ?? []) as CompanyMemberResponse[]
+  return parseContract(CompanyMemberResponseSchema.array(), data ?? [])
 }
 
 /** Customer tone of a conversation (`GET /conversations/:id/sentiment`). */
@@ -79,12 +75,7 @@ export const getConversationSentiment = async (
 ): Promise<ConversationSentiment> => {
   const { data } = await conversations.get(`/${conversationId}/sentiment`)
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) {
-    return ConversationSentimentSchema.parse(data)
-  }
-
-  return data as ConversationSentiment
+  return parseContract(ConversationSentimentSchema, data)
 }
 
 /** Latest support case of a conversation (`GET /conversations/:id/case`). */
@@ -93,12 +84,7 @@ export const getCurrentCase = async (
 ): Promise<CurrentCase> => {
   const { data } = await conversations.get(`/${conversationId}/case`)
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) {
-    return CurrentCaseSchema.parse(data)
-  }
-
-  return data as CurrentCase
+  return parseContract(CurrentCaseSchema, data)
 }
 
 /** Resolves the open case (`POST /conversations/:id/close`, 409 if none). */
@@ -108,9 +94,5 @@ export const closeCase = async (
 ): Promise<Case> => {
   const { data } = await conversations.post(`/${conversationId}/close`, input)
 
-  if (import.meta.env.DEV) {
-    return CaseSchema.parse(data)
-  }
-
-  return data as Case
+  return parseContract(CaseSchema, data)
 }

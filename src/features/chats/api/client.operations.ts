@@ -1,4 +1,5 @@
 import { CustomerResponseSchema } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 import type { Client } from '../types/client.api'
 
@@ -9,8 +10,5 @@ export const searchClient = async (search: string): Promise<Client[]> => {
     params: { q: search },
   })
 
-  // Dev-only runtime check: catches API/contract drift immediately.
-  if (import.meta.env.DEV) return CustomerResponseSchema.array().parse(data)
-
-  return (data ?? []) as Client[]
+  return parseContract(CustomerResponseSchema.array(), data ?? []) as Client[]
 }

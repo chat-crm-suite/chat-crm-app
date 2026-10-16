@@ -3,15 +3,14 @@ import {
   type ServiceSettings,
   type UpdateServiceSettingsInput,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const company = client('/company')
 
-// Dev-only runtime check: catches API/contract drift immediately.
+// Contract parse: coerces wire values (dates); strict in dev, tolerant in prod.
 const parse = (data: unknown): ServiceSettings =>
-  import.meta.env.DEV
-    ? ServiceSettingsSchema.parse(data)
-    : (data as ServiceSettings)
+  parseContract(ServiceSettingsSchema, data)
 
 /** Business hours + first-response SLA of the active company. */
 export const getServiceSettings = async () => {

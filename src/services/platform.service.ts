@@ -15,6 +15,7 @@ import {
 } from '@chat-crm/contracts'
 import { isAxiosError } from 'axios'
 import { client } from '@/lib/http'
+import { parseContract } from '@/lib/contract-parse'
 
 const platform = client('/platform')
 
@@ -82,9 +83,8 @@ platform.interceptors.response.use(undefined, (error: unknown) => {
   throw error
 })
 
-// Dev-only runtime checks: they catch API/contract drift immediately.
-const dev = <T>(schema: { parse: (data: unknown) => T }, data: unknown): T =>
-  import.meta.env.DEV ? schema.parse(data) : (data as T)
+/** Contract parse (coerces dates; strict in dev, tolerant in prod). */
+const dev = parseContract
 
 /** `GET /platform/status`: 200 even while the console is disabled. */
 export const getPlatformStatus = async (): Promise<PlatformStatus> => {

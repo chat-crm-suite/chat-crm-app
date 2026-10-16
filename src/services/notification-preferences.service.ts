@@ -2,14 +2,13 @@ import {
   NotificationPreferencesSchema,
   type NotificationPreferences,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const notifications = client('/notifications')
 
 const parse = (data: unknown): NotificationPreferences =>
-  import.meta.env.DEV
-    ? NotificationPreferencesSchema.parse(data)
-    : (data as NotificationPreferences)
+  parseContract(NotificationPreferencesSchema, data)
 
 /** Notification types the member muted in the active company. */
 export const getNotificationPreferences =
