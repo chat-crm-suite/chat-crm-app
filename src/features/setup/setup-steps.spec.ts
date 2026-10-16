@@ -4,8 +4,11 @@ import type { SetupStatus } from '@/services/setup.service'
 import { setupFormDefaults } from '@/schemas/setup.schema'
 import {
   buildSetupPayload,
+  buildStepValidation,
   missingSetupSteps,
   resolveSetupRedirect,
+  stepOfPath,
+  toFormPath,
 } from './setup-steps'
 
 const status = (overrides: Partial<SetupStatus> = {}): SetupStatus => ({
@@ -145,6 +148,7 @@ describe('buildSetupPayload', () => {
       businessId: 'biz-1',
       accessToken: 'token',
       externalAccountId: 'phone-1',
+      appSecret: undefined,
       webhookUrl,
       apiVersion: undefined,
     })
@@ -169,11 +173,56 @@ describe('buildSetupPayload', () => {
           accessToken: 'token',
           phoneNumberId: 'phone-1',
           apiVersion: 'v22.0',
+          appSecret: ' 0123456789abcdef0123456789abcdef ',
         },
       },
       webhookUrl
     )
 
     expect(() => CreateSetupSchema.parse(payload)).not.toThrow()
+    expect(payload.whatsapp?.appSecret).toBe('0123456789abcdef0123456789abcdef')
+  })
+})
+
+describe('step validation helpers', () => {
+  const values = {
+    ...setupFormDefaults,
+    setupToken: ' tok ',
+    admin: {
+      ...setupFormDefaults.admin,
+      username: 'admin',
+      password: 'secreta-123',
+      confirmPassword: 'secreta-123',
+    },
+    company: { ...setupFormDefaults.company, name: 'J&P' },
+    whatsapp: {
+      ...setupFormDefaults.whatsapp,
+      accessToken: 'token',
+      phoneNumberId: '123',
+    },
+  }
+
+  it('sends only the checked step plus the token', () => {
+    expect(buildStepValidation('token', values, 'url')).toEqual({
+      step: 'token',
+      setupToken: 'tok',
+    })
+    expect(buildStepValidation('company', values, 'url')).toEqual({
+      step: 'company',
+      setupToken: 'tok',
+      company: expect.objectContaining({ name: 'J&P' }),
+    })
+    expect(buildStepValidation('whatsapp', values, 'url')).toMatchObject({
+      step: 'whatsapp',
+      whatsapp: { accessToken: 'token', externalAccountId: '123' },
+    })
+  })
+
+  it('maps server paths onto form fields and their step', () => {
+    expect(toFormPath('whatsapp.externalAccountId')).toBe('whatsapp.phoneNumberId')
+    expect(toFormPath('admin.username')).toBe('admin.username')
+    expect(stepOfPath('setupToken')).toBe('token')
+    expect(stepOfPath('whatsapp.appSecret')).toBe('whatsapp')
+    expect(stepOfPath('nope')).toBeNull()
   })
 })

@@ -1,9 +1,12 @@
 import {
   SetupResultSchema,
   SetupStatusSchema,
+  SetupStepResultSchema,
   type CreateSetupInput,
   type SetupResult,
   type SetupStatus,
+  type SetupStepResult,
+  type ValidateSetupStepInput,
 } from '@chat-crm/contracts'
 
 import { API_URL, client } from '@/lib/http'
@@ -13,6 +16,8 @@ export type {
   CreateSetupInput as SetupPayload,
   SetupResult,
   SetupStatus,
+  SetupStepResult,
+  ValidateSetupStepInput,
 }
 
 const setup = client('/setup')
@@ -38,4 +43,15 @@ export const runSetup = async (
   if (import.meta.env.DEV) return SetupResultSchema.parse(data)
 
   return data as SetupResult
+}
+
+/** Server-side check of ONE wizard step before moving on (`POST /setup/validate`). */
+export const validateSetupStep = async (
+  input: ValidateSetupStepInput
+): Promise<SetupStepResult> => {
+  const { data } = await setup.post('/validate', input)
+
+  if (import.meta.env.DEV) return SetupStepResultSchema.parse(data)
+
+  return data as SetupStepResult
 }

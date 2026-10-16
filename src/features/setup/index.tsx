@@ -81,9 +81,9 @@ export function SetupPage() {
               status={status}
               isPending={mutation.isPending}
               result={result}
-              onSubmit={(payload) => {
-                mutation.mutate(payload)
-              }}
+              // mutateAsync rejects on error so the wizard can jump back to
+              // the step at fault (the toast still comes from onError).
+              onSubmit={(payload) => mutation.mutateAsync(payload)}
               onFinish={() => navigate({ to: '/' })}
             />
           )}

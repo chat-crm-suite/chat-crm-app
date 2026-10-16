@@ -7,6 +7,7 @@ import {
   type FieldPath,
 } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { AxiosError } from 'axios'
 import { CheckCircle2, Copy, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/clipboard'
@@ -29,13 +30,20 @@ import {
 } from '@/schemas/setup.schema'
 import {
   getWebhookUrl,
+  validateSetupStep,
   type SetupPayload,
   type SetupResult,
   type SetupStatus,
+  type SetupStepResult,
+  type ValidateSetupStepInput,
 } from '@/services/setup.service'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   buildSetupPayload,
+  buildStepValidation,
   missingSetupSteps,
+  stepOfPath,
+  toFormPath,
   type SetupStepId,
 } from '../setup-steps'
 
@@ -63,15 +71,18 @@ const STEP_FIELDS: Record<SetupStepId, FieldName[]> = {
     'admin.email',
   ],
   company: ['company.name', 'company.email'],
-  whatsapp: ['whatsapp.accessToken', 'whatsapp.phoneNumberId'],
+  whatsapp: ['whatsapp.accessToken', 'whatsapp.phoneNumberId', 'whatsapp.appSecret'],
 }
 
 type SetupWizardProps = {
   status: SetupStatus
-  onSubmit: (payload: SetupPayload) => void | Promise<void>
+  /** May reject: a 403/409 from the final `POST /setup` sends the user back to the step at fault. */
+  onSubmit: (payload: SetupPayload) => void | Promise<unknown>
   isPending?: boolean
   result?: SetupResult | null
   onFinish?: () => void
+  /** Server-side check of one step (injectable for tests). */
+  validateStep?: (input: ValidateSetupStepInput) => Promise<SetupStepResult>
 }
 
 export function SetupWizard({
@@ -80,9 +91,12 @@ export function SetupWizard({
   isPending = false,
   result = null,
   onFinish,
+  validateStep = validateSetupStep,
 }: SetupWizardProps) {
   const steps = missingSetupSteps(status)
   const [index, setIndex] = useState(0)
+  const [checking, setChecking] = useState(false)
+  const busy = isPending || checking
   const headingRef = useRef<HTMLHeadingElement>(null)
   const isFirstRender = useRef(true)
 
@@ -118,29 +132,115 @@ export function SetupWizard({
     if (first) void form.setFocus(first as FieldPath<SetupFormValues>)
   }
 
+  /**
+   * Marks server errors on their fields and moves to the step that owns the
+   * first one (it may be an earlier step, e.g. the token).
+   */
+  const showServerErrors = (errors: { path: string; message: string }[]) => {
+    const paths = errors.map((error) => {
+      const path = toFormPath(error.path)
+      form.setError(path as FieldPath<SetupFormValues>, {
+        type: 'server',
+        message: error.message,
+      })
+      return path
+    })
+
+    const target = stepOfPath(paths[0] ?? '')
+    const targetIndex = target ? steps.indexOf(target) : -1
+    if (targetIndex >= 0 && targetIndex !== index) setIndex(targetIndex)
+    // Focus once the target step is rendered.
+    setTimeout(() => {
+      void form.setFocus(paths[0] as FieldPath<SetupFormValues>)
+    }, 0)
+  }
+
+  /** 403 = token, 409 naming the user = username taken: back to that step. */
+  const routeHttpError = (error: unknown): boolean => {
+    if (!(error instanceof AxiosError)) return false
+    const code = error.response?.status
+    if (code === 403 && steps.includes('token')) {
+      showServerErrors([
+        {
+          path: 'setupToken',
+          message: 'El token de configuración es incorrecto.',
+        },
+      ])
+      return true
+    }
+    const message = getApiErrorMessage(error, '')
+    if (code === 409 && /usuario/i.test(message)) {
+      showServerErrors([{ path: 'admin.username', message }])
+      return true
+    }
+    return false
+  }
+
+  /** Server check of one step; `true` when the user may move on. */
+  const serverCheck = async (checkedStep: SetupStepId): Promise<boolean> => {
+    setChecking(true)
+    try {
+      const outcome = await validateStep(
+        buildStepValidation(checkedStep, form.getValues(), webhookUrl)
+      )
+      outcome.warnings.forEach((warning) => toast.warning(warning))
+      if (!outcome.ok) {
+        showServerErrors(outcome.errors)
+        return false
+      }
+      if (outcome.whatsapp?.displayPhoneNumber) {
+        const name = outcome.whatsapp.verifiedName
+        toast.success(
+          `WhatsApp verificado: ${outcome.whatsapp.displayPhoneNumber}${name ? ` · ${name}` : ''}`
+        )
+      }
+      return true
+    } catch (error) {
+      if (routeHttpError(error)) return false
+      // The check itself failed (network, older API): do not trap the user,
+      // the final POST /setup still validates everything.
+      toast.warning(
+        getApiErrorMessage(error, 'No se pudo verificar este paso ahora mismo')
+      )
+      return true
+    } finally {
+      setChecking(false)
+    }
+  }
+
   const submit = (connectWhatsapp: boolean) =>
-    form.handleSubmit(
-      (values) =>
-        onSubmit(buildSetupPayload({ ...values, connectWhatsapp }, webhookUrl)),
-      focusFirstError
-    )
+    form.handleSubmit(async (values) => {
+      // The last step is checked server-side too before the final POST.
+      const checkedStep = step === 'whatsapp' && !connectWhatsapp ? null : step
+      if (checkedStep && !(await serverCheck(checkedStep))) return
+
+      try {
+        await onSubmit(
+          buildSetupPayload({ ...values, connectWhatsapp }, webhookUrl)
+        )
+      } catch (error) {
+        // The page shows the toast; here we only point at the step at fault.
+        routeHttpError(error)
+      }
+    }, focusFirstError)
 
   const goNext = async () => {
     const fields = STEP_FIELDS[step]
     const valid = await form.trigger(fields as never)
 
-    if (valid) {
-      setIndex((current) => Math.min(current + 1, steps.length - 1))
+    if (!valid) {
+      const firstInvalid = fields.find((name) => form.getFieldState(name).invalid)
+      if (firstInvalid) void form.setFocus(firstInvalid as FieldPath<SetupFormValues>)
       return
     }
 
-    const firstInvalid = fields.find((name) => form.getFieldState(name).invalid)
-    if (firstInvalid) void form.setFocus(firstInvalid as FieldPath<SetupFormValues>)
+    if (!(await serverCheck(step))) return
+    setIndex((current) => Math.min(current + 1, steps.length - 1))
   }
 
   const handleEnter = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isPending) return
+    if (busy) return
 
     if (isLast) {
       void (step === 'whatsapp' ? submit(true)() : submit(false)())
@@ -192,7 +292,7 @@ export function SetupWizard({
       </ol>
 
       <Form {...form}>
-        <form className='space-y-4' noValidate onSubmit={handleEnter} aria-busy={isPending}>
+        <form className='space-y-4' noValidate onSubmit={handleEnter} aria-busy={busy}>
           <h2
             ref={headingRef}
             tabIndex={-1}
@@ -331,6 +431,15 @@ export function SetupWizard({
                   />
                 )}
               </Field>
+              <Field name='whatsapp.appSecret' label='App Secret (recomendado)'>
+                {(field) => (
+                  <PasswordInput
+                    placeholder='Meta → tu app → App settings → Basic → App secret'
+                    autoComplete='off'
+                    {...field}
+                  />
+                )}
+              </Field>
               <div className='bg-muted/40 rounded-md border p-3 text-sm'>
                 <p className='font-medium'>URL de webhook para Meta</p>
                 <p className='text-muted-foreground break-all'>{webhookUrl}</p>
@@ -349,7 +458,7 @@ export function SetupWizard({
             <Button
               type='button'
               variant='ghost'
-              disabled={index === 0 || isPending}
+              disabled={index === 0 || busy}
               onClick={() => setIndex((current) => Math.max(current - 1, 0))}
             >
               Atrás
@@ -364,10 +473,10 @@ export function SetupWizard({
                   type='button'
                   variant='secondary'
                   className='flex-1 sm:flex-none'
-                  disabled={isPending}
+                  disabled={busy}
                   onClick={() => void submit(false)()}
                 >
-                  {isPending && (
+                  {busy && (
                     <Loader2 aria-hidden className='animate-spin' />
                   )}
                   Saltar y finalizar
@@ -378,10 +487,10 @@ export function SetupWizard({
                 <Button
                   type='button'
                   className='flex-1 sm:flex-none'
-                  disabled={isPending}
+                  disabled={busy}
                   onClick={() => void submit(false)()}
                 >
-                  {isPending && (
+                  {busy && (
                     <Loader2 aria-hidden className='animate-spin' />
                   )}
                   Finalizar
@@ -392,9 +501,12 @@ export function SetupWizard({
                 <Button
                   type='button'
                   className='flex-1 sm:flex-none'
-                  disabled={isPending}
+                  disabled={busy}
                   onClick={goNext}
                 >
+                  {checking && (
+                    <Loader2 aria-hidden className='animate-spin' />
+                  )}
                   Siguiente
                 </Button>
               )}
@@ -403,10 +515,10 @@ export function SetupWizard({
                 <Button
                   type='button'
                   className='flex-1 sm:flex-none'
-                  disabled={isPending}
+                  disabled={busy}
                   onClick={() => void submit(true)()}
                 >
-                  {isPending && (
+                  {busy && (
                     <Loader2 aria-hidden className='animate-spin' />
                   )}
                   Guardar y finalizar
@@ -435,6 +547,7 @@ type FieldName =
   | 'whatsapp.businessId'
   | 'whatsapp.phoneNumberId'
   | 'whatsapp.accessToken'
+  | 'whatsapp.appSecret'
 
 /** Primer campo con error, respetando el orden de aparición. */
 function firstErrorPath(
