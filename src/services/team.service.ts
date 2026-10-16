@@ -13,13 +13,13 @@ import {
   type TeamTableResponse,
   type UpdateMemberInput,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const members = client('/company-members')
 
-/** Dev-only runtime check: catches API/contract drift immediately. */
-const check = <T>(schema: { parse: (data: unknown) => T }, data: unknown): T =>
-  import.meta.env.DEV ? schema.parse(data) : (data as T)
+/** Contract parse (coerces dates; strict in dev, tolerant in prod). */
+const check = parseContract
 
 /** One page of Equipo with the role/presence counts of the whole company. */
 export const getTeamTable = async (

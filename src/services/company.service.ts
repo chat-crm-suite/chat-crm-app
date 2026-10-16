@@ -6,20 +6,17 @@ import {
   type UpdateAssignmentSettingsInput,
   type UpdateCompanyProfileInput,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
 
 const company = client('/company')
 
-// Dev-only runtime checks: they catch API/contract drift immediately.
+// Contract parse: coerces wire values (dates); strict in dev, tolerant in prod.
 const parseProfile = (data: unknown): CompanyProfile =>
-  import.meta.env.DEV
-    ? CompanyProfileSchema.parse(data)
-    : (data as CompanyProfile)
+  parseContract(CompanyProfileSchema, data)
 
 const parseAssignment = (data: unknown): AssignmentSettings =>
-  import.meta.env.DEV
-    ? AssignmentSettingsSchema.parse(data)
-    : (data as AssignmentSettings)
+  parseContract(AssignmentSettingsSchema, data)
 
 /** `GET /company/me`: the active company. */
 export const getCompanyProfile = async (): Promise<CompanyProfile> => {

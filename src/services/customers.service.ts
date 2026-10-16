@@ -23,14 +23,14 @@ import {
   type UpdateCustomerInput,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
+import { parseContract } from '@/lib/contract-parse'
 
 const customers = client('/customers')
 
 const CustomerPageSchema = paginatedSchema(CustomerRowSchema)
 
-/** Dev-only runtime check: catches API/contract drift immediately. */
-const check = <T>(schema: { parse: (data: unknown) => T }, data: unknown): T =>
-  import.meta.env.DEV ? schema.parse(data) : (data as T)
+/** Contract parse (coerces dates; strict in dev, tolerant in prod). */
+const check = parseContract
 
 export const getCustomersTable = async (query: CustomerTableQuery) => {
   const { data } = await customers.post('/table', query)

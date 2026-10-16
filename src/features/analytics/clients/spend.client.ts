@@ -4,8 +4,8 @@ import {
   type UpdateBudgetInput,
   type UpdateChannelRatesInput,
 } from '@chat-crm/contracts'
+import { parseContract } from '@/lib/contract-parse'
 import { client } from '@/lib/http'
-import { devParse } from '../lib/dev-parse'
 
 /** `/billing/*` (admin): channel spend, rates, budget and the billable pause. */
 const billing = client('/billing')
@@ -14,7 +14,7 @@ export const getSpendSummary = async (month?: string) => {
   const { data } = await billing.get('/spend', {
     params: month ? { month } : undefined,
   })
-  return devParse(SpendSummarySchema, data)
+  return parseContract(SpendSummarySchema, data)
 }
 
 export const updateChannelRates = async (input: UpdateChannelRatesInput) => {
