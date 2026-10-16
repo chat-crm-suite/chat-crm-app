@@ -123,7 +123,7 @@ pnpm dlx skills@latest add <owner/repo> --skill <name> -a opencode -a claude-cod
 ## Producción
 
 La imagen de Docker compila la app y la sirve con **nginx** (fallback de SPA, `GET /health` → `ok`).
-Ver [`DEPLOY_PROD.md`](DEPLOY_PROD.md).
+El despliegue a producción vive en el repo privado `chat-crm-suite/chat-crm-deploy` (caddy delante, `VITE_*` horneadas en el build).
 
 ## Contribuir
 

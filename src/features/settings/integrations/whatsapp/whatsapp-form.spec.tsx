@@ -28,6 +28,7 @@ const config: WhatsAppConfigResponse = {
   businessId: '123456789012345',
   apiVersion: 'v22.0',
   hasCredentials: true,
+  hasAppSecret: false,
   accessToken: 'EAAB-stored-access-token',
   webhookVerifyToken: 'verify-token-123',
   webhookUrl: FULL_URL,
@@ -143,6 +144,46 @@ describe('WhatsappForm', () => {
 
     await waitFor(() => expect(input).toHaveValue(config.accessToken))
     expect(input).toHaveAttribute('type', 'password')
+  })
+
+  it('sends a new App Secret and keeps the field write-only', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const input = await screen.findByLabelText('App Secret')
+    expect(input).toHaveValue('')
+    expect(input).toHaveAttribute('type', 'password')
+
+    await user.type(input, 'abcdef0123456789abcdef0123456789')
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await vi.waitFor(() => expect(saveConfigMock).toHaveBeenCalledTimes(1))
+    expect(saveConfigMock.mock.calls[0][1].appSecret).toBe(
+      'abcdef0123456789abcdef0123456789'
+    )
+  })
+
+  it('omits the App Secret when left empty, keeping the stored one', async () => {
+    const user = userEvent.setup()
+    getConfigMock.mockResolvedValue({ ...config, hasAppSecret: true })
+    renderForm()
+
+    expect(await screen.findByText(/Configurado ✓/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await vi.waitFor(() => expect(saveConfigMock).toHaveBeenCalledTimes(1))
+    expect(saveConfigMock.mock.calls[0][1].appSecret).toBeUndefined()
+  })
+
+  it('rejects an App Secret that is not 32 hex chars', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.type(await screen.findByLabelText('App Secret'), 'not-a-secret')
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(saveConfigMock).not.toHaveBeenCalled()
   })
 
   it('reveals and copies the exact verify token', async () => {

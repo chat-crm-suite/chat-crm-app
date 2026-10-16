@@ -1,6 +1,10 @@
 import type { WhatsAppApiVersion } from '@chat-crm/contracts'
 import type { SetupFormValues } from '@/schemas/setup.schema'
-import type { SetupPayload, SetupStatus } from '@/services/setup.service'
+import type {
+  SetupPayload,
+  SetupStatus,
+  ValidateSetupStepInput,
+} from '@/services/setup.service'
 
 export type SetupStepId = 'token' | 'admin' | 'company' | 'whatsapp'
 
@@ -67,10 +71,55 @@ export function buildSetupPayload(
           businessId: clean(whatsapp.businessId),
           accessToken: clean(whatsapp.accessToken),
           externalAccountId: clean(whatsapp.phoneNumberId),
+          appSecret: clean(whatsapp.appSecret),
           webhookUrl,
           apiVersion: (clean(whatsapp.apiVersion) ||
             undefined) as WhatsAppApiVersion | undefined,
         } as NonNullable<SetupPayload['whatsapp']>)
       : undefined,
   }
+}
+
+/**
+ * Body of `POST /setup/validate` for one step, built from the same payload the
+ * final `POST /setup` sends (so both checks see identical values).
+ */
+export function buildStepValidation(
+  step: SetupStepId,
+  values: SetupFormValues,
+  webhookUrl: string
+): ValidateSetupStepInput {
+  const payload = buildSetupPayload(
+    { ...values, connectWhatsapp: step === 'whatsapp' },
+    webhookUrl
+  )
+  const { setupToken } = payload
+
+  switch (step) {
+    case 'token':
+      return { step, setupToken }
+    case 'admin':
+      return { step, setupToken, admin: payload.admin }
+    case 'company':
+      return { step, setupToken, company: payload.company }
+    case 'whatsapp':
+      return { step, setupToken, whatsapp: payload.whatsapp! }
+  }
+}
+
+/** Server error paths use the API names; the form calls a few fields differently. */
+const SERVER_TO_FORM_PATH: Record<string, string> = {
+  'whatsapp.externalAccountId': 'whatsapp.phoneNumberId',
+}
+
+export const toFormPath = (serverPath: string): string =>
+  SERVER_TO_FORM_PATH[serverPath] ?? serverPath
+
+/** The wizard step that owns a form field. */
+export function stepOfPath(path: string): SetupStepId | null {
+  if (path === 'setupToken') return 'token'
+  const head = path.split('.')[0]
+  return head === 'admin' || head === 'company' || head === 'whatsapp'
+    ? head
+    : null
 }
