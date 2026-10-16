@@ -4,6 +4,7 @@ import {
   DEFAULT_WHATSAPP_API_VERSION,
   WHATSAPP_API_VERSIONS,
   WhatsAppApiVersionSchema,
+  WhatsAppAppSecretSchema,
   type WhatsAppApiVersion,
 } from '@chat-crm/contracts'
 
@@ -36,6 +37,8 @@ export const schema = z.object({
   accessToken: z.string().min(tokenLength).or(z.literal('')).optional(),
   webhookVerifyToken: z.string().min(6).or(z.literal('')).optional(),
   webhookUrl: z.url().optional().or(z.literal('')),
+  // Write-only: always starts empty; empty means "keep the stored one".
+  appSecret: WhatsAppAppSecretSchema.or(z.literal('')).optional(),
 })
 
 // Guard
@@ -54,4 +57,5 @@ export const defaultValues: WhatsAppConfig = {
   webhookUrl: '',
   webhookVerifyToken: '',
   apiVersion: DEFAULT_WHATSAPP_API_VERSION,
+  appSecret: '',
 }

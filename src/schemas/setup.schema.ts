@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { WhatsAppAppSecretSchema } from '@chat-crm/contracts'
+
 const optionalText = z.string().optional()
 const optionalEmail = z.union([z.literal(''), z.email('Correo inválido')]).optional()
 
@@ -34,6 +36,7 @@ export const setupWhatsappSchema = z.object({
   accessToken: optionalText,
   phoneNumberId: optionalText,
   apiVersion: optionalText,
+  appSecret: optionalText,
 })
 
 export const setupFormSchema = z
@@ -70,6 +73,14 @@ export const setupFormSchema = z
         message: 'El phone number id es obligatorio',
       })
     }
+    const appSecret = data.whatsapp.appSecret?.trim()
+    if (appSecret && !WhatsAppAppSecretSchema.safeParse(appSecret).success) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['whatsapp', 'appSecret'],
+        message: 'El App Secret son 32 caracteres hexadecimales',
+      })
+    }
   })
 
 export type SetupFormValues = z.infer<typeof setupFormSchema>
@@ -98,5 +109,6 @@ export const setupFormDefaults: SetupFormValues = {
     accessToken: '',
     phoneNumberId: '',
     apiVersion: '',
+    appSecret: '',
   },
 }

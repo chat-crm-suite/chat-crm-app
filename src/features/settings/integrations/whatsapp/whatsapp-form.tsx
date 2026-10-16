@@ -22,6 +22,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { LoadingButton } from '@/components/ui/loading-button'
@@ -94,6 +95,7 @@ export const WhatsappForm = () => {
         externalAccountId: vals.phoneNumberId || undefined,
         apiVersion: vals.apiVersion,
         accessToken: vals.accessToken || undefined,
+        appSecret: vals.appSecret || undefined,
         webhookUrl: joinWebhookUrl(vals.webhookUrl) || undefined,
       }
       return saveConfig(businessId!, payload)
@@ -114,6 +116,8 @@ export const WhatsappForm = () => {
       accessToken: data.accessToken ?? '',
       webhookVerifyToken: data.webhookVerifyToken ?? '',
       webhookUrl: splitWebhookUrl(data.webhookUrl ?? undefined),
+      // Never returned by the API: the field only replaces it.
+      appSecret: '',
     })
   }, [data, form])
 
@@ -222,6 +226,32 @@ export const WhatsappForm = () => {
                       : data.hasCredentials
                         ? 'Canal configurado: edita el token solo si quieres reemplazarlo.'
                         : 'Canal sin credenciales: introduce el access token para configurarlo.'}
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='appSecret'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>App Secret</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      placeholder={
+                        data?.hasAppSecret
+                          ? '•••••••• (configurado: escribe uno nuevo para reemplazarlo)'
+                          : 'Meta → tu app → App settings → Basic → App secret'
+                      }
+                      autoComplete='off'
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <FormDescription>
+                    {data?.hasAppSecret
+                      ? 'Configurado ✓. Por seguridad nunca se muestra; déjalo vacío para conservarlo.'
+                      : 'Firma los webhooks de tu app de Meta. Sin él, el servidor usa el secreto global (si existe) o rechaza los mensajes entrantes.'}
                   </FormDescription>
                 </FormItem>
               )}
