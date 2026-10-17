@@ -3,7 +3,7 @@
  * backend endpoint and writes the local generated artifacts + lockfile.
  *
  * Usage:
- *   pnpm contracts:pull [--api-url URL] [-u USER] [-p PASS]
+ *   pnpm contracts:pull [--api-url URL] [-u USER] [-p PASS] [--no-commit]
  *
  * Credentials are flags (-u/-p) → env (API_USERNAME/API_PASSWORD) → prompt, and
  * live only in memory for this run.
@@ -13,15 +13,26 @@
  *   src/generated/contracts-version.json    (tag/commit/hash/generatedAt/files)
  *   contracts.lock.json                     ({ apiTag, hash, syncedAt, files })
  *
+ * Then, when those paths changed, it commits ONLY them (other staged work is left
+ * alone) as `chore(contracts): 🔧 sync contracts lock to <tag> (<hash>)`. It never
+ * pushes, and skips the commit on `main`, on a detached HEAD or with `--no-commit`.
+ *
  * Nothing here inspects a sibling checkout: the backend endpoint is the only
  * source, so the same command works in dev and prod.
  */
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { authenticatedFetch, obtainSessionCookie } from './contracts-auth.mjs'
-import { shouldSkipSync, writeIfChanged } from './contracts-sync-core.mjs'
+import {
+  SYNC_PATHS,
+  autoCommitBlocker,
+  buildSyncCommitMessage,
+  shouldSkipSync,
+  writeIfChanged,
+} from './contracts-sync-core.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GENERATED_DIR = path.join(REPO_ROOT, 'src', 'generated')
@@ -63,6 +74,48 @@ function readLock() {
     return JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8'))
   } catch {
     return null
+  }
+}
+
+function git(args) {
+  return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+}
+
+function tryGit(args) {
+  try {
+    return git(args)
+  } catch {
+    return null
+  }
+}
+
+/** Commits the synced paths when they changed; see the header for the rules. */
+function autoCommit(previousLock, nextLock) {
+  const insideWorkTree = tryGit(['rev-parse', '--is-inside-work-tree']) === 'true'
+  const blocker = autoCommitBlocker({
+    disabled: process.argv.includes('--no-commit'),
+    insideWorkTree,
+    branch: insideWorkTree ? (tryGit(['branch', '--show-current']) ?? '') : '',
+    dirtyPaths: insideWorkTree
+      ? (tryGit(['status', '--porcelain', '--', ...SYNC_PATHS]) ?? '').split('\n').filter(Boolean)
+      : [],
+  })
+  if (blocker) {
+    if (blocker !== 'nothing to commit') console.log(`Not committing: ${blocker}.`)
+    return
+  }
+
+  try {
+    git(['add', '--', ...SYNC_PATHS])
+    // Pathspec commit: only the synced paths go in, even if other work is staged.
+    git(['commit', '-m', buildSyncCommitMessage(previousLock, nextLock), '--', ...SYNC_PATHS])
+    const branch = git(['branch', '--show-current'])
+    console.log(`Committed ${git(['log', '-1', '--format=%h %s'])}`)
+    console.log(`Push when ready: git push origin ${branch} && git push codecta ${branch}`)
+  } catch (error) {
+    console.error('Synced, but the auto-commit failed; commit the files by hand.')
+    console.error(`  ${String(error.stderr || error.message).trim()}`)
+    process.exitCode = 1
   }
 }
 
@@ -113,6 +166,8 @@ async function main() {
         ? `Re-materialized generated contracts (${nextLock.apiTag}, hash ${nextLock.hash}).`
         : `Contracts already up to date (${nextLock.apiTag}, hash ${nextLock.hash}); nothing changed.`,
     )
+    // Also picks up files a previous `--no-commit` run left uncommitted.
+    autoCommit(existing, nextLock)
     return
   }
 
@@ -123,6 +178,7 @@ async function main() {
   fs.writeFileSync(LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`, 'utf8')
 
   console.log(`Synced contracts from ${apiUrl} (${lock.apiTag}, hash ${lock.hash}).`)
+  autoCommit(existing, lock)
 }
 
 void main()
