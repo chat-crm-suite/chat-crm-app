@@ -8,7 +8,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
-import { GeneralError } from '@/features/errors/general-error'
+import { RouteError } from '@/features/errors/route-error'
 import { NotFoundError } from '@/features/errors/not-found-error'
 import { resolveSetupRedirect } from '@/features/setup/setup-steps'
 import { getSetupStatus } from '@/services/setup.service'
@@ -44,5 +44,5 @@ export const Route = createRootRouteWithContext<{
     )
   },
   notFoundComponent: NotFoundError,
-  errorComponent: GeneralError,
+  errorComponent: RouteError,
 })
