@@ -22,7 +22,7 @@ import {
   saveConfig,
   testConnection,
 } from '@/services/whatsapp.service'
-import { API_URL } from '@/lib/http'
+import { API_PUBLIC_URL } from '@/lib/http'
 import { Info, Loader2Icon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -125,7 +125,7 @@ export const WhatsappForm = () => {
     resolver: zodResolver(schema),
     // A channel without a saved webhook starts from this API's own URL; the
     // domain stays editable (e.g. an ngrok tunnel in development).
-    defaultValues: { ...defaultValues, webhookUrl: API_URL },
+    defaultValues: { ...defaultValues, webhookUrl: API_PUBLIC_URL },
   })
 
   const queryClient = useQueryClient()
@@ -187,7 +187,8 @@ export const WhatsappForm = () => {
         : defaultValues.apiVersion,
       accessToken: data.accessToken ?? '',
       webhookVerifyToken: data.webhookVerifyToken ?? '',
-      webhookUrl: splitWebhookUrl(data.webhookUrl ?? undefined) || API_URL,
+      webhookUrl:
+        splitWebhookUrl(data.webhookUrl ?? undefined) || API_PUBLIC_URL,
       // Never returned by the API: the field only replaces it.
       appSecret: '',
     })

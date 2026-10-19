@@ -9,11 +9,9 @@ import {
   type AuthSessionResponse,
 } from '@chat-crm/contracts'
 import { useAuthStore } from '@/stores/auth-store'
+import { API_URL, HEALTH_PATH } from './endpoints'
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
-/** Liveness route of the API (`GET /health`, public, no DB). */
-export const HEALTH_PATH = '/health'
+export { API_PUBLIC_URL, API_URL, HEALTH_PATH, SOCKET_URL } from './endpoints'
 
 /**
  * True when the API did not answer at all (down, still booting, restarting):
