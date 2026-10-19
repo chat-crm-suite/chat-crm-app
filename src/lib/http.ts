@@ -75,19 +75,28 @@ export function withTenantContext(instance: AxiosInstance): AxiosInstance {
     return config
   })
 
+  // A `null` answer arrives as 200 with an EMPTY body (Nest sends nothing for
+  // nil), which axios hands over as `''`: restore the `null` so `.nullable()`
+  // contracts parse it.
   // `token_stale`: refresh the memberships once and replay the request with
   // the (possibly re-resolved) active company. A second failure surfaces.
-  instance.interceptors.response.use(undefined, async (error: unknown) => {
-    const config = (error as AxiosError).config as RetriableConfig | undefined
-    if (!config || config._sessionRetried || !isTokenStale(error)) {
-      throw error
-    }
+  instance.interceptors.response.use(
+    (response) => {
+      if (response.data === '') response.data = null
+      return response
+    },
+    async (error: unknown) => {
+      const config = (error as AxiosError).config as RetriableConfig | undefined
+      if (!config || config._sessionRetried || !isTokenStale(error)) {
+        throw error
+      }
 
-    config._sessionRetried = true
-    await refreshSession()
-    config.headers.delete(COMPANY_HEADER)
-    return instance.request(config)
-  })
+      config._sessionRetried = true
+      await refreshSession()
+      config.headers.delete(COMPANY_HEADER)
+      return instance.request(config)
+    }
+  )
 
   return instance
 }

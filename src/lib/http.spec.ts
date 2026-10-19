@@ -148,6 +148,21 @@ describe('withTenantContext', () => {
     await expect(api.get('/a')).rejects.toMatchObject({ response: { status: 401 } })
     expect(post).not.toHaveBeenCalled()
   })
+
+  it('turns the empty body of a null answer into null', async () => {
+    // Nest answers `return null` with 200 and no body; axios gives `''`.
+    const { api } = instanceWith((config) => Promise.resolve({ ...ok(config), data: '' }))
+
+    await expect(api.get('/channels/whatsapp/config')).resolves.toMatchObject({ data: null })
+  })
+
+  it('keeps real bodies untouched', async () => {
+    const { api } = instanceWith((config) =>
+      Promise.resolve({ ...ok(config), data: 'plain text' })
+    )
+
+    await expect(api.get('/a')).resolves.toMatchObject({ data: 'plain text' })
+  })
 })
 
 describe('refreshSession', () => {

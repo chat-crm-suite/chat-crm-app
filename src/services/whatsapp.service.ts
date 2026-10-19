@@ -1,9 +1,12 @@
 import {
+  CHANNEL_TYPE,
   ChannelResponseSchema,
   WhatsAppConfigResponseSchema,
+  WhatsAppConnectionTestSchema,
   type ChannelResponse,
   type UpdateChannelInput,
   type WhatsAppConfigResponse,
+  type WhatsAppConnectionTest,
 } from '@chat-crm/contracts'
 import { client } from '@/lib/http'
 import { parseContract } from '@/lib/contract-parse'
@@ -37,11 +40,24 @@ export const saveConfig = async (
   const { data } = await ws.patch(`whatsapp/config`, body)
   const parsed = parseConfigResponse(data)
 
-  // First-time setup: PATCH returns null when no WhatsApp channel exists yet.
+  // Every company is born with a `pending` WhatsApp channel, so PATCH finds
+  // it; null only for a company that somehow has none (then create it).
   if (parsed) return parsed
 
-  const { data: created } = await ws.post('', { type: 'whatsapp', ...body })
+  const { data: created } = await ws.post('', {
+    type: CHANNEL_TYPE.whatsapp,
+    ...body,
+  })
   return parseConfigResponse(created)
+}
+
+/**
+ * `POST /channels/whatsapp/test`: checks the SAVED channel (sending, webhook
+ * handshake, Meta subscription). Always 200; each check says what failed.
+ */
+export const testConnection = async (): Promise<WhatsAppConnectionTest> => {
+  const { data } = await ws.post('/whatsapp/test')
+  return parseContract(WhatsAppConnectionTestSchema, data)
 }
 
 /**
