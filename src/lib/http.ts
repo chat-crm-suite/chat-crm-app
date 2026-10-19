@@ -12,6 +12,30 @@ import { useAuthStore } from '@/stores/auth-store'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
+/** Liveness route of the API (`GET /health`, public, no DB). */
+export const HEALTH_PATH = '/health'
+
+/**
+ * True when the API did not answer at all (down, still booting, restarting):
+ * the request never got a response. An HTTP error (4xx/5xx) is NOT one.
+ */
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof AxiosError && !error.response
+}
+
+/** `GET /health` without the tenant interceptors: does the API answer? */
+export async function isApiUp(signal?: AbortSignal): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}${HEALTH_PATH}`, {
+      cache: 'no-store',
+      signal,
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 type SessionListener = (session: AuthSessionResponse) => void
 
 const sessionListeners = new Set<SessionListener>()
