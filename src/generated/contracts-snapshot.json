@@ -6854,6 +6854,20 @@
               ],
               "type": "string"
             },
+            "statusChangedAt": {
+              "anyOf": [
+                {},
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "statusReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "type": {
               "enum": [
                 "whatsapp",
@@ -6889,6 +6903,64 @@
             "status",
             "type",
             "updatedAt"
+          ],
+          "type": "object"
+        },
+        "kind": "schema"
+      },
+      "ChannelSocketEvent": {
+        "kind": "value",
+        "value": {
+          "StatusChanged": "channel:status:changed"
+        }
+      },
+      "ChannelStatusChangedSchema": {
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "at": {},
+            "channelId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "pending",
+                "active",
+                "inactive",
+                "error"
+              ],
+              "type": "string"
+            },
+            "statusReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "enum": [
+                "whatsapp",
+                "telegram",
+                "messenger",
+                "instagram",
+                "email",
+                "sms",
+                "webchat"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "at",
+            "channelId",
+            "name",
+            "status",
+            "statusReason",
+            "type"
           ],
           "type": "object"
         },
@@ -7253,6 +7325,20 @@
               ],
               "type": "string"
             },
+            "statusChangedAt": {
+              "anyOf": [
+                {},
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "statusReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "type": {
               "enum": [
                 "whatsapp",
@@ -7416,6 +7502,9 @@
         "kind": "schema"
       },
       "channelCapabilities": {
+        "kind": "factory"
+      },
+      "isChannelSendable": {
         "kind": "factory"
       }
     },
@@ -8363,6 +8452,21 @@
             "name": {
               "type": "string"
             },
+            "status": {
+              "enum": [
+                "pending",
+                "active",
+                "inactive",
+                "error"
+              ],
+              "type": "string"
+            },
+            "statusReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "type": {
               "enum": [
                 "whatsapp",
@@ -8379,6 +8483,8 @@
           "required": [
             "id",
             "name",
+            "status",
+            "statusReason",
             "type"
           ],
           "type": "object"
@@ -8416,6 +8522,7 @@
       "ConversationErrorCode": {
         "kind": "value",
         "value": {
+          "ChannelUnavailable": "channel_unavailable",
           "ReplyWindowClosed": "reply_window_closed",
           "TemplateParamsMissing": "template_params_missing",
           "TemplateUnavailable": "template_unavailable",
@@ -8590,6 +8697,21 @@
                 "name": {
                   "type": "string"
                 },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "active",
+                    "inactive",
+                    "error"
+                  ],
+                  "type": "string"
+                },
+                "statusReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "type": {
                   "enum": [
                     "whatsapp",
@@ -8606,6 +8728,8 @@
               "required": [
                 "id",
                 "name",
+                "status",
+                "statusReason",
                 "type"
               ],
               "type": "object"
@@ -9376,6 +9500,21 @@
                     "name": {
                       "type": "string"
                     },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "active",
+                        "inactive",
+                        "error"
+                      ],
+                      "type": "string"
+                    },
+                    "statusReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "type": {
                       "enum": [
                         "whatsapp",
@@ -9392,6 +9531,8 @@
                   "required": [
                     "id",
                     "name",
+                    "status",
+                    "statusReason",
                     "type"
                   ],
                   "type": "object"
@@ -13337,7 +13478,8 @@
           "validation",
           "forbidden",
           "not_found",
-          "internal"
+          "internal",
+          "channel_unavailable"
         ]
       },
       "SendMessageAckSchema": {
@@ -13365,7 +13507,8 @@
                     "validation",
                     "forbidden",
                     "not_found",
-                    "internal"
+                    "internal",
+                    "channel_unavailable"
                   ],
                   "type": "string"
                 },
@@ -13395,7 +13538,8 @@
             "validation",
             "forbidden",
             "not_found",
-            "internal"
+            "internal",
+            "channel_unavailable"
           ],
           "type": "string"
         },
