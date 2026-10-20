@@ -77,10 +77,10 @@ describe('command registry', () => {
       'company',
       'integrations',
     ])
+    // Channel credentials are admin-only: no Integraciones for supervisors.
     expect(settingsGroups(supervisor).map((g) => g.id)).toEqual([
       'personal',
       'company',
-      'integrations',
     ])
     expect(settingsGroups(agent).map((g) => g.id)).toEqual(['personal'])
     expect(

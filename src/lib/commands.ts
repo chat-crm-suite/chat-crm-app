@@ -81,6 +81,8 @@ export type ActionCommand = CommandBase & {
 export type CommandDef = NavigateCommand | ActionCommand
 
 const SUPERVISION: readonly MemberRole[] = ['admin', 'supervisor']
+/** Channel credentials (access token, App Secret): admins only, as in the API. */
+const ADMIN: readonly MemberRole[] = ['admin']
 
 export const COMMANDS: readonly CommandDef[] = [
   // Navigation (also the sidebar's main group).
@@ -238,7 +240,7 @@ export const COMMANDS: readonly CommandDef[] = [
     icon: MessageSquare,
     section: 'settings',
     keywords: ['integraciones', 'canal', 'meta', 'token', 'webhook'],
-    roles: SUPERVISION,
+    roles: ADMIN,
     settingsGroup: 'integrations',
   },
 
