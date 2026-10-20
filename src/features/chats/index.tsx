@@ -7,11 +7,6 @@ import {
   IaStatusSchema,
   AnalyticsSocketEvent,
 } from '@chat-crm/contracts'
-import { toast } from 'sonner'
-import {
-  consumeSelfInitiatedAssignment,
-  resolveAssignmentToast,
-} from '@/lib/socket-taxonomy'
 import { useSocket } from '@/context/socket-provider'
 import { IA_STATUS_KEY } from '@/features/analytics/hooks/use-ia-status'
 import {
@@ -88,32 +83,11 @@ function ChatsRealtime() {
       // The open thread cache is owned by `useChatThread`.
     }
 
-    // Assignment: always refresh the lists; the toast is skipped when the
-    // event echoes this client's own action (claim/self-assignment, already
-    // announced by the mutation). `notification:new` is handled only in the
-    // socket-provider.
-    const handleAssigned = (payload: unknown) => {
-      refreshLists()
-      const decision = resolveAssignmentToast('assigned', payload, {
-        isSelfInitiated: consumeSelfInitiatedAssignment,
-      })
-      if (decision) {
-        toast[decision.type](decision.title, {
-          description: decision.description,
-          id: decision.id,
-        })
-      }
-    }
-    const handleUnassigned = (payload: unknown) => {
-      refreshLists()
-      const decision = resolveAssignmentToast('unassigned', payload)
-      if (decision) {
-        toast[decision.type](decision.title, {
-          description: decision.description,
-          id: decision.id,
-        })
-      }
-    }
+    // Assignment events are data only: they refresh the lists. The person
+    // hears about it through `notification:new` (one toast, handled by
+    // `useNotificationRealtime`), never from here.
+    const handleAssigned = () => refreshLists()
+    const handleUnassigned = () => refreshLists()
 
     const handleStatusChanged = (payload: unknown) => {
       const parsed = ConversationStatusChangedSchema.safeParse(payload)

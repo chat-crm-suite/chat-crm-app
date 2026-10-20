@@ -25,6 +25,9 @@ import {
 import { API_PUBLIC_URL } from '@/lib/http'
 import { Info, Loader2Icon } from 'lucide-react'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { SCREEN_HANDLES_ERRORS } from '@/lib/handle-server-error'
+import { notify } from '@/lib/notify'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   Form,
@@ -85,30 +88,60 @@ const joinWebhookUrl = (base?: string) => {
   return value.endsWith(WEBHOOK_PATH) ? value : `${value}${WEBHOOK_PATH}`
 }
 
+/** One toast listing every invalid field (the fields also show inline). */
 const onInvalidSubmit = (errors: FieldErrors<WhatsAppConfigInput>) => {
-  Object.values(errors).forEach((error) => {
-    if (error?.message) toast.error(error.message)
-  })
+  const messages = Object.values(errors)
+    .map((error) => error?.message)
+    .filter((message): message is string => Boolean(message))
+  if (!messages.length) return
+
+  notify.error(
+    messages.length === 1 ? messages[0] : `Revisa ${messages.length} campos`,
+    {
+      id: 'whatsapp:invalid',
+      description: messages.length > 1 ? messages.join(' · ') : undefined,
+    }
+  )
 }
 
-/** One toast per check that did not pass; a single success toast otherwise. */
+/**
+ * One toast per test run (same id, so a second run replaces it): verified,
+ * or what failed / could not be checked, all in its description.
+ */
 const toastTestResult = (result: WhatsAppConnectionTest) => {
-  if (result.ok) {
-    toast.success('Conexión de WhatsApp verificada ✅', {
-      description: result.sending.message,
-    })
-  }
-  ;(
+  const problems = (
     Object.entries(TEST_CHECKS) as [keyof typeof TEST_CHECKS, string][]
-  ).forEach(([key, label]) => {
+  ).flatMap(([key, label]) => {
     const check: ConnectionCheck = result[key]
     if (check.status === CONNECTION_CHECK.failed) {
-      toast.error(`${label}: falla`, { description: check.message })
-    } else if (check.status === CONNECTION_CHECK.skipped) {
-      toast.warning(`${label}: sin comprobar`, { description: check.message })
+      return [{ failed: true, text: `${label}: falla. ${check.message ?? ''}`.trim() }]
     }
+    if (check.status === CONNECTION_CHECK.skipped) {
+      return [{ failed: false, text: `${label}: sin comprobar. ${check.message ?? ''}`.trim() }]
+    }
+    return []
   })
+
+  if (result.ok && !problems.length) {
+    notify.success('Conexión de WhatsApp verificada', {
+      id: TEST_TOAST_ID,
+      description: result.sending.message,
+    })
+    return
+  }
+
+  const description = problems.map((problem) => problem.text).join(' · ')
+  if (problems.some((problem) => problem.failed)) {
+    notify.error('La conexión de WhatsApp tiene problemas', { id: TEST_TOAST_ID, description })
+  } else {
+    notify.warning(
+      result.ok ? 'Conexión verificada con avisos' : 'No se pudo comprobar todo',
+      { id: TEST_TOAST_ID, description }
+    )
+  }
 }
+
+const TEST_TOAST_ID = 'whatsapp:test'
 
 export const WhatsappForm = () => {
   const { id: businessId } = useAuthStore().auth.company!
@@ -137,22 +170,26 @@ export const WhatsappForm = () => {
   const test = useMutation({
     mutationFn: testConnection,
     onSuccess: toastTestResult,
-    onError: () =>
-      toast.error('No se pudo ejecutar la prueba de conexión ❌', {
-        description: 'El API no respondió; inténtalo de nuevo.',
+    onError: (error) =>
+      notify.apiError(error, 'No se pudo ejecutar la prueba de conexión', {
+        id: TEST_TOAST_ID,
       }),
   })
 
   const onTest = () => {
     // The API tests what is SAVED: unsaved edits would give a wrong answer.
     if (isDirty) {
-      toast.warning('Guarda los cambios antes de probar la conexión')
+      notify.warning('Guarda los cambios antes de probar la conexión', {
+        id: TEST_TOAST_ID,
+      })
       return
     }
     test.mutate()
   }
 
   const { mutateAsync, isPending } = useMutation({
+    // The submit's `toast.promise` reports the error: no second toast.
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (vals: WhatsAppConfigInput) => {
       // v2: form fields map onto the channel contract. The access token is
       // prefilled from the API; an empty field means "keep current".
@@ -208,9 +245,11 @@ export const WhatsappForm = () => {
               webhookUrl: joinWebhookUrl(vals.webhookUrl),
             }),
             {
-              loading: 'Guardando configuración...',
-              success: 'Configuración guardada correctamente 🎉',
-              error: 'Ocurrió un error al guardar la configuración ❌',
+              id: 'whatsapp:save',
+              loading: 'Guardando configuración…',
+              success: 'Configuración guardada',
+              error: (error: unknown) =>
+                getApiErrorMessage(error, 'No se pudo guardar la configuración'),
             }
           )
         }, onInvalidSubmit)}

@@ -33,7 +33,15 @@ export const Route = createRootRouteWithContext<{
       <>
         <NavigationProgress />
         <Outlet />
-        <Toaster duration={5000} />
+        {/* The app's only Toaster: one position, at most 4 visible, every
+            toast closable. Toasts go through `@/lib/notify`. */}
+        <Toaster
+          position='top-right'
+          richColors
+          closeButton
+          visibleToasts={4}
+          duration={5000}
+        />
         {import.meta.env.MODE === 'development' && (
           <>
             <ReactQueryDevtools buttonPosition='bottom-left' />

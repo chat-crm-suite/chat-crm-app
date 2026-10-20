@@ -19,6 +19,7 @@ import {
 import { getApiError } from '../workspace/api-error-code'
 import { teamKeys } from '../workspace/query-keys'
 import { API_ERROR_COPY, copy } from './copy'
+import { SCREEN_HANDLES_ERRORS } from '@/lib/handle-server-error'
 
 /** What to tell the person when a team request fails. */
 export const teamErrorMessage = (error: unknown) => {
@@ -63,6 +64,7 @@ export function useToggleAutoAssign() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: ({ member, value }: { member: TeamMemberRow; value: boolean }) =>
       updateMember(member.id, { acceptsAutoAssign: value }),
     onMutate: async ({ member, value }) => {
@@ -93,6 +95,7 @@ export function useUpdateMember() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: ({ id, input }: { id: string; input: UpdateMemberInput }) =>
       updateMember(id, input),
     onSuccess: (row) => {
@@ -106,6 +109,7 @@ export function useCreateMember() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (input: CreateMemberInput) => createMember(input),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: teamKeys.root }),
@@ -116,6 +120,7 @@ export function useRemoveMember() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (id: string) => removeMember(id),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: teamKeys.root }),
@@ -123,5 +128,9 @@ export function useRemoveMember() {
 }
 
 export function useResetPassword() {
-  return useMutation({ mutationFn: (id: string) => resetMemberPassword(id) })
+  return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
+    ...SCREEN_HANDLES_ERRORS,
+    mutationFn: (id: string) => resetMemberPassword(id),
+  })
 }

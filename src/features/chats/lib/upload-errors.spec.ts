@@ -20,6 +20,7 @@ describe('uploadErrorMessage', () => {
 
   it('falls back to the API message, then to a generic one', () => {
     expect(uploadErrorMessage(apiError({ message: 'Algo' }))).toBe('Algo')
-    expect(uploadErrorMessage(apiError({}))).toBe('Request failed')
+    // Never the raw axios text ("Request failed"): the Spanish fallback.
+    expect(uploadErrorMessage(apiError({}))).toBe('No se pudo subir el archivo.')
   })
 })

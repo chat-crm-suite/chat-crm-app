@@ -161,9 +161,13 @@ export function useChatThread(
   const fail = useCallback(
     (clientMessageId: string, reason: string) => {
       updateThread((current) => markMessageFailed(current, { clientMessageId }))
-      toast.error('No se pudo enviar el mensaje', { description: reason })
+      // Same id per conversation: several failed sends update one toast.
+      toast.error('No se pudo enviar el mensaje', {
+        id: `send-failed:${conversationId}`,
+        description: reason,
+      })
     },
-    [updateThread]
+    [updateThread, conversationId]
   )
 
   /** Stages the file of an entry (once) and builds its send payload. */

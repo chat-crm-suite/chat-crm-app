@@ -10,6 +10,7 @@ import type {
   TemplateListQuery,
   UpdateTemplateSettingsInput,
 } from '@chat-crm/contracts'
+import { SCREEN_HANDLES_ERRORS } from '@/lib/handle-server-error'
 
 export const templateKeys = {
   all: ['templates'] as const,
@@ -56,6 +57,7 @@ export function useTemplateGroups() {
 export function useSyncTemplates() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (channelId: string) => syncTemplates(channelId),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: templateKeys.all }),
@@ -65,6 +67,7 @@ export function useSyncTemplates() {
 export function useUpdateTemplateSettings() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: ({
       id,
       input,

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useT } from '@/lib/i18n/useT'
 import { cn } from '@/lib/utils'
 import { useSignIn } from '@/hooks/use-sign-in'
@@ -55,12 +56,20 @@ export function UserAuthForm({
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // One toast for the whole attempt: loading → welcome or the reason it
+    // failed (the mutation is tagged so the global fallback stays quiet).
     toast.promise(mutateAsync(values), {
-      loading: 'Signing in...',
+      id: 'sign-in',
+      loading: 'Iniciando sesión…',
       success: () => {
         navigate({ to: '/' })
-        return `Welcome back, ${values.username}!`
+        return `¡Hola de nuevo, ${values.username}!`
       },
+      error: (error: unknown) =>
+        getApiErrorMessage(
+          error,
+          'No se pudo iniciar sesión. Inténtalo de nuevo.'
+        ),
     })
   }
 
