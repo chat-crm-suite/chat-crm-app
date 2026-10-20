@@ -1,35 +1,40 @@
-import { describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import { ChatsProvider } from '../../contexts/chats.provider'
+import type { ChatListView } from '../../types/chat.domain'
+import { ChatListHeader } from './chat-list-header'
 
 vi.mock('@/context/socket-provider', () => ({
   useSocket: () => ({ socket: null, isConnected: true }),
 }))
 
-import type { ChatListView } from '../../types/chat.domain'
-import { ChatsProvider } from '../../contexts/chats.provider'
-import { ChatListHeader } from './chat-list-header'
-
 const renderHeader = (
   options: {
     search?: string
     view?: ChatListView
-    counts?: Record<ChatListView, number | undefined>
+    views?: ChatListView[]
+    counts?: Partial<Record<ChatListView, number | undefined>>
   } = {}
 ) => {
   const setSearch = vi.fn()
   const setView = vi.fn()
 
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={new QueryClient()}>
+      <ChatsProvider>{children}</ChatsProvider>
+    </QueryClientProvider>
+  )
   render(
-    <ChatsProvider>
-      <ChatListHeader
-        searchState={{ search: options.search ?? '', setSearch }}
-        viewState={{ view: options.view ?? 'inbox', setView }}
-        counts={
-          options.counts ?? { inbox: 24, queue: 8, 'needs-response': 12 }
-        }
-      />
-    </ChatsProvider>
+    <ChatListHeader
+      searchState={{ search: options.search ?? '', setSearch }}
+      viewState={{ view: options.view ?? 'mine', setView }}
+      views={options.views ?? ['mine', 'queue', 'needs']}
+      counts={options.counts ?? { mine: 24, queue: 8, needs: 12 }}
+    />,
+    { wrapper }
   )
 
   return { setSearch, setView }
@@ -37,17 +42,31 @@ const renderHeader = (
 
 describe('ChatListHeader', () => {
   it('shows a count per view only when the view has chats', () => {
-    renderHeader({ counts: { inbox: 24, queue: 0, 'needs-response': undefined } })
+    renderHeader({ counts: { mine: 24, queue: 0, needs: undefined } })
 
-    expect(screen.getByRole('button', { name: /Inbox/ })).toHaveTextContent(
-      '(24)'
+    expect(screen.getByRole('button', { name: /Mis chats/ })).toHaveTextContent(
+      '24'
     )
     expect(screen.getByRole('button', { name: /Cola/ })).not.toHaveTextContent(
-      '(0)'
+      '0'
     )
     expect(
       screen.getByRole('button', { name: /Sin resp\./ })
-    ).not.toHaveTextContent('(')
+    ).toHaveTextContent(/^Sin resp\.$/)
+  })
+
+  it('shows the Todos tab only when the member may see every chat', () => {
+    renderHeader({ views: ['mine', 'queue', 'needs', 'all'] })
+
+    expect(screen.getByRole('button', { name: /Todos/ })).toBeInTheDocument()
+  })
+
+  it('hides the Todos tab for agents', () => {
+    renderHeader()
+
+    expect(
+      screen.queryByRole('button', { name: /Todos/ })
+    ).not.toBeInTheDocument()
   })
 
   it('switches views from the tabs', async () => {

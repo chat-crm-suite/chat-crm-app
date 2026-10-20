@@ -13,7 +13,7 @@ export type ErrorToastDecision =
       kind: 'template'
       title: string
       description?: string
-      /** Legacy recipient for `sendTemplate`. */
+      /** Legacy recipient; the action opens the open chat's template picker. */
       recipient?: string
     }
   | {

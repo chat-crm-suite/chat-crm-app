@@ -19,6 +19,8 @@ export const ChatSocketEvents = {
   assigned: ConversationSocketEvent.ConversationAssigned,
   unassigned: ConversationSocketEvent.ConversationUnassigned,
   notification: ConversationSocketEvent.NewNotification,
+  statusChanged: ConversationSocketEvent.StatusChanged,
+  created: ConversationSocketEvent.Created,
 } as const
 
 export type ChatSocketEvents =

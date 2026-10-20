@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { useLayout } from '@/context/layout-provider'
 import { useCommandContext } from '@/lib/use-command-context'
+import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
   SidebarContent,
@@ -8,6 +8,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { useWorkBadge } from '@/features/tasks/use-work-badge'
 import { buildSidebarGroups } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
@@ -16,7 +17,14 @@ import { TeamSwitcher } from './team-switcher'
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const context = useCommandContext()
-  const groups = useMemo(() => buildSidebarGroups(context), [context])
+  const work = useWorkBadge()
+  const groups = useMemo(
+    () =>
+      buildSidebarGroups(context, {
+        '/tasks': work > 0 ? (work > 99 ? '99+' : String(work)) : undefined,
+      }),
+    [context, work]
+  )
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>

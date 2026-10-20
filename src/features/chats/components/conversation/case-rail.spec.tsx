@@ -1,29 +1,23 @@
-import type { ComponentProps } from 'react'
-import { render, screen, act, within } from '@testing-library/react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Chat, ChatMessage, ChatSentiment } from '../../types/chat.domain'
+import { FIXTURE_TASKS } from '@/features/tasks/__fixtures__/work-queue'
+import { makeChat, OTHER } from '../../testing/chats'
+import type { ChatMessage, ChatSentiment } from '../../types/chat.domain'
 import { CaseRail } from './case-rail'
 import { ToneControl } from './tone-control'
 import { TONE_MODE_STORAGE_KEY } from './tone-mode'
 
+const tasks = vi.hoisted(() => ({
+  listTasks: vi.fn(),
+  completeTask: vi.fn(),
+}))
+vi.mock('@/services/task.service', () => tasks)
+
 const minutesAgo = (minutes: number) =>
   new Date(Date.now() - minutes * 60 * 1000)
-
-function makeChat(overrides: Partial<Chat> = {}): Chat {
-  return {
-    id: 'c-1',
-    channelType: 'whatsapp',
-    status: 'open',
-    createdAt: new Date('2026-10-01T08:00:00'),
-    customer: {
-      id: 'customer-1',
-      displayName: 'Rosa Medina',
-      phone: '+51987654321',
-    },
-    ...overrides,
-  }
-}
 
 function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
@@ -47,139 +41,171 @@ const sentiment: ChatSentiment = {
   dominant: 'POS',
 }
 
-const renderRail = (props: Partial<ComponentProps<typeof CaseRail>> = {}) => {
-  const onTake = vi.fn()
-  render(
-    <CaseRail
-      chat={makeChat()}
-      messages={[makeMessage()]}
-      sentiment={sentiment}
-      onTake={onTake}
-      {...props}
-    />
+function Providers({ children }: { children: ReactNode }) {
+  const [client] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
   )
-  return { onTake }
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+}
+
+type RailProps = ComponentProps<typeof CaseRail>
+
+const baseProps = (): RailProps => ({
+  chat: makeChat(),
+  messages: [makeMessage()],
+  sentiment,
+  showSentiment: true,
+  actions: { canTake: false, isMine: true },
+  onTake: vi.fn(),
+})
+
+const renderRail = (props: Partial<RailProps> = {}) => {
+  const all = { ...baseProps(), ...props }
+  render(<CaseRail {...all} />, { wrapper: Providers })
+  return all
 }
 
 describe('CaseRail', () => {
   beforeEach(() => {
     localStorage.clear()
+    tasks.listTasks.mockReset().mockResolvedValue([])
+    tasks.completeTask.mockReset()
   })
 
-  it('shows the customer card with display name and phone', () => {
+  it('shows the contact section with display name and phone', () => {
     renderRail()
 
-    expect(
-      screen.getByRole('complementary', { name: 'Detalle del caso' })
-    ).toBeInTheDocument()
-    expect(screen.getByText('Rosa Medina')).toBeInTheDocument()
-    expect(screen.getByText('+51 987 654 321')).toBeInTheDocument()
+    const rail = screen.getByRole('complementary', { name: 'Detalle del caso' })
+    expect(within(rail).getByText('Detalle')).toBeInTheDocument()
+    expect(within(rail).getByText('Rosa Medina')).toBeInTheDocument()
+    expect(within(rail).getByText('+51 987 654 321')).toBeInTheDocument()
   })
 
   it('shows the real status of the case', () => {
-    renderRail({ chat: makeChat({ status: 'closed' }) })
+    renderRail({ chat: makeChat({ status: 'pending' }) })
 
-    expect(screen.getByText('Resuelto')).toBeInTheDocument()
-  })
-
-  it('hides the priority row when the conversation carries no priority', () => {
-    renderRail()
-
-    expect(screen.queryByText('Prioridad')).not.toBeInTheDocument()
+    expect(screen.getByText('En espera')).toBeInTheDocument()
   })
 
   it('shows the priority only when the conversation carries one', () => {
-    renderRail({ chat: makeChat({ priority: 'urgent' }) })
+    const { unmount } = render(<CaseRail {...baseProps()} />, {
+      wrapper: Providers,
+    })
+    expect(screen.queryByText('Urgente')).not.toBeInTheDocument()
+    unmount()
 
-    expect(screen.getByText('Prioridad')).toBeInTheDocument()
+    renderRail({ chat: makeChat({ priority: 'urgent' }) })
     expect(screen.getByText('Urgente')).toBeInTheDocument()
   })
 
   it('shows Take for an unassigned conversation and reuses the claim callback', async () => {
     const user = userEvent.setup()
-    const { onTake } = renderRail({ chat: makeChat({ isUnassigned: true }) })
+    const { onTake } = renderRail({
+      chat: makeChat({ assignee: null }),
+      actions: { canTake: true, isMine: false },
+    })
 
-    expect(screen.getByText('Sin asignar')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Tomar chat' }))
 
     expect(onTake).toHaveBeenCalledTimes(1)
   })
 
-  it('treats a null member as unassigned', () => {
-    renderRail({ chat: makeChat({ member: null }) })
-
-    expect(screen.getByText('Sin asignar')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Tomar chat' })
-    ).toBeInTheDocument()
-  })
-
-  it('offers no Take once the claim assigned the chat to me', () => {
-    renderRail({
-      chat: makeChat({
-        isUnassigned: false,
-        member: { id: 'member-1', username: 'aron' },
-      }),
-    })
-
-    expect(screen.getByText('@aron')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Tomar chat' })
-    ).not.toBeInTheDocument()
-  })
-
   it('disables Take while the claim is in flight', () => {
-    renderRail({ chat: makeChat({ isUnassigned: true }), taking: true })
+    renderRail({
+      chat: makeChat({ assignee: null }),
+      actions: { canTake: true, isMine: false },
+      taking: true,
+    })
 
     expect(screen.getByRole('button', { name: 'Tomando…' })).toBeDisabled()
   })
 
-  it('shows the assignee when the conversation carries one', () => {
-    renderRail({
-      chat: makeChat({ member: { id: 'member-2', username: 'rosa.medina' } }),
+  it('marks my own conversation and names another owner', () => {
+    const { unmount } = render(<CaseRail {...baseProps()} />, {
+      wrapper: Providers,
     })
-
-    expect(screen.getByText('@rosa.medina')).toBeInTheDocument()
-  })
-
-  it('marks the inbox payload (no member) as assigned to me', () => {
-    renderRail({ currentMemberId: 'member-1' })
-
     expect(screen.getByText('Asignado a ti')).toBeInTheDocument()
+    unmount()
+
+    renderRail({
+      chat: makeChat({ assignee: OTHER }),
+      actions: { canTake: false, isMine: false },
+    })
+    expect(screen.getByText('Luis Quispe')).toBeInTheDocument()
   })
 
-  it('marks the owner as me only when the member id matches', () => {
+  it('shows the real channel of the conversation, not a hardcoded one', () => {
     renderRail({
-      currentMemberId: 'member-1',
-      chat: makeChat({ member: { id: 'member-1', username: null } }),
+      chat: makeChat({
+        channel: { id: 'ch-2', type: 'whatsapp', name: 'WhatsApp Soporte' },
+      }),
     })
 
-    expect(screen.getByText('Asignado a ti')).toBeInTheDocument()
+    expect(screen.getByText('WhatsApp Soporte')).toBeInTheDocument()
   })
 
-  it('names another owner without username honestly', () => {
+  it('shows who transferred the chat and the note', () => {
     renderRail({
-      currentMemberId: 'member-1',
-      chat: makeChat({ member: { id: 'member-2', username: null } }),
+      chat: makeChat({
+        transfer: {
+          fromMemberId: 'member-2',
+          fromName: 'Luis Quispe',
+          at: new Date(),
+          note: 'Pide factura con RUC',
+        },
+      }),
     })
 
-    expect(screen.getByText('Otro agente')).toBeInTheDocument()
-    expect(screen.queryByText('Asignado a ti')).not.toBeInTheDocument()
+    expect(screen.getByText('Luis Quispe')).toBeInTheDocument()
+    expect(screen.getByText('Pide factura con RUC')).toBeInTheDocument()
   })
 
-  it('shows the channel as WhatsApp', () => {
+  it('lists the open tasks of the chat and completes one', async () => {
+    const user = userEvent.setup()
+    tasks.listTasks.mockResolvedValue([FIXTURE_TASKS[0]])
+    tasks.completeTask.mockResolvedValue({
+      ...FIXTURE_TASKS[0],
+      status: 'done',
+    })
     renderRail()
 
-    expect(screen.getByText('WhatsApp')).toBeInTheDocument()
+    expect(await screen.findByText(FIXTURE_TASKS[0].title)).toBeInTheDocument()
+    expect(tasks.listTasks).toHaveBeenCalledWith({
+      conversationId: 'c-1',
+      status: 'open',
+    })
+
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: `Completar: ${FIXTURE_TASKS[0].title}`,
+      })
+    )
+    expect(tasks.completeTask).toHaveBeenCalledWith(FIXTURE_TASKS[0].id)
   })
 
-  it('shows the tone panel with the same aggregate as the header control', () => {
-    renderRail()
+  it('opens the task dialog from the tasks section', async () => {
+    const user = userEvent.setup()
+    const onCreateTask = vi.fn()
+    renderRail({ onCreateTask })
 
+    expect(
+      await screen.findByText('Sin tareas para este chat.')
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Nueva tarea' }))
+    expect(onCreateTask).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the tone panel only while the IA is available', () => {
+    const { unmount } = render(<CaseRail {...baseProps()} />, {
+      wrapper: Providers,
+    })
     expect(screen.getByText('Sentimiento')).toBeInTheDocument()
     expect(screen.getByText('Tono positivo')).toBeInTheDocument()
-    expect(screen.getByText('52%')).toBeInTheDocument()
-    expect(screen.getByText('48 mensajes analizados')).toBeInTheDocument()
+    unmount()
+
+    renderRail({ showSentiment: false })
+    expect(screen.queryByText('Sentimiento')).not.toBeInTheDocument()
+    expect(screen.queryByText('Tono positivo')).not.toBeInTheDocument()
   })
 
   it('hides the tone panel in off mode', () => {
@@ -187,7 +213,6 @@ describe('CaseRail', () => {
     renderRail()
 
     expect(screen.queryByText('Sentimiento')).not.toBeInTheDocument()
-    expect(screen.queryByText('Tono positivo')).not.toBeInTheDocument()
   })
 
   it('hides the rail tone panel when the header control switches tone off', async () => {
@@ -195,13 +220,9 @@ describe('CaseRail', () => {
     render(
       <>
         <ToneControl sentiment={sentiment} />
-        <CaseRail
-          chat={makeChat()}
-          messages={[makeMessage()]}
-          sentiment={sentiment}
-          onTake={vi.fn()}
-        />
-      </>
+        <CaseRail {...baseProps()} />
+      </>,
+      { wrapper: Providers }
     )
 
     await user.click(screen.getByRole('button', { name: /tono positivo/i }))
@@ -219,15 +240,29 @@ describe('CaseRail', () => {
     ).toBeInTheDocument()
   })
 
-  it('points to the template flow when the window expired, disabled until it ships', () => {
-    renderRail({ messages: [makeMessage({ timestamp: minutesAgo(25 * 60) })] })
+  it('prefers the later expiry between the list item and the thread', () => {
+    renderRail({
+      chat: makeChat({
+        windowExpiresAt: new Date(Date.now() + 20 * 60 * 60 * 1000),
+      }),
+    })
+
+    expect(screen.getByText('20 h 00 min')).toBeInTheDocument()
+  })
+
+  it('offers the template picker when the window expired', async () => {
+    const user = userEvent.setup()
+    const onPickTemplate = vi.fn()
+    renderRail({
+      messages: [makeMessage({ timestamp: minutesAgo(25 * 60) })],
+      onPickTemplate,
+    })
 
     expect(
       screen.getByText('Ventana vencida · usa una plantilla')
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Usar plantilla (próximamente)' })
-    ).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Enviar plantilla' }))
+    expect(onPickTemplate).toHaveBeenCalledTimes(1)
   })
 
   it('flips to the expired copy when the 24 h boundary passes while mounted', () => {
@@ -263,9 +298,7 @@ describe('CaseRail', () => {
       messages: [makeMessage({ sender: { id: 'member-1', type: 'member' } })],
     })
 
-    expect(
-      screen.getByText('Aún no hay mensajes del cliente')
-    ).toBeInTheDocument()
+    expect(screen.getByText('El cliente aún no ha escrito')).toBeInTheDocument()
   })
 
   it('keeps the sheet unmounted until it is opened', () => {
@@ -275,42 +308,20 @@ describe('CaseRail', () => {
   })
 
   it('renders the same detail in the inline column and the opened sheet', () => {
-    render(
-      <CaseRail
-        chat={makeChat()}
-        messages={[makeMessage()]}
-        sentiment={sentiment}
-        onTake={vi.fn()}
-        open
-      />
-    )
+    renderRail({ open: true })
 
-    // The sheet renders as a dialog; the inline column stays the only
-    // complementary landmark (Radix hides it from the a11y tree while the
-    // modal is open, hence `hidden: true`).
-    expect(
-      screen.getAllByRole('complementary', { hidden: true })
-    ).toHaveLength(1)
-    expect(
-      within(screen.getByRole('dialog')).getByText('Rosa Medina')
-    ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('dialog')).getByText('Tono positivo')
-    ).toBeInTheDocument()
+    expect(screen.getAllByRole('complementary', { hidden: true })).toHaveLength(
+      1
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Rosa Medina')).toBeInTheDocument()
+    expect(within(dialog).getByText('Tono positivo')).toBeInTheDocument()
   })
 
   it('reports the sheet close back to its owner', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
-    render(
-      <CaseRail
-        chat={makeChat()}
-        messages={[makeMessage()]}
-        onTake={vi.fn()}
-        open
-        onOpenChange={onOpenChange}
-      />
-    )
+    renderRail({ open: true, onOpenChange })
 
     await user.click(screen.getByRole('button', { name: 'Close' }))
 

@@ -1,37 +1,44 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useDirection } from '@radix-ui/react-direction'
-import { Clock3, MessageCircle, Phone } from 'lucide-react'
+import { channelCapabilities } from '@chat-crm/contracts'
+import {
+  ChevronDown,
+  Clock3,
+  LayoutTemplate,
+  Phone,
+  Plus,
+  UserRound,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useCompleteTask, useTasks } from '@/features/tasks/task-queries'
+import { PRIORITY_LABEL, copy } from '../../copy'
 import { useNow } from '../../hooks/use-now'
-import { isConversationUnassigned } from '../../lib/conversation-assignment'
+import type { CaseActions } from '../../lib/conversation-assignment'
 import {
+  conversationWindowState,
   formatServiceWindowRemaining,
-  serviceWindowState,
-  SERVICE_WINDOW_MS,
 } from '../../lib/service-window'
-import type {
-  Chat,
-  ChatMessage,
-  ChatSentiment,
-  ConversationPriority,
-} from '../../types/chat.domain'
+import type { Chat, ChatMessage, ChatSentiment } from '../../types/chat.domain'
+import { ChannelIcon } from '../channel-icon'
+import { MemberAvatar } from '../member-avatar'
+import { PANE_HEADER } from './case-header'
 import { formatPhone, initials } from './identity'
 import { STATUS_META } from './status-meta'
 import { useToneMode } from './tone-mode'
 import { ToneSummary } from './tone-summary'
-
-const PRIORITY_LABEL: Record<ConversationPriority, string> = {
-  low: 'Baja',
-  medium: 'Media',
-  high: 'Alta',
-  urgent: 'Urgente',
-}
 
 /**
  * Phone body of the case detail, mirrored from the `tablet` breakpoint in
@@ -45,26 +52,44 @@ export const SERVICE_WINDOW_WARNING_MS = 4 * 60 * 60 * 1000
 
 function RailSection({
   title,
+  action,
   children,
 }: {
   title: string
+  action?: ReactNode
   children: ReactNode
 }) {
+  const [open, setOpen] = useState(true)
+
   return (
-    <section className='space-y-2.5 border-b px-4 py-4 last:border-b-0'>
-      <h3 className='text-muted-foreground text-[11px] font-semibold tracking-wide uppercase'>
-        {title}
-      </h3>
-      {children}
-    </section>
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section className='border-b last:border-b-0'>
+        <div className='flex items-center gap-1 px-4 pt-3'>
+          <CollapsibleTrigger className='text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 -ms-1 flex min-h-8 flex-1 items-center gap-1 rounded-sm px-1 text-[11px] font-semibold tracking-wide uppercase outline-none focus-visible:ring-[3px] max-sm:min-h-11'>
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                'size-3.5 transition-transform motion-reduce:transition-none',
+                !open && '-rotate-90'
+              )}
+            />
+            {title}
+          </CollapsibleTrigger>
+          {action}
+        </div>
+        <CollapsibleContent className='space-y-2.5 px-4 pt-1.5 pb-4'>
+          {children}
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   )
 }
 
 function RailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className='flex min-h-7 items-center justify-between gap-3 text-xs'>
-      <dt className='text-muted-foreground'>{label}</dt>
-      <dd className='flex min-w-0 items-center justify-end font-medium'>
+      <dt className='text-muted-foreground shrink-0'>{label}</dt>
+      <dd className='flex min-w-0 items-center justify-end text-end font-medium'>
         {children}
       </dd>
     </div>
@@ -72,48 +97,63 @@ function RailRow({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /**
- * Remaining WhatsApp service window, counted client-side from the last
- * customer message. It gets its own section above the case rows because it is
- * the constraint that decides whether a free-form reply is still possible;
- * the expired state points at the template flow (#10) and is the only place
- * the rail spends a semantic color.
+ * Reply window of the conversation: the server's `windowExpiresAt` merged with
+ * the live thread (a fresh inbound reopens it before the list refetches). The
+ * expired state is the only place the rail spends a semantic color, and it
+ * points straight at the template picker.
  */
-function WindowMeter({ messages }: { messages: ChatMessage[] }) {
-  // Re-sample the clock while the rail stays mounted, so an open chat flips to
-  // "Ventana vencida" when the 24 h boundary passes instead of freezing.
+function WindowMeter({
+  chat,
+  messages,
+  onPickTemplate,
+}: {
+  chat: Chat
+  messages: ChatMessage[]
+  onPickTemplate?: () => void
+}) {
+  // Re-sample the clock while mounted, so an open chat flips to expired when
+  // the boundary passes instead of freezing.
   const now = useNow(60_000)
-  const state = serviceWindowState(messages, now)
+  const capabilities = channelCapabilities(
+    chat.channel?.type ?? chat.channelType
+  )
+  const windowMs = capabilities?.replyWindowMs
+  const state = conversationWindowState(chat, messages, now, windowMs)
+  const hours = windowMs ? Math.round(windowMs / 3_600_000) : 0
 
-  if (state.kind === 'none') {
-    return (
-      <p className='text-muted-foreground text-xs'>
-        Aún no hay mensajes del cliente
-      </p>
-    )
+  if (state.kind === 'unlimited') {
+    return <p className='text-muted-foreground text-xs'>{copy.windowNoLimit}</p>
   }
 
-  if (state.kind === 'expired') {
+  if (state.kind === 'none' || state.kind === 'expired') {
     return (
       <div className='space-y-2'>
-        <p className='text-(--negative) text-xs font-medium'>
-          Ventana vencida · usa una plantilla
-        </p>
-        {/* TODO(#10): enable when the template picker ships. */}
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          className='w-full'
-          disabled
-          title='Próximamente: enviar una plantilla aprobada'
+        <p
+          className={cn(
+            'text-xs',
+            state.kind === 'expired'
+              ? 'font-medium text-(--negative)'
+              : 'text-muted-foreground'
+          )}
         >
-          Usar plantilla (próximamente)
-        </Button>
+          {state.kind === 'expired' ? copy.windowExpired : copy.windowNone}
+        </p>
+        {capabilities?.supportsTemplates && onPickTemplate && (
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='h-11 w-full sm:h-8'
+            onClick={onPickTemplate}
+          >
+            <LayoutTemplate className='size-3.5' />
+            {copy.useTemplate}
+          </Button>
+        )}
       </div>
     )
   }
 
-  // Entering the last hours is worth a typographic nudge, not a new color.
   const isEnding = state.remainingMs <= SERVICE_WINDOW_WARNING_MS
 
   return (
@@ -126,30 +166,91 @@ function WindowMeter({ messages }: { messages: ChatMessage[] }) {
           )}
         >
           <Clock3 className='size-3.5' aria-hidden />
-          Ventana de 24 h
+          {copy.windowLabel(hours)}
         </span>
         <span
-          className={cn('tabular-nums', isEnding ? 'font-semibold' : 'font-medium')}
+          className={cn(
+            'tabular-nums',
+            isEnding ? 'font-semibold' : 'font-medium'
+          )}
         >
           {formatServiceWindowRemaining(state.remainingMs)}
         </span>
       </div>
       <Progress
-        value={(state.remainingMs / SERVICE_WINDOW_MS) * 100}
+        value={(state.remainingMs / (windowMs ?? 1)) * 100}
         className='h-1.5'
-        aria-label='Ventana de 24 h restante'
+        aria-label={`${copy.windowLabel(hours)} restante`}
       />
     </div>
   )
 }
 
-type CaseRailContentProps = {
+/** Open tasks linked to this chat, with a one-tap "Completar". */
+function ChatTasks({ conversationId }: { conversationId: string }) {
+  const tasks = useTasks({ conversationId, status: 'open' })
+  const complete = useCompleteTask()
+
+  if (tasks.isPending) return <Skeleton className='h-8 w-full' />
+  if (tasks.isError) {
+    return (
+      <p role='alert' className='text-muted-foreground text-xs'>
+        {copy.tasksError}
+      </p>
+    )
+  }
+  if (tasks.data.length === 0) {
+    return <p className='text-muted-foreground text-xs'>{copy.tasksEmpty}</p>
+  }
+
+  return (
+    <ul className='space-y-1'>
+      {tasks.data.map((task) => (
+        <li key={task.id} className='flex items-start gap-2 text-xs'>
+          <Checkbox
+            className='mt-0.5'
+            aria-label={`Completar: ${task.title}`}
+            disabled={complete.isPending}
+            onCheckedChange={(checked) => {
+              if (checked) complete.mutate(task)
+            }}
+          />
+          <span className='min-w-0 flex-1'>
+            <span className='block truncate font-medium'>{task.title}</span>
+            {task.dueAt && (
+              <span
+                className={cn(
+                  'tabular-nums',
+                  task.overdue ? 'text-destructive' : 'text-muted-foreground'
+                )}
+              >
+                {task.dueAt.toLocaleString('es', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export type CaseRailContentProps = {
   chat: Chat
   messages: ChatMessage[]
   sentiment?: ChatSentiment
+  /** Sentiment section only while the IA is available. */
+  showSentiment?: boolean
+  actions: Pick<CaseActions, 'canTake' | 'isMine'>
   onTake: () => void
-  taking: boolean
-  currentMemberId?: string
+  taking?: boolean
+  onPickTemplate?: () => void
+  onCreateTask?: () => void
+  onViewContact?: () => void
 }
 
 /**
@@ -160,98 +261,142 @@ function CaseRailContent({
   chat,
   messages,
   sentiment,
+  showSentiment = false,
+  actions,
   onTake,
-  taking,
-  currentMemberId,
+  taking = false,
+  onPickTemplate,
+  onCreateTask,
+  onViewContact,
 }: CaseRailContentProps) {
   const [mode] = useToneMode()
-  const customerName = chat.customer?.displayName ?? 'Cliente'
+  const customerName = chat.customer?.displayName ?? copy.customerFallback
   const phone = formatPhone(chat.customer?.phone)
   const status = STATUS_META[chat.status]
-  // Header and rail share this predicate: the queue marker or a null owner
-  // (needs-response view) both mean the chat can be claimed.
-  const isUnassigned = isConversationUnassigned(chat)
-  const assignee = chat.member?.username
-  // An omitted `member` is the inbox payload (only my conversations); when the
-  // payload carries an owner, only a matching id proves the chat is mine.
-  const isMine =
-    chat.member === undefined || chat.member?.id === currentMemberId
+  const channelType = chat.channel?.type ?? chat.channelType
 
   return (
     <>
-      <div className='flex flex-col items-center gap-2 border-b px-4 py-5 text-center'>
-        <Avatar className='size-14'>
-          <AvatarFallback className='text-base font-semibold'>
-            {initials(customerName)}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <p className='font-semibold'>{customerName}</p>
-          {phone && (
-            <p className='text-muted-foreground flex items-center justify-center gap-1 text-xs'>
-              <Phone className='size-3' aria-hidden />
-              {phone}
-            </p>
+      <RailSection title={copy.sectionContact}>
+        <div className='flex items-center gap-3'>
+          <Avatar className='size-10'>
+            <AvatarFallback className='text-sm font-semibold'>
+              {initials(customerName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className='min-w-0 flex-1'>
+            <p className='truncate text-sm font-semibold'>{customerName}</p>
+            {phone && (
+              <p className='text-muted-foreground flex items-center gap-1 text-xs'>
+                <Phone className='size-3' aria-hidden />
+                {phone}
+              </p>
+            )}
+          </div>
+          {onViewContact && (
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              className='h-11 px-2 text-xs sm:h-7'
+              onClick={onViewContact}
+            >
+              <UserRound className='size-3.5' />
+              {copy.viewProfile}
+            </Button>
           )}
         </div>
-      </div>
-
-      <RailSection title='Ventana de contacto'>
-        <WindowMeter messages={messages} />
       </RailSection>
 
-      <RailSection title='Caso'>
+      <RailSection title={copy.sectionWindow}>
+        <WindowMeter
+          chat={chat}
+          messages={messages}
+          onPickTemplate={onPickTemplate}
+        />
+      </RailSection>
+
+      <RailSection title={copy.sectionCase}>
         <dl className='space-y-1'>
-          <RailRow label='Estado'>
+          <RailRow label={copy.rowStatus}>
             <Badge variant='secondary' className={status.className}>
               {status.label}
             </Badge>
           </RailRow>
-          <RailRow label='Responsable'>
-            {isUnassigned ? (
-              <div className='space-y-1.5 text-end'>
-                <p className='text-muted-foreground text-xs'>Sin asignar</p>
+          <RailRow label={copy.rowOwner}>
+            {chat.assignee ? (
+              <span className='flex min-w-0 items-center gap-1.5'>
+                <MemberAvatar name={chat.assignee.name} className='size-5' />
+                <span className='truncate'>
+                  {actions.isMine ? copy.ownerMe : chat.assignee.name}
+                </span>
+              </span>
+            ) : actions.canTake ? (
+              <span className='flex items-center gap-2'>
+                <span className='text-muted-foreground text-xs font-normal'>
+                  {copy.unassigned}
+                </span>
                 <Button
                   type='button'
                   size='sm'
-                  className='h-11 w-full px-2.5 text-xs sm:h-8 sm:w-auto'
+                  className='h-11 px-2.5 text-xs sm:h-7'
                   onClick={onTake}
                   disabled={taking}
                 >
-                  {taking ? 'Tomando…' : 'Tomar chat'}
+                  {taking ? copy.taking : copy.takeChat}
                 </Button>
-              </div>
-            ) : assignee ? (
-              <span className='flex items-center gap-1.5'>
-                <Avatar className='size-5'>
-                  <AvatarFallback className='text-[9px] font-semibold'>
-                    {initials(assignee)}
-                  </AvatarFallback>
-                </Avatar>
-                @{assignee}
               </span>
-            ) : isMine ? (
-              'Asignado a ti'
             ) : (
-              'Otro agente'
+              copy.unassigned
             )}
           </RailRow>
           {chat.priority && (
-            <RailRow label='Prioridad'>
+            <RailRow label={copy.rowPriority}>
               <Badge variant='outline'>{PRIORITY_LABEL[chat.priority]}</Badge>
             </RailRow>
           )}
-          <RailRow label='Canal'>
-            <span className='flex items-center gap-1.5'>
-              <MessageCircle className='size-3.5' aria-hidden />
-              WhatsApp
+          <RailRow label={copy.rowChannel}>
+            <span className='flex min-w-0 items-center gap-1.5'>
+              <ChannelIcon type={channelType} />
+              <span className='truncate'>{chat.channel?.name}</span>
             </span>
           </RailRow>
+          {chat.transfer && (
+            <RailRow label={copy.rowTransfer}>
+              <span className='truncate'>{chat.transfer.fromName ?? '—'}</span>
+            </RailRow>
+          )}
         </dl>
+        {chat.transfer?.note && (
+          <p className='bg-muted/60 rounded-md px-2.5 py-1.5 text-xs'>
+            {chat.transfer.note}
+          </p>
+        )}
       </RailSection>
 
-      {sentiment && mode !== 'off' && (
-        <RailSection title='Sentimiento'>
+      <RailSection
+        title={copy.sectionTasks}
+        action={
+          onCreateTask && (
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='size-11 sm:size-7'
+              aria-label={copy.newTask}
+              title={copy.newTask}
+              onClick={onCreateTask}
+            >
+              <Plus className='size-4' />
+            </Button>
+          )
+        }
+      >
+        <ChatTasks conversationId={chat.id} />
+      </RailSection>
+
+      {showSentiment && sentiment && mode !== 'off' && (
+        <RailSection title={copy.sectionSentiment}>
           <ToneSummary sentiment={sentiment} />
         </RailSection>
       )}
@@ -262,33 +407,18 @@ function CaseRailContent({
 /**
  * Case detail, one body in three shells (ADR-0004):
  * - below `tablet` (768px) a bottom sheet, within thumb reach;
- * - from `tablet` up to the point where the card can hold the rail, a side
+ * - from `tablet` up to the point where the pane can hold the rail, a side
  *   sheet opened from the header button;
- * - once the chat card is wide enough (`@rail/card`, see `theme.css`), the
- *   inline `w-72` column, where the thread still fits the case header.
- * The sheet is controlled by `ChatBox` because its trigger lives in the
- * header; the inline column stays in the DOM (CSS-hidden while compact) so
- * the content assertions keep a single, stable target.
+ * - once the conversation pane is wide enough (`@rail/card`, see `theme.css`),
+ *   the inline `w-72` column: same surface, a start border only.
  */
 export function CaseRail({
-  chat,
-  messages,
-  sentiment,
-  onTake,
-  taking = false,
-  currentMemberId,
   open = false,
   onOpenChange,
   className,
-}: {
-  chat: Chat
-  messages: ChatMessage[]
-  sentiment?: ChatSentiment
-  onTake: () => void
-  taking?: boolean
-  /** Signed-in member id, to tell "mine" from another agent without username. */
-  currentMemberId?: string
-  /** Controlled sheet state; the header button opens it while the rail is not inline. */
+  ...content
+}: CaseRailContentProps & {
+  /** Controlled sheet state; the header button opens it while not inline. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
   className?: string
@@ -302,20 +432,18 @@ export function CaseRail({
   return (
     <>
       <aside
-        aria-label='Detalle del caso'
+        aria-label={copy.caseDetail}
         className={cn(
-          'bg-muted/30 hidden w-72 shrink-0 flex-col overflow-y-auto border-s @rail/card:flex',
+          '@rail/card:flex hidden w-72 shrink-0 flex-col border-s',
           className
         )}
       >
-        <CaseRailContent
-          chat={chat}
-          messages={messages}
-          sentiment={sentiment}
-          onTake={onTake}
-          taking={taking}
-          currentMemberId={currentMemberId}
-        />
+        <div className={cn(PANE_HEADER, 'flex items-center px-4')}>
+          <h2 className='text-sm font-semibold'>{copy.railTitle}</h2>
+        </div>
+        <div className='min-h-0 flex-1 overflow-y-auto'>
+          <CaseRailContent {...content} />
+        </div>
       </aside>
 
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -332,15 +460,12 @@ export function CaseRail({
               : 'w-full sm:max-w-sm'
           )}
         >
-          <SheetTitle className='sr-only'>Detalle del caso</SheetTitle>
-          <CaseRailContent
-            chat={chat}
-            messages={messages}
-            sentiment={sentiment}
-            onTake={onTake}
-            taking={taking}
-            currentMemberId={currentMemberId}
-          />
+          <div className={cn(PANE_HEADER, 'flex items-center px-4')}>
+            <SheetTitle className='text-sm font-semibold'>
+              {copy.caseDetail}
+            </SheetTitle>
+          </div>
+          <CaseRailContent {...content} />
         </SheetContent>
       </Sheet>
     </>

@@ -8,8 +8,8 @@ import {
   type WhatsAppConfigResponse,
   type WhatsAppConnectionTest,
 } from '@chat-crm/contracts'
-import { client } from '@/lib/http'
 import { parseContract } from '@/lib/contract-parse'
+import { client } from '@/lib/http'
 
 const ws = client('/channels')
 
@@ -30,7 +30,7 @@ export const getConfig = async (
 ): Promise<WhatsAppConfigResponse | null> => {
   const { data } = await ws.get(`/whatsapp/config`)
 
-    return parseContract(whatsAppConfigResponse, data)
+  return parseContract(whatsAppConfigResponse, data)
 }
 
 export const saveConfig = async (
@@ -58,17 +58,4 @@ export const saveConfig = async (
 export const testConnection = async (): Promise<WhatsAppConnectionTest> => {
   const { data } = await ws.post('/whatsapp/test')
   return parseContract(WhatsAppConnectionTestSchema, data)
-}
-
-/**
- * TODO(api): v2 has no `POST /integration/whatsapp/send/template` (message
- * sending is socket-driven). Kept as a no-op so the chat error toast still
- * compiles; wire to the conversations endpoint when the API exposes it.
- */
-export const sendTemplate = async (_to: string) => {
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.warn('[whatsapp] sendTemplate is not implemented in API v2')
-  }
-  return null
 }

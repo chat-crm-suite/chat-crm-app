@@ -1,8 +1,16 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { FileText, ImagePlus, Mic, Paperclip, SendHorizontal, WifiOff } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { ChannelCapabilities } from '@chat-crm/contracts'
-
+import {
+  FileText,
+  ImagePlus,
+  LayoutTemplate,
+  Mic,
+  Paperclip,
+  SendHorizontal,
+  Slash,
+  WifiOff,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,17 +31,26 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { copy } from '../../copy'
 import type { ComposerAttachments } from '../../hooks/use-composer-attachments'
-import { canRecordVoice, useVoiceRecorder } from '../../hooks/use-voice-recorder'
+import {
+  canRecordVoice,
+  useVoiceRecorder,
+} from '../../hooks/use-voice-recorder'
 import { acceptFor, type AttachIntent } from '../../lib/attachment-candidate'
 import type { OutgoingDraft } from '../../lib/outgoing-draft'
+import type { RecentSticker } from '../../lib/recent-stickers'
 import type { ConversationStatus } from '../../types/chat.domain'
 import { AttachmentTray } from './attachment-tray'
-import { QuickReplies } from './quick-replies'
+import {
+  filterQuickReplies,
+  slashQuery,
+  SlashMenu,
+  type QuickReply,
+} from './quick-replies'
 import { RecordingBar } from './recording-bar'
-import type { RecentSticker } from '../../lib/recent-stickers'
-import { StickerPicker } from './sticker-picker'
 import { ResolvedNotice } from './resolved-notice'
+import { StickerPicker } from './sticker-picker'
 
 export function Composer({
   connected,
@@ -42,6 +59,8 @@ export function Composer({
   capabilities,
   status = 'open',
   locked,
+  onPickTemplate,
+  onReopen,
   recentStickers = [],
   className,
 }: {
@@ -51,8 +70,15 @@ export function Composer({
   attachments: ComposerAttachments
   capabilities: ChannelCapabilities | null
   status?: ConversationStatus
-  /** Free-form sending is closed (e.g. the 24 h window expired): why. */
+  /**
+   * Free-form sending is closed (the reply window expired or never opened):
+   * the composer turns into this notice, whose action opens the templates.
+   */
   locked?: ReactNode
+  /** Opens the template picker; shows the [Plantilla] action when present. */
+  onPickTemplate?: () => void
+  /** Reopens a resolved conversation from its notice. */
+  onReopen?: () => void
   /** Stickers already in the conversation, re-sendable without upload. */
   recentStickers?: RecentSticker[]
   className?: string
@@ -62,8 +88,8 @@ export function Composer({
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const mediaInput = useRef<HTMLInputElement>(null)
   const documentInput = useRef<HTMLInputElement>(null)
-  /** Caret offset requested by the last quick-reply insertion. */
-  const pendingCaret = useRef<number | null>(null)
+  const listId = useId()
+  const [activeReply, setActiveReply] = useState(0)
   const resolved = status === 'closed'
   const disabled = !connected || !!locked
   const canAttach = !disabled && !!capabilities
@@ -71,12 +97,17 @@ export function Composer({
   const recorder = useVoiceRecorder()
   const [canRecord] = useState(canRecordVoice)
   const isRecording = recorder.state !== 'idle' && recorder.state !== 'denied'
-  const mode = isRecording ? 'recording' : attachments.items.length ? 'tray' : 'field'
+  const mode = isRecording
+    ? 'recording'
+    : attachments.items.length
+      ? 'tray'
+      : 'field'
   const previousMode = useRef(mode)
 
   // Back from the tray or the recorder, typing continues where it was.
   useEffect(() => {
-    if (mode === 'field' && previousMode.current !== 'field') fieldRef.current?.focus()
+    if (mode === 'field' && previousMode.current !== 'field')
+      fieldRef.current?.focus()
     previousMode.current = mode
   }, [mode])
 
@@ -92,17 +123,13 @@ export function Composer({
   const sendVoice = async () => {
     const note = await recorder.finish()
     if (!note || disabled) return
-    onSend({ type: 'audio', file: note.file, voice: true, durationMs: note.durationMs })
+    onSend({
+      type: 'audio',
+      file: note.file,
+      voice: true,
+      durationMs: note.durationMs,
+    })
   }
-
-  // The textarea is controlled: the caret can only land once React has written
-  // the spliced value, so apply the pending offset right after that commit.
-  useLayoutEffect(() => {
-    const caret = pendingCaret.current
-    if (caret === null) return
-    pendingCaret.current = null
-    fieldRef.current?.setSelectionRange(caret, caret)
-  })
 
   const send = () => {
     const text = value.trim()
@@ -116,17 +143,16 @@ export function Composer({
     for (const draft of attachments.take()) onSend(draft)
   }
 
-  /**
-   * Inserts a quick-reply draft at the caret, keeping the surrounding text,
-   * and leaves the caret after the draft for editing. Never submits.
-   */
-  const insertDraft = (draft: string) => {
-    const field = fieldRef.current
-    const start = field?.selectionStart ?? value.length
-    const end = field?.selectionEnd ?? start
-    pendingCaret.current = start + draft.length
-    setValue(value.slice(0, start) + draft + value.slice(end))
-    field?.focus()
+  const query = disabled ? null : slashQuery(value)
+  const replies = query === null ? [] : filterQuickReplies(query)
+  const menuOpen = query !== null
+  const active = Math.min(activeReply, Math.max(replies.length - 1, 0))
+
+  /** Replaces the "/query" with the reply draft, ready to edit or send. */
+  const pickReply = (reply: QuickReply) => {
+    setValue(reply.draft)
+    setActiveReply(0)
+    fieldRef.current?.focus()
   }
 
   const pick = (intent: AttachIntent) =>
@@ -159,7 +185,11 @@ export function Composer({
       {fileInput('document', documentInput)}
 
       {isRecording ? (
-        <RecordingBar recorder={recorder} onSend={() => void sendVoice()} disabled={disabled} />
+        <RecordingBar
+          recorder={recorder}
+          onSend={() => void sendVoice()}
+          disabled={disabled}
+        />
       ) : attachments.items.length > 0 ? (
         <AttachmentTray
           attachments={attachments}
@@ -174,118 +204,203 @@ export function Composer({
             send()
           }}
         >
-          {resolved && <ResolvedNotice />}
+          {resolved && <ResolvedNotice onReopen={onReopen} />}
           {locked}
-          {!resolved && !locked && (
-            <QuickReplies disabled={!connected} onInsert={insertDraft} />
-          )}
-
-          <label htmlFor={fieldId} className='sr-only'>
-            Escribe un mensaje
-          </label>
-          <InputGroup className='rounded-2xl'>
-            <InputGroupTextarea
-              id={fieldId}
-              ref={fieldRef}
-              rows={1}
-              value={value}
-              disabled={disabled}
-              onChange={(event) => setValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  send()
-                }
-              }}
-              onPaste={(event) => {
-                const files = Array.from(event.clipboardData.files)
-                if (!files.length || !canAttach) return
-                event.preventDefault()
-                attachments.add(files)
-              }}
-              placeholder={
-                !connected ? 'Reconectando…' : locked ? 'Envío de texto libre cerrado' : 'Escribe un mensaje…'
-              }
-              className='caret-primary max-h-32 min-h-11 py-2.5 text-sm'
-            />
-            <InputGroupAddon align='inline-start' className='self-end pb-1.5'>
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
+          {!locked && (
+            <div className='relative'>
+              {menuOpen && (
+                <SlashMenu
+                  id={listId}
+                  replies={replies}
+                  activeIndex={active}
+                  onPick={pickReply}
+                  onHover={setActiveReply}
+                />
+              )}
+              <label htmlFor={fieldId} className='sr-only'>
+                Escribe un mensaje
+              </label>
+              <InputGroup className='rounded-2xl'>
+                <InputGroupTextarea
+                  id={fieldId}
+                  ref={fieldRef}
+                  rows={1}
+                  value={value}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    setValue(event.target.value)
+                    setActiveReply(0)
+                  }}
+                  aria-controls={menuOpen ? listId : undefined}
+                  aria-activedescendant={
+                    menuOpen && replies.length
+                      ? `${listId}-${active}`
+                      : undefined
+                  }
+                  onKeyDown={(event) => {
+                    if (menuOpen) {
+                      if (
+                        event.key === 'ArrowDown' ||
+                        event.key === 'ArrowUp'
+                      ) {
+                        event.preventDefault()
+                        const step = event.key === 'ArrowDown' ? 1 : -1
+                        const count = Math.max(replies.length, 1)
+                        setActiveReply((active + step + count) % count)
+                        return
+                      }
+                      if (
+                        (event.key === 'Enter' || event.key === 'Tab') &&
+                        replies[active]
+                      ) {
+                        event.preventDefault()
+                        pickReply(replies[active])
+                        return
+                      }
+                      if (event.key === 'Escape') {
+                        event.preventDefault()
+                        setValue('')
+                        return
+                      }
+                    }
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      send()
+                    }
+                  }}
+                  onPaste={(event) => {
+                    const files = Array.from(event.clipboardData.files)
+                    if (!files.length || !canAttach) return
+                    event.preventDefault()
+                    attachments.add(files)
+                  }}
+                  placeholder={
+                    !connected ? 'Reconectando…' : 'Escribe un mensaje…'
+                  }
+                  className='caret-primary max-h-32 min-h-11 py-2.5 text-sm'
+                />
+                <InputGroupAddon
+                  align='inline-start'
+                  className='self-end pb-1.5'
+                >
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <InputGroupButton
+                            size='icon-sm'
+                            disabled={!canAttach}
+                            aria-label='Adjuntar'
+                            className='rounded-full max-sm:size-11'
+                          >
+                            <Paperclip className='size-[18px]' />
+                          </InputGroupButton>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Adjuntar (también puedes pegar o soltar archivos)
+                      </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align='start' side='top'>
+                      <DropdownMenuItem onSelect={() => pick('media')}>
+                        <ImagePlus />
+                        Fotos y videos
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => pick('document')}>
+                        <FileText />
+                        Documento
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <StickerPicker
+                    recent={recentStickers}
+                    rules={capabilities?.sticker}
+                    disabled={!canAttach}
+                    onSend={onSend}
+                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <InputGroupButton
                         size='icon-sm'
-                        disabled={!canAttach}
-                        aria-label='Adjuntar'
+                        disabled={disabled}
+                        aria-label={copy.quickReplies}
                         className='rounded-full max-sm:size-11'
+                        onClick={() => {
+                          setValue('/')
+                          fieldRef.current?.focus()
+                        }}
                       >
-                        <Paperclip className='size-[18px]' />
+                        <Slash className='size-4' />
                       </InputGroupButton>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Adjuntar (también puedes pegar o soltar archivos)</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align='start' side='top'>
-                  <DropdownMenuItem onSelect={() => pick('media')}>
-                    <ImagePlus />
-                    Fotos y videos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => pick('document')}>
-                    <FileText />
-                    Documento
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <StickerPicker
-                recent={recentStickers}
-                rules={capabilities?.sticker}
-                disabled={!canAttach}
-                onSend={onSend}
-              />
-            </InputGroupAddon>
-            <InputGroupAddon align='inline-end' className='self-end pb-1.5'>
-              {!hasText && canRecord && capabilities?.media.audio ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type='button'
-                      size='icon'
-                      variant='secondary'
-                      onClick={() => void recorder.start()}
-                      disabled={!canAttach}
-                      aria-label='Grabar nota de voz'
-                      className='size-11 shrink-0 rounded-full sm:size-9'
-                    >
-                      <Mic className='size-4' />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Grabar nota de voz</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type='submit'
-                      size='icon'
-                      className='size-11 shrink-0 rounded-full sm:size-9'
-                      disabled={disabled || !hasText}
-                      aria-label='Enviar mensaje'
-                    >
-                      <SendHorizontal className='size-4' />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <Kbd>Enter</Kbd> envía · <Kbd>Shift</Kbd>+<Kbd>Enter</Kbd> salto de línea
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </InputGroupAddon>
-          </InputGroup>
+                    </TooltipTrigger>
+                    <TooltipContent>{copy.slashHint}</TooltipContent>
+                  </Tooltip>
+                  {onPickTemplate && capabilities?.supportsTemplates && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InputGroupButton
+                          size='icon-sm'
+                          disabled={!connected}
+                          aria-label={copy.template}
+                          className='rounded-full max-sm:size-11'
+                          onClick={onPickTemplate}
+                        >
+                          <LayoutTemplate className='size-[18px]' />
+                        </InputGroupButton>
+                      </TooltipTrigger>
+                      <TooltipContent>{copy.useTemplate}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </InputGroupAddon>
+                <InputGroupAddon align='inline-end' className='self-end pb-1.5'>
+                  {!hasText && canRecord && capabilities?.media.audio ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type='button'
+                          size='icon'
+                          variant='secondary'
+                          onClick={() => void recorder.start()}
+                          disabled={!canAttach}
+                          aria-label='Grabar nota de voz'
+                          className='size-11 shrink-0 rounded-full sm:size-9'
+                        >
+                          <Mic className='size-4' />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Grabar nota de voz</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type='submit'
+                          size='icon'
+                          className='size-11 shrink-0 rounded-full sm:size-9'
+                          disabled={disabled || !hasText}
+                          aria-label='Enviar mensaje'
+                        >
+                          <SendHorizontal className='size-4' />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <Kbd>Enter</Kbd> envía · <Kbd>Shift</Kbd>+
+                        <Kbd>Enter</Kbd> salto de línea
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </InputGroupAddon>
+              </InputGroup>
+            </div>
+          )}
         </form>
       )}
 
       {!connected && (
-        <p role='status' className='text-muted-foreground mt-2 flex items-center gap-1.5 text-xs'>
+        <p
+          role='status'
+          className='text-muted-foreground mt-2 flex items-center gap-1.5 text-xs'
+        >
           <WifiOff className='text-destructive size-3.5 shrink-0' aria-hidden />
           Sin conexión con el socket. El envío se reactiva al reconectar.
         </p>

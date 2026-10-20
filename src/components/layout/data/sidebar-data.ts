@@ -6,12 +6,23 @@ import { type NavGroup } from '../types'
  * sidebar, the settings nav and Ctrl+K always agree on what exists and who may
  * see it.
  */
-export function buildSidebarGroups(context: CommandContext): NavGroup[] {
+export function buildSidebarGroups(
+  context: CommandContext,
+  /** Live counters by route (`{ '/tasks': '3' }`); empty values are hidden. */
+  badges: Readonly<Record<string, string | undefined>> = {}
+): NavGroup[] {
   return sidebarGroups(context).map((group) => ({
     title: group.title,
     items: group.items.flatMap((command) =>
       command.kind === 'navigate'
-        ? [{ title: command.title, url: command.to, icon: command.icon }]
+        ? [
+            {
+              title: command.title,
+              url: command.to,
+              icon: command.icon,
+              ...(badges[command.to] ? { badge: badges[command.to] } : {}),
+            },
+          ]
         : []
     ),
   }))

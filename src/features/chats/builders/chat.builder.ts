@@ -5,20 +5,8 @@ import {
   isToday,
   isYesterday,
 } from 'date-fns'
-import type { Chat, ChatCustomer } from '../types/chat.domain'
 
 export const chatBuilder = {
-  draft(customer: ChatCustomer): Chat {
-    return {
-      id: crypto.randomUUID() + '-temp',
-      isDraft: true,
-      // New conversations start on WhatsApp, the only channel today.
-      channelType: 'whatsapp',
-      status: 'open',
-      createdAt: new Date(),
-      customer,
-    }
-  },
   label: {
     date: (d: Date | string) => getChatDateLabel(d),
   },
