@@ -50,3 +50,36 @@ export function formatServiceWindowRemaining(remainingMs: number): string {
 
   return `${hours} h ${String(minutes).padStart(2, '0')} min`
 }
+
+/**
+ * Window of one conversation from both sources: the list item's
+ * `windowExpiresAt` (server-computed) and the newest customer message of the
+ * loaded thread (live: a fresh inbound reopens the window before the list
+ * refetches). The later expiry wins. `null` window = the channel has none.
+ */
+export function conversationWindowState(
+  chat: { windowExpiresAt?: Date | string | null },
+  messages: ChatMessage[],
+  now: Date | number,
+  windowMs: number | null | undefined
+): ServiceWindow | { kind: 'unlimited' } {
+  if (!windowMs) return { kind: 'unlimited' }
+  const nowMs = now instanceof Date ? now.getTime() : now
+
+  const fromThread = serviceWindowState(messages, nowMs, windowMs)
+  const serverExpiry = chat.windowExpiresAt
+    ? new Date(chat.windowExpiresAt).getTime()
+    : null
+
+  const threadExpiry =
+    fromThread.kind === 'open' ? nowMs + fromThread.remainingMs : null
+  const expiry = Math.max(serverExpiry ?? -Infinity, threadExpiry ?? -Infinity)
+
+  if (expiry === -Infinity) {
+    return fromThread.kind === 'none' ? { kind: 'none' } : { kind: 'expired' }
+  }
+
+  return expiry > nowMs
+    ? { kind: 'open', remainingMs: expiry - nowMs }
+    : { kind: 'expired' }
+}

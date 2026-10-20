@@ -1,9 +1,8 @@
 import type { ComponentProps } from 'react'
 import { channelCapabilities } from '@chat-crm/contracts'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { useComposerAttachments } from '../../hooks/use-composer-attachments'
 import { Composer } from './composer'
 import { ReplyWindowNotice } from './reply-window-notice'
@@ -13,12 +12,17 @@ vi.mock('sonner', () => ({ toast }))
 
 const whatsapp = channelCapabilities('whatsapp')
 
-type HarnessProps = Omit<ComponentProps<typeof Composer>, 'attachments' | 'capabilities'>
+type HarnessProps = Omit<
+  ComponentProps<typeof Composer>,
+  'attachments' | 'capabilities'
+>
 
 /** The real tray hook, as the chat box wires it. */
 function Harness(props: HarnessProps) {
   const attachments = useComposerAttachments(whatsapp)
-  return <Composer {...props} attachments={attachments} capabilities={whatsapp} />
+  return (
+    <Composer {...props} attachments={attachments} capabilities={whatsapp} />
+  )
 }
 
 const file = (name: string, type: string) => new File(['x'], name, { type })
@@ -85,7 +89,9 @@ describe('Composer', () => {
 
     const field = screen.getByPlaceholderText('Reconectando…')
     expect(field).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Enviar mensaje' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Enviar mensaje' })
+    ).toBeDisabled()
     expect(screen.getByText(/sin conexión/i)).toBeInTheDocument()
   })
 
@@ -94,8 +100,12 @@ describe('Composer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Adjuntar' }))
 
-    expect(await screen.findByRole('menuitem', { name: 'Fotos y videos' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Documento' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('menuitem', { name: 'Fotos y videos' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Documento' })
+    ).toBeInTheDocument()
     expect(screen.getByTestId('media-input')).toHaveAttribute(
       'accept',
       'image/jpeg,image/png,video/mp4,video/3gpp'
@@ -110,22 +120,35 @@ describe('Composer', () => {
     await user.upload(screen.getByTestId('media-input'), photo)
     await user.upload(screen.getByTestId('document-input'), pdf)
 
-    expect(screen.getByRole('region', { name: 'Archivos para enviar' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: 'Archivos para enviar' })
+    ).toBeInTheDocument()
     // The last added file is selected: its caption is the one typed into.
     await user.type(
       screen.getByRole('textbox', { name: 'Comentario para cotizacion.pdf' }),
       'Te paso la cotización'
     )
-    await user.click(screen.getByRole('button', { name: 'Archivo 1 de 2: foto.png' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Archivo 1 de 2: foto.png' })
+    )
     await user.keyboard('Mira{Enter}')
 
-    expect(onSend).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      type: 'image', file: photo, caption: 'Mira',
-    }))
+    expect(onSend).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        type: 'image',
+        file: photo,
+        caption: 'Mira',
+      })
+    )
     expect(onSend).toHaveBeenNthCalledWith(2, {
-      type: 'document', file: pdf, caption: 'Te paso la cotización',
+      type: 'document',
+      file: pdf,
+      caption: 'Te paso la cotización',
     })
-    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Archivos para enviar' })
+    ).not.toBeInTheDocument()
     // Typing continues in the message field.
     expect(screen.getByPlaceholderText('Escribe un mensaje…')).toHaveFocus()
   })
@@ -138,7 +161,9 @@ describe('Composer', () => {
       clipboardData: { files: [photo] },
     })
 
-    expect(screen.getByRole('region', { name: 'Archivos para enviar' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: 'Archivos para enviar' })
+    ).toBeInTheDocument()
   })
 
   it('explains why a file cannot be sent and keeps the composer as is', async () => {
@@ -151,117 +176,132 @@ describe('Composer', () => {
       file('virus.exe', 'application/x-msdownload')
     )
 
-    expect(toast.error).toHaveBeenCalledWith('No se puede enviar este archivo', {
-      description: expect.stringContaining('virus.exe') as string,
-    })
-    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+    expect(toast.error).toHaveBeenCalledWith(
+      'No se puede enviar este archivo',
+      {
+        description: expect.stringContaining('virus.exe') as string,
+      }
+    )
+    expect(
+      screen.queryByRole('region', { name: 'Archivos para enviar' })
+    ).not.toBeInTheDocument()
   })
 
   it('discards the tray with Escape', async () => {
     const { onSend, user } = setup()
 
-    await user.upload(screen.getByTestId('media-input'), file('a.png', 'image/png'))
-    await user.click(screen.getByRole('textbox', { name: 'Comentario para a.png' }))
+    await user.upload(
+      screen.getByTestId('media-input'),
+      file('a.png', 'image/png')
+    )
+    await user.click(
+      screen.getByRole('textbox', { name: 'Comentario para a.png' })
+    )
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByRole('region', { name: 'Archivos para enviar' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Archivos para enviar' })
+    ).not.toBeInTheDocument()
     expect(onSend).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['Saludo', DRAFTS.greeting],
-    ['Cotización', DRAFTS.quote],
-    ['Comprobante', DRAFTS.receipt],
-  ])('inserts the %s draft without sending', async (label, draft) => {
-    const { onSend, user } = setup()
+    ['saludo', DRAFTS.greeting],
+    ['cotiza', DRAFTS.quote],
+    ['comprob', DRAFTS.receipt],
+  ])(
+    'inserts a quick reply from the "/" menu (/%s) without sending',
+    async (query, draft) => {
+      const { onSend, user } = setup()
+      const field = screen.getByPlaceholderText('Escribe un mensaje…')
+
+      await user.type(field, `/${query}`)
+      expect(
+        screen.getByRole('listbox', { name: 'Respuestas rápidas' })
+      ).toBeInTheDocument()
+      await user.keyboard('{Enter}')
+
+      expect(field).toHaveValue(draft)
+      expect(onSend).not.toHaveBeenCalled()
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    }
+  )
+
+  it('navigates the "/" menu with the arrows and picks with a click too', async () => {
+    const { user } = setup()
     const field = screen.getByPlaceholderText('Escribe un mensaje…')
 
-    await user.click(screen.getByRole('button', { name: label }))
+    await user.type(field, '/')
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
 
-    expect(field).toHaveValue(draft)
-    expect(onSend).not.toHaveBeenCalled()
-  })
-
-  it('splices the draft at the caret, preserving the typed text around it', async () => {
-    const { onSend, user } = setup()
-    const field = screen.getByPlaceholderText(
-      'Escribe un mensaje…'
-    ) as HTMLTextAreaElement
-
-    await user.type(field, 'Hola  ¿en qué puedo ayudarte?')
-    field.setSelectionRange(5, 5)
-    await user.click(screen.getByRole('button', { name: 'Saludo' }))
-
-    expect(field).toHaveValue(`Hola ${DRAFTS.greeting} ¿en qué puedo ayudarte?`)
-    expect(field.selectionStart).toBe(5 + DRAFTS.greeting.length)
-    expect(field.selectionEnd).toBe(5 + DRAFTS.greeting.length)
-    expect(onSend).not.toHaveBeenCalled()
-  })
-
-  it('appends at the end of the typed text and keeps the caret after the draft', async () => {
-    const { onSend, user } = setup()
-    const field = screen.getByPlaceholderText(
-      'Escribe un mensaje…'
-    ) as HTMLTextAreaElement
-
-    await user.type(field, 'Hola Rosa, ')
-    await user.click(screen.getByRole('button', { name: 'Comprobante' }))
-
-    expect(field).toHaveValue(`Hola Rosa, ${DRAFTS.receipt}`)
-    expect(field.selectionStart).toBe(`Hola Rosa, ${DRAFTS.receipt}`.length)
-    expect(onSend).not.toHaveBeenCalled()
-
-    await user.keyboard(' Gracias.')
-    expect(field).toHaveValue(`Hola Rosa, ${DRAFTS.receipt} Gracias.`)
-  })
-
-  it('focuses the field after inserting, so the draft sends like typed text', async () => {
-    const { onSend, user } = setup()
-    const field = screen.getByPlaceholderText('Escribe un mensaje…')
-
-    await user.click(screen.getByRole('button', { name: 'Saludo' }))
+    fireEvent.mouseDown(screen.getAllByRole('option')[2])
+    expect(field).toHaveValue(DRAFTS.receipt)
     expect(field).toHaveFocus()
+  })
 
+  it('closes the "/" menu with Escape', async () => {
+    const { user } = setup()
+    const field = screen.getByPlaceholderText('Escribe un mensaje…')
+
+    await user.type(field, '/sal')
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(field).toHaveValue('')
+  })
+
+  it('opens the "/" menu from its button (no chip row taking space)', async () => {
+    const { user } = setup()
+
+    expect(
+      screen.queryByRole('button', { name: 'Saludo' })
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Respuestas rápidas' }))
+
+    expect(
+      screen.getByRole('listbox', { name: 'Respuestas rápidas' })
+    ).toBeInTheDocument()
+  })
+
+  it('sends the inserted reply like typed text', async () => {
+    const { onSend, user } = setup()
+    const field = screen.getByPlaceholderText('Escribe un mensaje…')
+
+    await user.type(field, '/saludo{Enter}')
     await user.keyboard('{Enter}')
 
     expect(onSend).toHaveBeenCalledWith(text(DRAFTS.greeting))
     expect(field).toHaveValue('')
   })
 
-  it('keeps the quick replies visible but disabled while disconnected', () => {
-    setup(false)
+  it('offers the template picker from the field when the channel has templates', async () => {
+    const onPickTemplate = vi.fn()
+    const { user } = setup(true, { onPickTemplate })
 
-    expect(screen.getByRole('button', { name: 'Saludo' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Cotización' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Comprobante' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Plantilla' }))
+    expect(onPickTemplate).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the closed-case notice only when the conversation is closed', () => {
+  it('shows the resolved notice only when the conversation is closed', () => {
     setup(true, { status: 'open' })
 
-    expect(screen.queryByText('Caso resuelto')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Conversación resuelta/)).not.toBeInTheDocument()
   })
 
-  it('tells the agent the case is closed and ships Reopen disabled with the hint', () => {
-    setup(true, { status: 'closed' })
+  it('reopens a resolved conversation from its notice', async () => {
+    const onReopen = vi.fn()
+    const { user } = setup(true, { status: 'closed', onReopen })
 
-    expect(screen.getByText('Caso resuelto')).toBeInTheDocument()
-    expect(screen.getByText(/este caso está cerrado/i)).toBeInTheDocument()
-
-    const reopen = screen.getByRole('button', { name: /reabrir/i })
-    expect(reopen).toBeDisabled()
-    expect(reopen).toHaveAttribute('title', 'Próximamente: reabrir el caso')
+    expect(screen.getByText(/Conversación resuelta/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /reabrir/i }))
+    expect(onReopen).toHaveBeenCalledTimes(1)
   })
 
-  it('hides the quick replies once the case is resolved', () => {
-    setup(true, { status: 'closed' })
-
-    expect(
-      screen.queryByRole('button', { name: 'Saludo' })
-    ).not.toBeInTheDocument()
-  })
-
-  it('does not block the composer: a closed case still sends normally', async () => {
+  it('does not block the composer: a resolved conversation still sends', async () => {
     const { onSend, user } = setup(true, { status: 'closed' })
     const field = screen.getByPlaceholderText('Escribe un mensaje…')
 
@@ -271,26 +311,41 @@ describe('Composer', () => {
     expect(field).toHaveValue('')
   })
 
-  it('locks free-form sending when the reply window is closed, and says why', () => {
-    setup(true, { locked: <ReplyWindowNotice reason='expired' /> })
+  it('turns into the template-required state when the reply window is closed', async () => {
+    const onPickTemplate = vi.fn()
+    const { user } = setup(true, {
+      locked: (
+        <ReplyWindowNotice reason='expired' onPickTemplate={onPickTemplate} />
+      ),
+    })
 
     expect(screen.getByText('Ventana de 24 h cerrada')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Envío de texto libre cerrado')).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Adjuntar' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Stickers' })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Saludo' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enviar plantilla (próximamente)' })).toBeDisabled()
+    expect(
+      screen.queryByPlaceholderText('Escribe un mensaje…')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Adjuntar' })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Elegir plantilla' }))
+    expect(onPickTemplate).toHaveBeenCalledTimes(1)
   })
 
   describe('stickers', () => {
     it('re-sends a sticker of the conversation by reference', async () => {
       const { onSend, user } = setup(true, {
-        recentStickers: [{ attachmentId: 'att-9', url: 'http://api/attachments/att-9' }],
+        recentStickers: [
+          { attachmentId: 'att-9', url: 'http://api/attachments/att-9' },
+        ],
       })
 
       await user.click(screen.getByRole('button', { name: 'Stickers' }))
-      const list = await screen.findByRole('list', { name: 'Stickers de esta conversación' })
-      await user.click(within(list).getByRole('button', { name: 'Enviar sticker 1' }))
+      const list = await screen.findByRole('list', {
+        name: 'Stickers de esta conversación',
+      })
+      await user.click(
+        within(list).getByRole('button', { name: 'Enviar sticker 1' })
+      )
 
       expect(onSend).toHaveBeenCalledWith({
         type: 'sticker',
@@ -338,45 +393,75 @@ describe('Composer', () => {
       vi.stubGlobal('MediaRecorder', Recorder)
       Object.defineProperty(navigator, 'mediaDevices', {
         configurable: true,
-        value: { getUserMedia: () => Promise.resolve({ getTracks: () => [{ stop: vi.fn() }] }) },
+        value: {
+          getUserMedia: () =>
+            Promise.resolve({ getTracks: () => [{ stop: vi.fn() }] }),
+        },
       })
     })
 
     it('swaps send for the mic while the field is empty', async () => {
       const { user } = setup()
 
-      expect(screen.getByRole('button', { name: 'Grabar nota de voz' })).toBeInTheDocument()
-      await user.type(screen.getByPlaceholderText('Escribe un mensaje…'), 'Hola')
-      expect(screen.queryByRole('button', { name: 'Grabar nota de voz' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Enviar mensaje' })).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: 'Grabar nota de voz' })
+      ).toBeInTheDocument()
+      await user.type(
+        screen.getByPlaceholderText('Escribe un mensaje…'),
+        'Hola'
+      )
+      expect(
+        screen.queryByRole('button', { name: 'Grabar nota de voz' })
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Enviar mensaje' })
+      ).toBeEnabled()
     })
 
     it('records and sends a voice note', async () => {
       const { onSend, user } = setup()
 
-      await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
-      expect(await screen.findByRole('group', { name: 'Grabando nota de voz' })).toBeInTheDocument()
+      await user.click(
+        screen.getByRole('button', { name: 'Grabar nota de voz' })
+      )
+      expect(
+        await screen.findByRole('group', { name: 'Grabando nota de voz' })
+      ).toBeInTheDocument()
       // The mic is gone: focus moves into the bar, so the keyboard keeps working.
-      expect(screen.getByRole('button', { name: 'Pausar grabación' })).toHaveFocus()
+      expect(
+        screen.getByRole('button', { name: 'Pausar grabación' })
+      ).toHaveFocus()
 
-      await user.click(screen.getByRole('button', { name: 'Enviar nota de voz' }))
+      await user.click(
+        screen.getByRole('button', { name: 'Enviar nota de voz' })
+      )
 
       expect(onSend).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'audio', voice: true, file: expect.any(File) as File })
+        expect.objectContaining({
+          type: 'audio',
+          voice: true,
+          file: expect.any(File) as File,
+        })
       )
-      expect(screen.queryByRole('group', { name: 'Grabando nota de voz' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: 'Grabando nota de voz' })
+      ).not.toBeInTheDocument()
     })
 
     it('discards a recording without sending', async () => {
       const { onSend, user } = setup()
 
-      await user.click(screen.getByRole('button', { name: 'Grabar nota de voz' }))
+      await user.click(
+        screen.getByRole('button', { name: 'Grabar nota de voz' })
+      )
       await screen.findByRole('group', { name: 'Grabando nota de voz' })
       await user.keyboard('{Escape}')
 
       expect(onSend).not.toHaveBeenCalled()
       expect(screen.getByPlaceholderText('Escribe un mensaje…')).toHaveFocus()
-      expect(screen.getByPlaceholderText('Escribe un mensaje…')).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('Escribe un mensaje…')
+      ).toBeInTheDocument()
     })
   })
 })

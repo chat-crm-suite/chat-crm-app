@@ -6,6 +6,7 @@ import {
   Contact,
   KeyRound,
   LayoutDashboard,
+  LayoutTemplate,
   ListTodo,
   Lock,
   MessageSquare,
@@ -131,6 +132,17 @@ export const COMMANDS: readonly CommandDef[] = [
     to: '/tasks',
     icon: ListTodo,
     section: 'navigation',
+    keywords: ['mi trabajo', 'avisos', 'pendientes', 'seguimiento'],
+    sidebar: 'general',
+  },
+  {
+    id: 'nav.templates',
+    kind: 'navigate',
+    title: 'Plantillas',
+    to: '/templates',
+    icon: LayoutTemplate,
+    section: 'navigation',
+    keywords: ['whatsapp', 'hsm', 'mensajes aprobados', 'meta'],
     sidebar: 'general',
   },
 
@@ -292,7 +304,10 @@ export function isCommandVisible(
   context: CommandContext
 ): boolean {
   if (command.platformAdminOnly && !context.isPlatformAdmin) return false
-  if (command.roles && !(context.role && command.roles.includes(context.role))) {
+  if (
+    command.roles &&
+    !(context.role && command.roles.includes(context.role))
+  ) {
     return false
   }
   if (command.when && !command.when(context)) return false
@@ -364,11 +379,7 @@ export function settingsGroups(context: CommandContext): SettingsGroup[] {
 
 /** Lowercase, accent-free text so "contrasena" finds "Contraseña". */
 export function normalizeSearchText(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
 /** Every word typed must appear somewhere in the given texts. */

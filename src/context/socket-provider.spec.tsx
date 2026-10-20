@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createFakeSocket } from '@/test/fake-socket'
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createFakeSocket } from '@/test/fake-socket'
 import { SocketProvider } from './socket-provider'
 
 const mocks = vi.hoisted(() => {
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
     auth,
     io: vi.fn(),
     refreshSession: vi.fn(),
-    sendTemplate: vi.fn(),
+    requestTemplatePicker: vi.fn(),
     toast: Object.assign(vi.fn(), {
       info: vi.fn(),
       error: vi.fn(),
@@ -27,8 +27,8 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('socket.io-client', () => ({ io: mocks.io }))
 vi.mock('sonner', () => ({ toast: mocks.toast }))
-vi.mock('@/services/whatsapp.service', () => ({
-  sendTemplate: mocks.sendTemplate,
+vi.mock('@/features/chats/lib/template-picker-request', () => ({
+  requestTemplatePicker: mocks.requestTemplatePicker,
 }))
 vi.mock('@/lib/http', () => ({ refreshSession: mocks.refreshSession }))
 vi.mock('@/stores/auth-store', () => ({
@@ -187,14 +187,17 @@ describe('SocketProvider', () => {
     })
 
     options.action.onClick()
-    expect(mocks.sendTemplate).toHaveBeenCalledWith('+51999888777')
+    expect(mocks.requestTemplatePicker).toHaveBeenCalledTimes(1)
   })
 
   it('authenticates with the session cookie only (no identity or company in the handshake)', () => {
     renderProvider()
 
     expect(mocks.io).toHaveBeenCalledTimes(1)
-    const [, options] = mocks.io.mock.calls[0] as [string, Record<string, unknown>]
+    const [, options] = mocks.io.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ]
     expect(options).toMatchObject({ withCredentials: true })
     expect(options).not.toHaveProperty('auth')
   })

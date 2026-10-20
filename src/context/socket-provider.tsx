@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { sendTemplate } from '@/services/whatsapp.service'
 import { ConversationSocketEvent, SOCKET_NAMESPACES } from '@chat-crm/contracts'
 import { CloudAlert } from 'lucide-react'
 import { io, type Socket } from 'socket.io-client'
@@ -17,6 +16,7 @@ import {
   prependNotification,
   resolveErrorToast,
 } from '@/lib/socket-taxonomy'
+import { requestTemplatePicker } from '@/features/chats/lib/template-picker-request'
 
 interface SocketContextType {
   socket: Socket | null
@@ -132,7 +132,8 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       setIsConnected(false)
     })
 
-    // Failure taxonomy: with action → persistent "Enviar plantilla" toast;
+    // Failure taxonomy: with action → persistent "Enviar plantilla" toast that
+    // opens the open conversation's template picker;
     // without → detail toast. The v2 payload carries no message reference, so
     // the inline `failed` state comes from the `conversation:message:status`
     // patch (T3), never from this event.
@@ -145,7 +146,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
           description: decision.description,
           action: {
             label: 'Enviar plantilla',
-            onClick: () => void sendTemplate(decision.recipient ?? ''),
+            onClick: requestTemplatePicker,
           },
           closeButton: true,
           duration: Infinity,

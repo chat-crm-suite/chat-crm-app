@@ -6,7 +6,11 @@ import { CloudOff, MessageSquareText, RefreshCw, SearchX } from '../icons'
 
 /** Loading: placeholder rows shaped like a real item (no spinner). */
 export const ChatListSkeleton = ({ rows = 6 }: { rows?: number }) => (
-  <div aria-busy='true' aria-label='Cargando chats' className='flex flex-col gap-1'>
+  <div
+    aria-busy='true'
+    aria-label='Cargando chats'
+    className='flex flex-col gap-1'
+  >
     {Array.from({ length: rows }, (_, index) => (
       <div key={index} className='flex items-start gap-2 px-2 py-2'>
         <Skeleton className='size-9 shrink-0 rounded-full' />
@@ -39,7 +43,7 @@ export const ChatListError = ({ onRetry }: { onRetry: () => void }) => (
     </span>
     <p className='text-sm font-medium'>No se pudieron cargar los chats</p>
     <p className='text-muted-foreground text-xs'>
-      Revisá tu conexión e intentá de nuevo.
+      Revisa tu conexión e inténtalo de nuevo.
     </p>
     <Button size='xs' variant='outline' className='mt-1' onClick={onRetry}>
       <RefreshCw aria-hidden='true' />
@@ -49,17 +53,21 @@ export const ChatListError = ({ onRetry }: { onRetry: () => void }) => (
 )
 
 const EMPTY_COPY: Record<ChatListView, { title: string; hint: string }> = {
-  inbox: {
-    title: 'No hay chats activos',
-    hint: 'Cuando un cliente escriba, aparece acá.',
+  mine: {
+    title: 'No tienes chats activos',
+    hint: 'Toma uno de la cola o espera a que te asignen.',
   },
   queue: {
     title: 'No hay chats sin asignar',
-    hint: 'Las conversaciones nuevas aparecen acá para reclamar.',
+    hint: 'Las conversaciones nuevas aparecen aquí para tomarlas.',
   },
-  'needs-response': {
+  needs: {
     title: 'Sin pendientes por responder',
-    hint: 'Cuando un chat espere respuesta, aparece acá.',
+    hint: 'Cuando un chat espere respuesta, aparece aquí.',
+  },
+  all: {
+    title: 'No hay conversaciones activas',
+    hint: 'Cuando un cliente escriba, aparece aquí.',
   },
 }
 
@@ -77,7 +85,10 @@ export const ChatListEmpty = ({
     return (
       <div className='flex flex-col items-center gap-1.5 px-6 py-10 text-center'>
         <span className='bg-muted mb-1 flex size-9 items-center justify-center rounded-full'>
-          <SearchX aria-hidden='true' className='text-muted-foreground size-4' />
+          <SearchX
+            aria-hidden='true'
+            className='text-muted-foreground size-4'
+          />
         </span>
         <p className='text-sm font-medium'>
           Ningún chat coincide con “{search}”

@@ -18,7 +18,6 @@ import {
   uploadKindOf,
   type OutgoingDraft,
 } from '../lib/outgoing-draft'
-import { uploadErrorMessage } from '../lib/upload-errors'
 import {
   applyAttachmentPatch,
   applyStatusPatch,
@@ -28,6 +27,7 @@ import {
   sortChronologically,
   upsertMessage,
 } from '../lib/thread-state'
+import { uploadErrorMessage } from '../lib/upload-errors'
 import type { ChatMessage } from '../types/chat.domain'
 import { ChatSocketEvents as Events } from '../types/socket.api'
 
@@ -47,6 +47,7 @@ const ACK_ERRORS: Record<SendMessageErrorCode | 'timeout', string> = {
   validation: 'El mensaje no es válido.',
   not_found: 'La conversación ya no existe.',
   internal: 'El servidor no pudo encolar el mensaje. Inténtalo de nuevo.',
+  channel_unavailable: 'El canal no está conectado: el mensaje no se envió.',
   timeout: 'Sin respuesta del servidor. Revisa tu conexión y reintenta.',
 }
 
@@ -167,7 +168,9 @@ export function useChatThread(
 
   /** Stages the file of an entry (once) and builds its send payload. */
   const prepare = useCallback(
-    async (clientMessageId: string): Promise<SendConversationMessageInput | null> => {
+    async (
+      clientMessageId: string
+    ): Promise<SendConversationMessageInput | null> => {
       const entry = outbox.current.get(clientMessageId)
       if (!entry || !conversationId) return null
       if (entry.payload) return entry.payload
@@ -225,7 +228,13 @@ export function useChatThread(
       if (!ack.success) {
         fail(payload.clientMessageId, ACK_ERRORS.timeout)
       } else if (!ack.data.ok) {
-        fail(payload.clientMessageId, ACK_ERRORS[ack.data.code])
+        fail(
+          payload.clientMessageId,
+          // The channel answer carries its reason (token expired, …).
+          ack.data.code === 'channel_unavailable' && ack.data.message
+            ? ack.data.message
+            : ACK_ERRORS[ack.data.code]
+        )
       }
     },
     [socket, fail]
@@ -323,7 +332,8 @@ function createSlots(size: number) {
 
   return {
     async run<T>(task: () => Promise<T>): Promise<T> {
-      if (running >= size) await new Promise<void>((resolve) => waiting.push(resolve))
+      if (running >= size)
+        await new Promise<void>((resolve) => waiting.push(resolve))
       running += 1
       try {
         return await task()
