@@ -8,7 +8,15 @@ import axios, {
 import type { AuthUser } from '@chat-crm/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth-store'
-import { onSessionRefreshed, refreshSession, withTenantContext } from './http'
+import {
+  API_URL,
+  HEALTH_PATH,
+  isApiUp,
+  isNetworkError,
+  onSessionRefreshed,
+  refreshSession,
+  withTenantContext,
+} from './http'
 
 const sessionUser = (companyIds: string[]): AuthUser => ({
   id: 'user-1',
@@ -148,6 +156,21 @@ describe('withTenantContext', () => {
     await expect(api.get('/a')).rejects.toMatchObject({ response: { status: 401 } })
     expect(post).not.toHaveBeenCalled()
   })
+
+  it('turns the empty body of a null answer into null', async () => {
+    // Nest answers `return null` with 200 and no body; axios gives `''`.
+    const { api } = instanceWith((config) => Promise.resolve({ ...ok(config), data: '' }))
+
+    await expect(api.get('/channels/whatsapp/config')).resolves.toMatchObject({ data: null })
+  })
+
+  it('keeps real bodies untouched', async () => {
+    const { api } = instanceWith((config) =>
+      Promise.resolve({ ...ok(config), data: 'plain text' })
+    )
+
+    await expect(api.get('/a')).resolves.toMatchObject({ data: 'plain text' })
+  })
 })
 
 describe('refreshSession', () => {
@@ -169,5 +192,49 @@ describe('refreshSession', () => {
     expect(listener).toHaveBeenCalledWith(session)
     expect(useAuthStore.getState().auth.company.id).toBe('company-z')
     unsubscribe()
+  })
+})
+
+describe('isNetworkError', () => {
+  it('is true when the API never answered', () => {
+    expect(isNetworkError(new AxiosError('Network Error', 'ERR_NETWORK'))).toBe(true)
+  })
+
+  it('is false for an HTTP error answer and for non-axios errors', () => {
+    const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig
+    const answered = new AxiosError('boom', 'ERR_BAD_RESPONSE', config, null, {
+      data: {},
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      config,
+    })
+
+    expect(isNetworkError(answered)).toBe(false)
+    expect(isNetworkError(new TypeError('x is undefined'))).toBe(false)
+  })
+})
+
+describe('isApiUp', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('probes GET /health on the API and reports its answer', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }))
+
+    await expect(isApiUp()).resolves.toBe(true)
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_URL}${HEALTH_PATH}`,
+      expect.objectContaining({ cache: 'no-store' })
+    )
+  })
+
+  it('is false when the API refuses or answers an error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(isApiUp()).resolves.toBe(false)
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 503 }))
+    await expect(isApiUp()).resolves.toBe(false)
   })
 })

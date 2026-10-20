@@ -1,8 +1,15 @@
 import { useEffect } from 'react'
 import { useForm, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import type { UpdateChannelInput } from '@chat-crm/contracts'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  CHANNEL_STATUS,
+  CONNECTION_CHECK,
+  WHATSAPP_WEBHOOK_PATH,
+  type ConnectionCheck,
+  type UpdateChannelInput,
+  type WhatsAppConnectionTest,
+} from '@chat-crm/contracts'
 import {
   defaultValues,
   isApiVersion,
@@ -10,11 +17,15 @@ import {
   versions,
   type WhatsAppConfigInput,
 } from '@/schemas/whatsapp-config.schema'
-import { getConfig, saveConfig } from '@/services/whatsapp.service'
+import {
+  getConfig,
+  saveConfig,
+  testConnection,
+} from '@/services/whatsapp.service'
+import { API_PUBLIC_URL } from '@/lib/http'
 import { Info, Loader2Icon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -43,7 +54,17 @@ import { CopyIconButton } from '@/components/button-copy-icon'
 import { InputEndAddOn } from '@/components/input-end-add-on'
 import { PasswordInput } from '@/components/input-password'
 
-const WEBHOOK_PATH = '/integration/webhook/whatsapp'
+const WEBHOOK_PATH = `/${WHATSAPP_WEBHOOK_PATH}`
+
+/** Labels of the connection test checks, in the order they are reported. */
+const TEST_CHECKS = {
+  sending: 'Envío',
+  webhook: 'Webhook',
+  subscription: 'Suscripción en Meta',
+} as const satisfies Record<
+  keyof Omit<WhatsAppConnectionTest, 'ok'>,
+  string
+>
 
 /**
  * TODO(backend): persist only the domain for webhookUrl and append
@@ -70,6 +91,25 @@ const onInvalidSubmit = (errors: FieldErrors<WhatsAppConfigInput>) => {
   })
 }
 
+/** One toast per check that did not pass; a single success toast otherwise. */
+const toastTestResult = (result: WhatsAppConnectionTest) => {
+  if (result.ok) {
+    toast.success('Conexión de WhatsApp verificada ✅', {
+      description: result.sending.message,
+    })
+  }
+  ;(
+    Object.entries(TEST_CHECKS) as [keyof typeof TEST_CHECKS, string][]
+  ).forEach(([key, label]) => {
+    const check: ConnectionCheck = result[key]
+    if (check.status === CONNECTION_CHECK.failed) {
+      toast.error(`${label}: falla`, { description: check.message })
+    } else if (check.status === CONNECTION_CHECK.skipped) {
+      toast.warning(`${label}: sin comprobar`, { description: check.message })
+    }
+  })
+}
+
 export const WhatsappForm = () => {
   const { id: businessId } = useAuthStore().auth.company!
 
@@ -83,8 +123,34 @@ export const WhatsappForm = () => {
 
   const form = useForm<WhatsAppConfigInput>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues,
+    // A channel without a saved webhook starts from this API's own URL; the
+    // domain stays editable (e.g. an ngrok tunnel in development).
+    defaultValues: { ...defaultValues, webhookUrl: API_PUBLIC_URL },
   })
+
+  const queryClient = useQueryClient()
+  const isPendingChannel = !data || data.status === CHANNEL_STATUS.pending
+  // Read during render: react-hook-form only tracks the formState fields a
+  // render subscribes to (reading it inside a handler would always be false).
+  const { isDirty } = form.formState
+
+  const test = useMutation({
+    mutationFn: testConnection,
+    onSuccess: toastTestResult,
+    onError: () =>
+      toast.error('No se pudo ejecutar la prueba de conexión ❌', {
+        description: 'El API no respondió; inténtalo de nuevo.',
+      }),
+  })
+
+  const onTest = () => {
+    // The API tests what is SAVED: unsaved edits would give a wrong answer.
+    if (isDirty) {
+      toast.warning('Guarda los cambios antes de probar la conexión')
+      return
+    }
+    test.mutate()
+  }
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (vals: WhatsAppConfigInput) => {
@@ -100,6 +166,12 @@ export const WhatsappForm = () => {
       }
       return saveConfig(businessId!, payload)
     },
+    // Refetch: the channel may have turned `active`, and the form resets to
+    // what is now saved (so the Test button tests it).
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ['whatsapp', 'config', businessId],
+      }),
   })
 
   useEffect(() => {
@@ -115,7 +187,8 @@ export const WhatsappForm = () => {
         : defaultValues.apiVersion,
       accessToken: data.accessToken ?? '',
       webhookVerifyToken: data.webhookVerifyToken ?? '',
-      webhookUrl: splitWebhookUrl(data.webhookUrl ?? undefined),
+      webhookUrl:
+        splitWebhookUrl(data.webhookUrl ?? undefined) || API_PUBLIC_URL,
       // Never returned by the API: the field only replaces it.
       appSecret: '',
     })
@@ -214,15 +287,15 @@ export const WhatsappForm = () => {
                   <FormLabel>Access Token</FormLabel>
                   <PasswordInput
                     placeholder={
-                      data
-                        ? 'Token de acceso de Meta'
-                        : 'Token de acceso de Meta (obligatorio para crear el canal)'
+                      isPendingChannel
+                        ? 'Token de acceso de Meta (obligatorio para activar el canal)'
+                        : 'Token de acceso de Meta'
                     }
                     {...field}
                   />
                   <FormDescription>
-                    {!data
-                      ? 'Canal sin configurar: al guardar se creará el canal de WhatsApp con estos datos.'
+                    {isPendingChannel
+                      ? 'Canal pendiente: guarda el Phone Number ID y el access token para activarlo. El webhook ya puede configurarse en Meta.'
                       : data.hasCredentials
                         ? 'Canal configurado: edita el token solo si quieres reemplazarlo.'
                         : 'Canal sin credenciales: introduce el access token para configurarlo.'}
@@ -344,15 +417,17 @@ export const WhatsappForm = () => {
 
         {/* Buttons Actions */}
         <div className='flex justify-end gap-4'>
-          <Button
+          <LoadingButton
             type='button'
             size='lg'
             variant='secondary'
-            // disabled={loading}
+            loading={test.isPending}
+            disabled={isPending}
+            onClick={onTest}
             style={{ padding: '0.5rem 1rem' }}
           >
             Test
-          </Button>
+          </LoadingButton>
           <LoadingButton type='submit' loading={isPending}>
             Guardar
           </LoadingButton>

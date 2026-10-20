@@ -8,6 +8,8 @@
  * a deployed frontend can never be "suicided" by a newer backend.
  */
 
+import { API_URL } from './endpoints'
+
 export type RuntimeSyncState = 'in-sync' | 'mismatch' | 'unknown'
 
 /** Pure comparison, unit-tested without any network. */
@@ -49,11 +51,8 @@ export async function checkContractsSync(): Promise<RuntimeSyncState> {
   const embedded =
     typeof __CONTRACTS_LOCK_HASH__ === 'string' ? __CONTRACTS_LOCK_HASH__ : null
 
-  const base = import.meta.env.VITE_API_URL
-  if (!base) return 'unknown'
-
   try {
-    const response = await fetch(`${base.replace(/\/$/, '')}/contracts/version`, {
+    const response = await fetch(`${API_URL}/contracts/version`, {
       credentials: 'include',
     })
     if (!response.ok) return 'unknown'

@@ -9,8 +9,30 @@ import {
   type AuthSessionResponse,
 } from '@chat-crm/contracts'
 import { useAuthStore } from '@/stores/auth-store'
+import { API_URL, HEALTH_PATH } from './endpoints'
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+export { API_PUBLIC_URL, API_URL, HEALTH_PATH, SOCKET_URL } from './endpoints'
+
+/**
+ * True when the API did not answer at all (down, still booting, restarting):
+ * the request never got a response. An HTTP error (4xx/5xx) is NOT one.
+ */
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof AxiosError && !error.response
+}
+
+/** `GET /health` without the tenant interceptors: does the API answer? */
+export async function isApiUp(signal?: AbortSignal): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}${HEALTH_PATH}`, {
+      cache: 'no-store',
+      signal,
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
 
 type SessionListener = (session: AuthSessionResponse) => void
 
@@ -75,19 +97,28 @@ export function withTenantContext(instance: AxiosInstance): AxiosInstance {
     return config
   })
 
+  // A `null` answer arrives as 200 with an EMPTY body (Nest sends nothing for
+  // nil), which axios hands over as `''`: restore the `null` so `.nullable()`
+  // contracts parse it.
   // `token_stale`: refresh the memberships once and replay the request with
   // the (possibly re-resolved) active company. A second failure surfaces.
-  instance.interceptors.response.use(undefined, async (error: unknown) => {
-    const config = (error as AxiosError).config as RetriableConfig | undefined
-    if (!config || config._sessionRetried || !isTokenStale(error)) {
-      throw error
-    }
+  instance.interceptors.response.use(
+    (response) => {
+      if (response.data === '') response.data = null
+      return response
+    },
+    async (error: unknown) => {
+      const config = (error as AxiosError).config as RetriableConfig | undefined
+      if (!config || config._sessionRetried || !isTokenStale(error)) {
+        throw error
+      }
 
-    config._sessionRetried = true
-    await refreshSession()
-    config.headers.delete(COMPANY_HEADER)
-    return instance.request(config)
-  })
+      config._sessionRetried = true
+      await refreshSession()
+      config.headers.delete(COMPANY_HEADER)
+      return instance.request(config)
+    }
+  )
 
   return instance
 }

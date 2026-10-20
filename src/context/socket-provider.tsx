@@ -6,6 +6,7 @@ import { CloudAlert } from 'lucide-react'
 import { io, type Socket } from 'socket.io-client'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { SOCKET_URL } from '@/lib/endpoints'
 import { refreshSession } from '@/lib/http'
 import {
   readLocalNotificationPrefs,
@@ -68,14 +69,11 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       return
     }
 
-    // VITE_SOCKET_URL is the server base URL (no namespace); the namespace
-    // comes from the shared contracts (single source of truth with the API).
-    const socketBaseUrl = (
-      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
-    ).replace(/\/+$/, '')
+    // SOCKET_URL is the server base (no namespace, see lib/endpoints); the
+    // namespace comes from the shared contracts (single source with the API).
     // Identity is the `access_token` cookie only; the server joins the socket
     // to the rooms of every company in the session.
-    const newSocket = io(`${socketBaseUrl}/${SOCKET_NAMESPACES.conversation}`, {
+    const newSocket = io(`${SOCKET_URL}/${SOCKET_NAMESPACES.conversation}`, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,

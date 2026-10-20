@@ -12,6 +12,27 @@ import { resolveContractsDir } from './scripts/contracts-path.mjs'
 // worktrees and Docker (CONTRACTS_DIR).
 const contractsDir = resolveContractsDir(__dirname)
 
+// Dev proxy (Docker): with VITE_DEV_PROXY_TARGET (e.g. http://api:3000) and a
+// same-origin VITE_API_URL (e.g. /api), the browser only talks to this server
+// and Vite forwards to the API over the compose network, like Caddy in prod:
+// `<VITE_API_URL>/*` with the prefix stripped, and Socket.IO's own path.
+const SOCKET_IO_PATH = '/socket.io'
+const devProxyTarget = process.env.VITE_DEV_PROXY_TARGET
+const apiBasePath = process.env.VITE_API_URL?.startsWith('/')
+  ? process.env.VITE_API_URL.replace(/\/+$/, '')
+  : null
+const devProxy =
+  devProxyTarget && apiBasePath
+    ? {
+        [apiBasePath]: {
+          target: devProxyTarget,
+          changeOrigin: true,
+          rewrite: (url: string) => url.slice(apiBasePath.length) || '/',
+        },
+        [SOCKET_IO_PATH]: { target: devProxyTarget, changeOrigin: true, ws: true },
+      }
+    : undefined
+
 // Bakes the synced contracts fingerprint into the bundle so the dev-only
 // runtime check can compare it with `GET /contracts/version`. `null` when the
 // frontend has not been synced yet (no contracts.lock.json).
@@ -47,6 +68,7 @@ export default defineConfig({
     dedupe: ["zod"],
   },
   server: {
+    proxy: devProxy,
     watch: {
       // Docker on Windows polls every watched file (CHOKIDAR_USEPOLLING): skip
       // the paired worktrees (full copies of the app) and build output, or the

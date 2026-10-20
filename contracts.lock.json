@@ -1,12 +1,12 @@
 {
   "apiTag": "v1.0.2",
-  "hash": "36688481fdb7f74ff8d71b96cb59681b528b70992e65761654a697fb763526e7",
+  "hash": "ac9cf72ea55897a3f9baea37bb83aec6b9186acf49c044b822f90a72ec009004",
   "files": {
     "analysis": "80340e5360a82e7fe782696c54f578d87685cbbb2af012bc5dae43d36adddf0e",
     "analytics": "0b5239a4fa6abde3c6e1a741c83d5770be0a91754390626507227483db49f1de",
     "auth": "99bd71f88fbbc41b1db1334ece72207e7e05b461b7d84953539e44f50111bdf8",
     "case": "0a6a7ae1bcf83473694f3c0ace7e3889747e8d6b72063972985ca317e72d44f8",
-    "channel": "4a846a2eeb80a7430b1ec34496702e745a09de1d07aeeb0a49f62af6a2c758f7",
+    "channel": "eb5ed60cdde0fb75cb8d259d06988b77e400b5d2a8bdbb33f9e79b44ff376618",
     "company": "a9bee43d1f54e847edf22bed4a44d34a4e97e848929835821c2386ef9f45800a",
     "conversation": "8b834c32bedc2a870f111f147160ffb64d6b350fc3cd8bfae44b5fe25d2a837b",
     "customer": "4dad40e1beeb8ad3d569aeef266a39bb6abcb29ec1c63da7522469460c77fca5",
@@ -24,5 +24,5 @@
     "user": "f397b061fd071cc082f0d76254c1b23a407fb3c4ca070e2daa3f9c9d1e957e64",
     "whatsapp-webhook": "a3baf4691d8567a80129e02ff64f36657db35ddd3f1bc7e3cf8abf24ded94dd2"
   },
-  "syncedAt": "2026-10-17T04:41:06.015Z"
+  "syncedAt": "2026-10-20T00:34:20.079Z"
 }
