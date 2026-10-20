@@ -1,6 +1,6 @@
 {
   "apiTag": "v1.0.2",
-  "hash": "c8dab16229cb2a9d2bb45255fd65cec0e3024e0bdb52e328b2c3a31ee0bafd57",
+  "hash": "c7c34cc1e8c6895fdc59d821030464f6b29d58c24396bf3caa3610ab96591371",
   "files": {
     "analysis": "80340e5360a82e7fe782696c54f578d87685cbbb2af012bc5dae43d36adddf0e",
     "analytics": "0b5239a4fa6abde3c6e1a741c83d5770be0a91754390626507227483db49f1de",
@@ -13,7 +13,7 @@
     "ia": "dde85b7a47bbe36ffcc5f7e4f6a0799b738ed84df13b118e8face74abfff53b8",
     "member": "7e1d2afd449976d7094ad4ce3830ec2d57edeaf732e19a2c13787b090a9acdd1",
     "message": "70e1750d9d9a2431f71610508d1aa2d81a5fd60085b49ab5ac6c2dec64ed5367",
-    "notification": "42017fd8a31edfd979b1abfb8fafec29f50c60c7b9b468bfab4510a01de9d8c2",
+    "notification": "25861bc0a460cb29d450d1d76b8c3ebb5ba8fd95fdf94b4c77a4d7c0272044f0",
     "pagination": "c22d64c5f23b581f3b6f2c43201f306c77c98d991bab0c44eb31d3ed391e5630",
     "presence": "d3bdedd6ab139110bae7e49869321aa2b839e2de33343afdf42944ed8b8bf145",
     "service-settings": "f27a93e23719a1a9f5443caf9920cdafa6763ba6d5cf2ca94d735035343fe42b",
@@ -25,5 +25,5 @@
     "user": "f397b061fd071cc082f0d76254c1b23a407fb3c4ca070e2daa3f9c9d1e957e64",
     "whatsapp-webhook": "a3baf4691d8567a80129e02ff64f36657db35ddd3f1bc7e3cf8abf24ded94dd2"
   },
-  "syncedAt": "2026-10-20T18:57:57.638Z"
+  "syncedAt": "2026-10-20T19:31:32.077Z"
 }
