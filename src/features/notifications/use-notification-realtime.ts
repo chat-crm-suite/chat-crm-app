@@ -22,6 +22,8 @@ import {
 import { notificationTarget } from './notification-link'
 import { showNotificationToast } from './notification-toast'
 import { listNotifications } from './notifications.service'
+import { getOpenConversation } from './open-conversation'
+import { readConversationNotices } from './read-conversation'
 import { TabCoordinator } from './tab-coordinator'
 import { notificationPrefsKey } from './use-notification-preferences'
 import { useActiveCompanyId, useNotifications } from './use-notifications'
@@ -82,8 +84,26 @@ export function useNotificationRealtime(): void {
     const present = async (notification: NotificationItem) => {
       // Key per version: a grouped row that grew is a new thing to announce.
       const key = `${notification.id}:${notification.updatedAt}`
+      const visible = document.visibilityState === 'visible'
 
-      if (document.visibilityState === 'visible') {
+      // That chat is on screen: the message is already in view, so the
+      // notice is read right away instead of interrupting (WhatsApp Web).
+      const conversationId = notification.data.conversationId
+      if (
+        visible &&
+        conversationId &&
+        conversationId === getOpenConversation()
+      ) {
+        coordinator.claim(key)
+        void readConversationNotices(
+          queryClient,
+          notification.companyId,
+          conversationId
+        )
+        return
+      }
+
+      if (visible) {
         coordinator.claim(key)
         showNotificationToast(notification, open)
         playSound()

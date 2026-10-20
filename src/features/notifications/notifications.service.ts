@@ -28,6 +28,14 @@ export const markNotificationRead = async (id: string): Promise<number> => {
 }
 
 export const markAllNotificationsRead = async (): Promise<number> => {
-  const { data } = await notifications.post('/read')
+  const { data } = await notifications.post('/read', {})
+  return parseContract(NotificationUnreadCountSchema, data).unreadCount
+}
+
+/** Reads the assignment and message notices of one chat (it was opened). */
+export const markConversationNotificationsRead = async (
+  conversationId: string
+): Promise<number> => {
+  const { data } = await notifications.post('/read', { conversationId })
   return parseContract(NotificationUnreadCountSchema, data).unreadCount
 }

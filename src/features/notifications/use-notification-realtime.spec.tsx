@@ -9,6 +9,7 @@ import {
   signIn,
 } from '@/features/settings/testing/fixtures'
 import { notificationKeys } from './notification-cache'
+import { setOpenConversation } from './open-conversation'
 import { makeNotification } from './testing'
 import { useNotificationRealtime } from './use-notification-realtime'
 
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   listNotifications: vi.fn(),
   getUnreadCount: vi.fn(),
+  markConversationNotificationsRead: vi.fn(),
   toast: {
     info: vi.fn(),
     warning: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock('@/context/socket-provider', () => ({
 vi.mock('./notifications.service', () => ({
   listNotifications: mocks.listNotifications,
   getUnreadCount: mocks.getUnreadCount,
+  markConversationNotificationsRead: mocks.markConversationNotificationsRead,
 }))
 
 class MockNotification {
@@ -94,6 +97,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  setOpenConversation(null)
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -261,5 +265,45 @@ describe('useNotificationRealtime', () => {
     ).toBe('missed')
     // Replayed rows refresh the bell; they do not replay toasts.
     expect(mocks.toast.info).not.toHaveBeenCalled()
+  })
+
+  it('the chat on screen never toasts: its notice is read right away', async () => {
+    const { fake, queryClient } = setup()
+    mocks.markConversationNotificationsRead.mockResolvedValue(0)
+    setOpenConversation('conv-1')
+    const message = makeNotification({
+      type: 'conversation_message',
+      title: 'Ana',
+      groupKey: 'conversation:conv-1',
+    })
+
+    act(() =>
+      fake.fire('notification:new', { notification: message, unreadCount: 1 })
+    )
+
+    expect(mocks.toast.info).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mocks.markConversationNotificationsRead).toHaveBeenCalledWith(
+        'conv-1'
+      )
+    )
+    expect(queryClient.getQueryData(unreadKey)).toBe(0)
+  })
+
+  it('another chat still toasts while one is open', () => {
+    const { fake } = setup()
+    setOpenConversation('conv-other')
+
+    act(() =>
+      fake.fire('notification:new', {
+        notification: makeNotification({
+          type: 'conversation_message',
+          groupKey: 'conversation:conv-1',
+        }),
+        unreadCount: 1,
+      })
+    )
+
+    expect(mocks.toast.info).toHaveBeenCalledTimes(1)
   })
 })

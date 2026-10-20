@@ -9,6 +9,9 @@ import {
 } from '@chat-crm/contracts'
 import { useSocket } from '@/context/socket-provider'
 import { IA_STATUS_KEY } from '@/features/analytics/hooks/use-ia-status'
+import { setOpenConversation } from '@/features/notifications/open-conversation'
+import { readConversationNotices } from '@/features/notifications/read-conversation'
+import { useActiveCompanyId } from '@/features/notifications/use-notifications'
 import {
   ChatBox,
   ChatList,
@@ -39,6 +42,27 @@ import { ChatSocketEvents as Events } from './types/socket.api'
  * Live updates of the inbox caches. Lives inside the provider so a status
  * change also patches the open conversation, not only the lists.
  */
+/**
+ * The open chat reads its own notices (assignment, new messages) and tells
+ * the notification listener which chat is on screen, so it never toasts
+ * about the conversation the person is already looking at.
+ */
+function OpenChatNotices() {
+  const queryClient = useQueryClient()
+  const companyId = useActiveCompanyId()
+  const { chatSelected } = useChats()
+  const openId = chatSelected?.id ?? null
+
+  useEffect(() => {
+    setOpenConversation(openId)
+    if (openId && companyId)
+      void readConversationNotices(queryClient, companyId, openId)
+    return () => setOpenConversation(null)
+  }, [openId, companyId, queryClient])
+
+  return null
+}
+
 function ChatsRealtime() {
   const queryClient = useQueryClient()
   const { socket } = useSocket()
@@ -166,6 +190,7 @@ export function Chats() {
             <ChatBox />
           </section>
           <ChatsRealtime />
+          <OpenChatNotices />
           <ClientChatDialog />
           <OpenConversationFromSearch />
         </ChatsProvider>
