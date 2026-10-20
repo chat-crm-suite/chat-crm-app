@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -310,7 +311,7 @@ describe('WhatsappForm', () => {
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('shows one error toast per failing check, with its message', async () => {
+    it('shows one error toast for the run, listing every failing check', async () => {
       const user = userEvent.setup()
       testConnectionMock.mockResolvedValue({
         ok: false,
@@ -322,13 +323,14 @@ describe('WhatsappForm', () => {
 
       await clickTest(user)
 
-      await vi.waitFor(() => expect(toast.error).toHaveBeenCalledTimes(2))
-      expect(toast.error).toHaveBeenCalledWith('Envío: falla', {
-        description: 'Token caducado.',
-      })
-      expect(toast.error).toHaveBeenCalledWith('Webhook: falla', {
-        description: 'ngrok caído.',
-      })
+      await vi.waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1))
+      expect(toast.error).toHaveBeenCalledWith(
+        'La conexión de WhatsApp tiene problemas',
+        expect.objectContaining({
+          id: 'whatsapp:test',
+          description: 'Envío: falla. Token caducado. · Webhook: falla. ngrok caído.',
+        })
+      )
       expect(toast.success).not.toHaveBeenCalled()
     })
 
@@ -345,8 +347,11 @@ describe('WhatsappForm', () => {
 
       await vi.waitFor(() =>
         expect(toast.warning).toHaveBeenCalledWith(
-          'Suscripción en Meta: sin comprobar',
-          { description: 'Falta el Business ID.' }
+          'No se pudo comprobar todo',
+          expect.objectContaining({
+            id: 'whatsapp:test',
+            description: 'Suscripción en Meta: sin comprobar. Falta el Business ID.',
+          })
         )
       )
     })
@@ -361,22 +366,23 @@ describe('WhatsappForm', () => {
       await user.click(screen.getByRole('button', { name: /^test$/i }))
 
       expect(toast.warning).toHaveBeenCalledWith(
-        'Guarda los cambios antes de probar la conexión'
+        'Guarda los cambios antes de probar la conexión',
+        expect.objectContaining({ id: 'whatsapp:test' })
       )
       expect(testConnectionMock).not.toHaveBeenCalled()
     })
 
     it('tells when the test itself could not run', async () => {
       const user = userEvent.setup()
-      testConnectionMock.mockRejectedValue(new Error('Network Error'))
+      testConnectionMock.mockRejectedValue(new AxiosError('Network Error'))
       renderForm()
 
       await clickTest(user)
 
       await vi.waitFor(() =>
         expect(toast.error).toHaveBeenCalledWith(
-          'No se pudo ejecutar la prueba de conexión ❌',
-          expect.objectContaining({ description: expect.any(String) })
+          expect.stringContaining('No hay conexión con el servidor'),
+          expect.objectContaining({ id: 'whatsapp:test' })
         )
       )
     })

@@ -7,13 +7,11 @@ import {
   IaStatusSchema,
   AnalyticsSocketEvent,
 } from '@chat-crm/contracts'
-import { toast } from 'sonner'
-import {
-  consumeSelfInitiatedAssignment,
-  resolveAssignmentToast,
-} from '@/lib/socket-taxonomy'
 import { useSocket } from '@/context/socket-provider'
 import { IA_STATUS_KEY } from '@/features/analytics/hooks/use-ia-status'
+import { setOpenConversation } from '@/features/notifications/open-conversation'
+import { readConversationNotices } from '@/features/notifications/read-conversation'
+import { useActiveCompanyId } from '@/features/notifications/use-notifications'
 import {
   ChatBox,
   ChatList,
@@ -44,6 +42,27 @@ import { ChatSocketEvents as Events } from './types/socket.api'
  * Live updates of the inbox caches. Lives inside the provider so a status
  * change also patches the open conversation, not only the lists.
  */
+/**
+ * The open chat reads its own notices (assignment, new messages) and tells
+ * the notification listener which chat is on screen, so it never toasts
+ * about the conversation the person is already looking at.
+ */
+function OpenChatNotices() {
+  const queryClient = useQueryClient()
+  const companyId = useActiveCompanyId()
+  const { chatSelected } = useChats()
+  const openId = chatSelected?.id ?? null
+
+  useEffect(() => {
+    setOpenConversation(openId)
+    if (openId && companyId)
+      void readConversationNotices(queryClient, companyId, openId)
+    return () => setOpenConversation(null)
+  }, [openId, companyId, queryClient])
+
+  return null
+}
+
 function ChatsRealtime() {
   const queryClient = useQueryClient()
   const { socket } = useSocket()
@@ -88,32 +107,11 @@ function ChatsRealtime() {
       // The open thread cache is owned by `useChatThread`.
     }
 
-    // Assignment: always refresh the lists; the toast is skipped when the
-    // event echoes this client's own action (claim/self-assignment, already
-    // announced by the mutation). `notification:new` is handled only in the
-    // socket-provider.
-    const handleAssigned = (payload: unknown) => {
-      refreshLists()
-      const decision = resolveAssignmentToast('assigned', payload, {
-        isSelfInitiated: consumeSelfInitiatedAssignment,
-      })
-      if (decision) {
-        toast[decision.type](decision.title, {
-          description: decision.description,
-          id: decision.id,
-        })
-      }
-    }
-    const handleUnassigned = (payload: unknown) => {
-      refreshLists()
-      const decision = resolveAssignmentToast('unassigned', payload)
-      if (decision) {
-        toast[decision.type](decision.title, {
-          description: decision.description,
-          id: decision.id,
-        })
-      }
-    }
+    // Assignment events are data only: they refresh the lists. The person
+    // hears about it through `notification:new` (one toast, handled by
+    // `useNotificationRealtime`), never from here.
+    const handleAssigned = () => refreshLists()
+    const handleUnassigned = () => refreshLists()
 
     const handleStatusChanged = (payload: unknown) => {
       const parsed = ConversationStatusChangedSchema.safeParse(payload)
@@ -192,6 +190,7 @@ export function Chats() {
             <ChatBox />
           </section>
           <ChatsRealtime />
+          <OpenChatNotices />
           <ClientChatDialog />
           <OpenConversationFromSearch />
         </ChatsProvider>

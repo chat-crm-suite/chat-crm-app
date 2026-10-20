@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { getApiError } from '../workspace/api-error-code'
 import { customerKeys } from '../workspace/query-keys'
 import { API_ERROR_COPY, copy } from './copy'
+import { SCREEN_HANDLES_ERRORS } from '@/lib/handle-server-error'
 
 type CustomerPage = Awaited<
   ReturnType<typeof import('@/services/customers.service').getCustomersTable>
@@ -128,6 +129,7 @@ export function patchCustomer(
 export function useCreateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (input: CreateCustomerInput) => createCustomer(input),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: customerKeys.root }),
@@ -138,6 +140,7 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: ({ id, input }: { id: string; input: UpdateCustomerInput }) =>
       updateCustomer(id, input),
     onSuccess: ({ customer }) => patchCustomer(queryClient, customer),
@@ -147,6 +150,7 @@ export function useUpdateCustomer() {
 export function useDeleteCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (id: string) => deleteCustomer(id),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: customerKeys.root }),
@@ -156,6 +160,7 @@ export function useDeleteCustomer() {
 export function useBulkDeleteCustomers() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (ids: string[]) => bulkDeleteCustomers(ids),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: customerKeys.root }),
@@ -165,6 +170,7 @@ export function useBulkDeleteCustomers() {
 export function useImportCustomers() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (file: File) => importCustomers(file),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: customerKeys.root }),
@@ -175,6 +181,7 @@ export function useImportCustomers() {
 export function useSetCustomerTags() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: ({ customer, tags }: { customer: CustomerRow; tags: Tag[] }) =>
       setCustomerTags(
         customer.id,
@@ -187,6 +194,7 @@ export function useSetCustomerTags() {
 export function useCreateTag() {
   const queryClient = useQueryClient()
   return useMutation({
+    ...SCREEN_HANDLES_ERRORS,
     mutationFn: (name: string) => createTag({ name }),
     onSuccess: () =>
       void queryClient.invalidateQueries({

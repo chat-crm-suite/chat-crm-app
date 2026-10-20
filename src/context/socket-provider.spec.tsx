@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => {
       info: vi.fn(),
       error: vi.fn(),
       success: vi.fn(),
+      warning: vi.fn(),
+      dismiss: vi.fn(),
     }),
   }
 })
@@ -68,7 +70,6 @@ function renderProvider() {
 
 describe('SocketProvider', () => {
   let fake: ReturnType<typeof createFakeSocket>
-  let playSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -79,61 +80,48 @@ describe('SocketProvider', () => {
     MockNotification.requestPermission.mockClear()
     MockNotification.instances = []
     vi.stubGlobal('Notification', MockNotification)
-    playSpy = vi
-      .spyOn(window.HTMLMediaElement.prototype, 'play')
-      .mockResolvedValue(undefined)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('requests notification permission from an effect, once per mount', () => {
-    const { rerender, queryClient } = renderProvider()
-
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <SocketProvider>
-          <div />
-        </SocketProvider>
-      </QueryClientProvider>
-    )
-
-    expect(MockNotification.requestPermission).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not request permission again when it is already granted', () => {
-    MockNotification.permission = 'granted'
-
+  it('never asks for the notification permission on its own (only from a click)', () => {
     renderProvider()
 
     expect(MockNotification.requestPermission).not.toHaveBeenCalled()
   })
 
-  it('handles notification:new once: browser notification, cache, counter and a single toast', () => {
-    MockNotification.permission = 'granted'
-    const { queryClient } = renderProvider()
-    const notification = {
-      id: 'n-1',
-      title: 'Nuevo chat asignado',
-      body: 'Tenés un chat nuevo esperando respuesta',
-    }
+  it('leaves notification:* to useNotificationRealtime (no second listener)', () => {
+    renderProvider()
 
-    act(() => fake.fire('notification:new', notification))
+    const events = fake.socket.on.mock.calls.map(([event]) => event)
+    expect(events).not.toContain('notification:new')
+    expect(events).not.toContain('notification:updated')
+  })
 
-    expect(mocks.toast.info).toHaveBeenCalledTimes(1)
-    expect(mocks.toast.info).toHaveBeenCalledWith('Nuevo chat asignado', {
-      position: 'top-right',
-      description: 'Tenés un chat nuevo esperando respuesta',
+  it('reconnects forever with backoff and says so only after a few failed attempts', () => {
+    renderProvider()
+
+    const [, options] = mocks.io.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ]
+    expect(options).toMatchObject({
+      reconnectionAttempts: Infinity,
+      reconnectionDelayMax: 30_000,
     })
-    expect(queryClient.getQueryData(['notifications'])).toEqual([notification])
-    expect(document.title).toBe('(1) Nuevo mensaje - MiApp')
-    expect(MockNotification.instances).toHaveLength(1)
-    expect(MockNotification.instances[0]).toMatchObject({
-      title: 'Nuevo chat asignado',
-      options: { body: 'Tenés un chat nuevo esperando respuesta' },
-    })
-    expect(playSpy).toHaveBeenCalledTimes(1)
+
+    act(() => fake.fireManager('reconnect_attempt', 1))
+    expect(mocks.toast.warning).not.toHaveBeenCalled()
+    act(() => fake.fireManager('reconnect_attempt', 3))
+    expect(mocks.toast.warning).toHaveBeenCalledWith(
+      'Reconectando…',
+      expect.objectContaining({ id: 'socket:reconnecting', duration: Infinity })
+    )
+
+    act(() => fake.fire('connect'))
+    expect(mocks.toast.dismiss).toHaveBeenCalledWith('socket:reconnecting')
   })
 
   it('shows the detail toast for a v2 message error without action', () => {
@@ -149,12 +137,14 @@ describe('SocketProvider', () => {
       })
     )
 
-    expect(mocks.toast).toHaveBeenCalledWith('Re-engagement message', {
-      position: 'top-right',
-      description: 'Message failed to send',
-      icon: expect.anything(),
-    })
-    expect(mocks.toast.error).not.toHaveBeenCalled()
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1)
+    expect(mocks.toast.error).toHaveBeenCalledWith(
+      'Re-engagement message',
+      expect.objectContaining({
+        id: 'message-error:Re-engagement message',
+        description: 'Message failed to send',
+      })
+    )
   })
 
   it('offers the Enviar plantilla action when the error carries hasAction', () => {
@@ -181,6 +171,7 @@ describe('SocketProvider', () => {
 
     expect(title).toBe('webhook_status_error')
     expect(options).toMatchObject({
+      id: 'message-error:template',
       closeButton: true,
       duration: Infinity,
       action: { label: 'Enviar plantilla' },

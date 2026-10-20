@@ -9,6 +9,7 @@ type Handler = (...args: unknown[]) => void
  */
 export function createFakeSocket(connected = true) {
   const listeners = new Map<string, Set<Handler>>()
+  const managerListeners = new Map<string, Set<Handler>>()
   /** Answer of `timeout(ms).emitWithAck(...)`; acknowledges by default. */
   let ack: (event: string, payload: unknown) => Promise<unknown> = () =>
     Promise.resolve({ ok: true })
@@ -33,10 +34,23 @@ export function createFakeSocket(connected = true) {
     close: vi.fn(),
     connect: vi.fn(),
     disconnect: vi.fn(),
+    /** The Manager (`socket.io`): reconnection events live here. */
+    io: {
+      on: vi.fn((event: string, handler: Handler) => {
+        const handlers = managerListeners.get(event) ?? new Set<Handler>()
+        handlers.add(handler)
+        managerListeners.set(event, handlers)
+      }),
+    },
   }
 
   const fire = (event: string, ...args: unknown[]) => {
     for (const handler of listeners.get(event) ?? []) handler(...args)
+  }
+
+  /** Fires a Manager event (`reconnect_attempt`, ...). */
+  const fireManager = (event: string, ...args: unknown[]) => {
+    for (const handler of managerListeners.get(event) ?? []) handler(...args)
   }
 
   /** Programs the acknowledgement the server answers next sends with. */
@@ -44,7 +58,7 @@ export function createFakeSocket(connected = true) {
     ack = next
   }
 
-  return { socket, fire, setAck }
+  return { socket, fire, fireManager, setAck }
 }
 
 export type FakeSocket = ReturnType<typeof createFakeSocket>['socket']

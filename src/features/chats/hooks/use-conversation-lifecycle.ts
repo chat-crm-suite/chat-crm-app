@@ -17,11 +17,6 @@ import type {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/lib/api-error'
-import {
-  assignmentToastId,
-  clearSelfInitiatedAssignment,
-  markSelfInitiatedAssignment,
-} from '@/lib/socket-taxonomy'
 import { useMemberRole } from '@/hooks/use-member-role'
 import { useChats } from '../contexts/chats.context'
 import { copy } from '../copy'
@@ -34,6 +29,10 @@ export const memberDisplayName = (
 ) =>
   [member.firstName, member.lastName].filter(Boolean).join(' ') ||
   member.username
+
+/** One toast per conversation assignment: a double click updates it. */
+const assignmentToastId = (conversationId: string) =>
+  `assignment:${conversationId}`
 
 const noteInput = (note?: string) => (note?.trim() ? { note: note.trim() } : {})
 
@@ -117,9 +116,6 @@ export function useConversationLifecycle(conversationId: string) {
   const assign = useMutation({
     mutationFn: (member: CompanyMemberResponse) =>
       assignMember(conversationId, member.id),
-    onMutate: (member) => {
-      if (member.id === memberId) markSelfInitiatedAssignment(conversationId)
-    },
     onSuccess: (_data, member) => {
       const isSelf = member.id === memberId
       updateChat(conversationId, {
@@ -131,21 +127,18 @@ export function useConversationLifecycle(conversationId: string) {
       })
       refreshAfterLifecycle(queryClient)
       toast.success(isSelf ? copy.assignedSelfToast : copy.assignedToast, {
-        id: isSelf ? assignmentToastId(conversationId) : undefined,
+        id: assignmentToastId(conversationId),
       })
     },
-    onError: (error, member) => {
-      if (member.id === memberId) clearSelfInitiatedAssignment(conversationId)
-      toast.error(conversationErrorMessage(error, copy.assignError))
-    },
+    onError: (error) =>
+      toast.error(conversationErrorMessage(error, copy.assignError)),
   })
 
   /** Claim a queued conversation for myself. */
   const take = useMutation({
     mutationFn: () => claimChat(conversationId),
-    // Own action: mark before the request so the `conversation:assigned` echo
-    // is silenced; the mutation itself shows the toast.
-    onMutate: () => markSelfInitiatedAssignment(conversationId),
+    // Own action: the server never notifies the actor, so this toast is the
+    // only one.
     onSuccess: () => {
       // Never persist an empty owner id: without a resolved member there is
       // nothing honest to store, the refetch fills it.
@@ -167,7 +160,6 @@ export function useConversationLifecycle(conversationId: string) {
       })
     },
     onError: (error) => {
-      clearSelfInitiatedAssignment(conversationId)
       toast.error(getApiErrorMessage(error, copy.takeError))
       void queryClient.invalidateQueries({ queryKey: chatKeys.lists })
     },

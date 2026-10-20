@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders } from 'axios'
 import { describe, expect, it } from 'vitest'
-import { getApiErrorMessage } from './api-error'
+import { getApiErrorMessage, NETWORK_ERROR } from './api-error'
 
 const axiosErrorWith = (data: unknown): AxiosError => {
   const error = new AxiosError('Request failed with status code 409')
@@ -35,5 +35,18 @@ describe('getApiErrorMessage', () => {
 
   it('returns the provided fallback for unknown errors', () => {
     expect(getApiErrorMessage(null, 'fallback')).toBe('fallback')
+  })
+
+  it('never surfaces a raw axios message: network failure gets Spanish copy', () => {
+    expect(getApiErrorMessage(new AxiosError('Network Error'))).toBe(
+      NETWORK_ERROR
+    )
+  })
+
+  it('uses the fallback for a server error with no readable body', () => {
+    const error = axiosErrorWith(undefined)
+    expect(getApiErrorMessage(error, 'No se pudo guardar')).toBe(
+      'No se pudo guardar'
+    )
   })
 })

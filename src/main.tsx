@@ -2,15 +2,16 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { AxiosError } from 'axios'
 import {
+  MutationCache,
   QueryCache,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { handleServerError } from '@/lib/handle-server-error'
+import { handleMutationError } from '@/lib/handle-server-error'
 import { onSessionRefreshed } from '@/lib/http'
+import { notify } from '@/lib/notify'
 import { I18nProvider } from '@/lib/i18n/I18nProvider'
 import { SocketProvider } from '@/context/socket-provider'
 import { DirectionProvider } from './context/direction-provider'
@@ -40,29 +41,28 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: import.meta.env.PROD,
       staleTime: 10 * 1000, // 10s
     },
-    mutations: {
-      onError: (error) => {
-        handleServerError(error)
-
-        if (error instanceof AxiosError) {
-          if (error.response?.status === 304) {
-            toast.error('Content not modified!')
-          }
-        }
-      },
-    },
   },
+  // Fallback error toast for mutations nobody else handles (see
+  // `handleMutationError`): runs once per failure, never on top of a
+  // screen's own toast.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) =>
+      handleMutationError(error, mutation),
+  }),
   queryCache: new QueryCache({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
+          notify.warning('Tu sesión expiró', {
+            id: 'session-expired',
+            description: 'Vuelve a iniciar sesión para continuar.',
+          })
           useAuthStore.getState().auth.reset()
           const redirect = `${router.history.location.href}`
           router.navigate({ to: '/sign-in', search: { redirect } })
         }
         if (error.response?.status === 500) {
-          toast.error('Internal Server Error!')
+          notify.error('El servidor tuvo un problema', { id: 'server-error' })
           router.navigate({ to: '/500' })
         }
         if (error.response?.status === 403) {
