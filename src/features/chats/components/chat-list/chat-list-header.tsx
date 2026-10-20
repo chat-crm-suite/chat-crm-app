@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Unplug } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
 import { Button } from '@/components/ui/button'
 import { useChats } from '../../contexts/chats.context'
 import { LIST_VIEW_LABEL, LIST_VIEW_TITLE, copy } from '../../copy'
+import type { ChannelHealth } from '../../lib/channel-health'
 import type { ChatListView } from '../../types/chat.domain'
 import { PANE_HEADER } from '../conversation/case-header'
 import { Plus, SearchIcon, X } from '../icons'
@@ -33,6 +35,7 @@ export const ChatListHeader = ({
   viewState,
   views,
   counts,
+  channelDown,
 }: {
   searchState: {
     setSearch: (s: string) => void
@@ -45,6 +48,8 @@ export const ChatListHeader = ({
   /** Tabs this member may see (`all` only for admins and supervisors). */
   views: readonly ChatListView[]
   counts: Partial<Record<ChatListView, number | undefined>>
+  /** A listed conversation's channel is down (shown next to the offline dot). */
+  channelDown?: ChannelHealth | null
 }) => {
   const { setSearchClientDialog } = useChats()
   const { isConnected } = useSocket()
@@ -63,6 +68,17 @@ export const ChatListHeader = ({
         </h1>
 
         <div className='flex items-center gap-1'>
+          {channelDown && (
+            <span
+              role='status'
+              aria-label={copy.channelDownTitle(channelDown.name)}
+              title={`${copy.channelDownTitle(channelDown.name)}: ${channelDown.reason}`}
+              className='text-destructive bg-destructive/10 flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-medium'
+            >
+              <Unplug className='size-3' aria-hidden />
+              <span className='max-sm:sr-only'>{copy.channelOffline}</span>
+            </span>
+          )}
           {offline && (
             <span
               role='status'

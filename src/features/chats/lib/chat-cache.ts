@@ -25,6 +25,13 @@ export function patchChatLists(
   )
 }
 
+/** Applies a patch to every cached conversation (it decides what changes). */
+export function patchAllChats(queryClient: QueryClient, patch: ChatPatch) {
+  queryClient.setQueriesData<Chat[]>({ queryKey: chatKeys.lists }, (old) =>
+    old?.map((chat) => applyChatPatch(chat, patch))
+  )
+}
+
 /** Fresh copy of a conversation from whichever list holds it. */
 export function findCachedChat(
   queryClient: QueryClient,

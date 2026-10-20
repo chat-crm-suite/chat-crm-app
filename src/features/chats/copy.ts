@@ -46,6 +46,8 @@ export const CONVERSATION_ERROR_COPY: Record<ConversationErrorCode, string> = {
   template_unavailable:
     'La plantilla ya no está disponible (no aprobada, oculta o de otro canal).',
   template_params_missing: 'Completa todas las variables de la plantilla.',
+  channel_unavailable:
+    'El canal no está conectado: revisa la conexión antes de enviar.',
 }
 
 export const LIST_VIEW_LABEL = {
@@ -63,6 +65,20 @@ export const LIST_VIEW_TITLE = {
 } as const
 
 export const copy = {
+  channelDownTitle: (name: string) => `${name} sin conexión`,
+  channelPendingTitle: (name: string) => `${name} no está configurado`,
+  channelDownBody:
+    'No se puede enviar nada por este canal hasta restablecer la conexión. Los mensajes del cliente siguen llegando.',
+  channelDownAgentHint: 'Avisa a un administrador para que revise la conexión.',
+  channelDownFallbackReason: 'Meta rechazó la conexión del canal.',
+  channelPendingReason: 'Faltan las credenciales del canal.',
+  retryVerification: 'Reintentar verificación',
+  channelOffline: 'Sin conexión',
+  retryingVerification: 'Verificando…',
+  goToSettings: 'Ir a configuración',
+  channelBackToast: 'Conexión restablecida',
+  channelStillDownToast: 'La conexión sigue sin funcionar',
+  channelUnavailableSend: 'El canal no está conectado: el mensaje no se envió.',
   customerFallback: 'Cliente',
   unknownCustomer: 'Desconocido',
   newChat: 'Nuevo chat',

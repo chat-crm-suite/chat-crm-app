@@ -137,7 +137,13 @@ describe('CaseRail', () => {
   it('shows the real channel of the conversation, not a hardcoded one', () => {
     renderRail({
       chat: makeChat({
-        channel: { id: 'ch-2', type: 'whatsapp', name: 'WhatsApp Soporte' },
+        channel: {
+          id: 'ch-2',
+          type: 'whatsapp',
+          name: 'WhatsApp Soporte',
+          status: 'active',
+          statusReason: null,
+        },
       }),
     })
 

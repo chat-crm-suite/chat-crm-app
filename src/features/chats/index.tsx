@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  ChannelSocketEvent,
+  ChannelStatusChangedSchema,
   ConversationStatusChangedSchema,
   IaStatusSchema,
   AnalyticsSocketEvent,
@@ -27,7 +29,12 @@ import { Search } from './components/icons'
 import { OpenConversationFromSearch } from './components/open-conversation-from-search'
 import { useChats } from './contexts/chats.context'
 import { ChatsProvider } from './contexts/chats.provider'
-import { applyIncomingMessage, statusChangePatch } from './lib/chat-cache'
+import { channelStatusPatch } from './lib/channel-health'
+import {
+  applyIncomingMessage,
+  patchAllChats,
+  statusChangePatch,
+} from './lib/chat-cache'
 import { chatKeys } from './lib/query-keys'
 import { messageTypeOf, previewOf } from './messages/registry'
 import type { Chat, ChatMessage } from './types/chat.domain'
@@ -119,6 +126,17 @@ function ChatsRealtime() {
       refreshLists()
     }
 
+    // A channel went down or came back: every conversation on it (and the
+    // open one) locks or unlocks its composer at once.
+    const handleChannelStatus = (payload: unknown) => {
+      const parsed = ChannelStatusChangedSchema.safeParse(payload)
+      if (!parsed.success) return refreshLists()
+      const patch = channelStatusPatch(parsed.data)
+      patchAllChats(queryClient, patch)
+      if (openId.current) updateChat(openId.current, patch)
+      void queryClient.invalidateQueries({ queryKey: chatKeys.channels })
+    }
+
     // A conversation started from the CRM (maybe by someone else for me):
     // the refetch places it in the right tabs.
     const handleCreated = () => refreshLists()
@@ -134,6 +152,7 @@ function ChatsRealtime() {
     socket.on(Events.unassigned, handleUnassigned)
     socket.on(Events.statusChanged, handleStatusChanged)
     socket.on(Events.created, handleCreated)
+    socket.on(ChannelSocketEvent.StatusChanged, handleChannelStatus)
     socket.on(AnalyticsSocketEvent.IaStatusChanged, handleIaStatus)
 
     return () => {
@@ -142,6 +161,7 @@ function ChatsRealtime() {
       socket.off(Events.unassigned, handleUnassigned)
       socket.off(Events.statusChanged, handleStatusChanged)
       socket.off(Events.created, handleCreated)
+      socket.off(ChannelSocketEvent.StatusChanged, handleChannelStatus)
       socket.off(AnalyticsSocketEvent.IaStatusChanged, handleIaStatus)
     }
   }, [socket, queryClient, updateChat])

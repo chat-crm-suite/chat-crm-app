@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { channelCapabilities } from '@chat-crm/contracts'
 import { FileUp, MessagesSquare, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useSocket } from '@/context/socket-provider'
@@ -12,6 +13,7 @@ import { TaskDialog } from '@/features/tasks/components/task-dialog'
 import { TemplatePicker } from '@/features/templates/components/template-picker'
 import { useChats } from '../contexts/chats.context'
 import { copy } from '../copy'
+import { canRetryChannel, useChannelRetry } from '../hooks/use-channel-retry'
 import { useChatThread } from '../hooks/use-chat-thread'
 import { useComposerAttachments } from '../hooks/use-composer-attachments'
 import { useConversationLifecycle } from '../hooks/use-conversation-lifecycle'
@@ -19,6 +21,7 @@ import { useConversationSentiment } from '../hooks/use-conversation-sentiment'
 import { useFileDrop } from '../hooks/use-file-drop'
 import { useNow } from '../hooks/use-now'
 import { useVisualViewportHeight } from '../hooks/use-visual-viewport-height'
+import { channelHealthOf } from '../lib/channel-health'
 import { caseActionsFor } from '../lib/conversation-assignment'
 import { recentStickers } from '../lib/recent-stickers'
 import { conversationWindowState } from '../lib/service-window'
@@ -29,6 +32,7 @@ import { AssignmentHistoryDialog } from './conversation/assignment-history-dialo
 import { CaseHeader } from './conversation/case-header'
 import { CaseOptionsMenu } from './conversation/case-options-menu'
 import { CaseRail } from './conversation/case-rail'
+import { ChannelDownNotice } from './conversation/channel-down-notice'
 import { Composer } from './conversation/composer'
 import { ReplyWindowNotice } from './conversation/reply-window-notice'
 import { ResolveMenu, ResolveNoteDialog } from './conversation/resolve-menu'
@@ -110,9 +114,14 @@ function ConversationPane({ chat }: { chat: Chat }) {
   const windowHours = capabilities?.replyWindowMs
     ? Math.round(capabilities.replyWindowMs / 3_600_000)
     : 24
-  const openPicker = capabilities?.supportsTemplates
-    ? () => setTemplateOpen(true)
-    : undefined
+  // A broken channel sends nothing: text, files, stickers, voice, templates
+  // and retries all stay locked until it is back (`channel:status:changed`).
+  const channelDown = channelHealthOf(chat)
+  const channelRetry = useChannelRetry(chat.channel?.type ?? chat.channelType)
+  const openPicker =
+    capabilities?.supportsTemplates && !channelDown
+      ? () => setTemplateOpen(true)
+      : undefined
 
   const stickers = useMemo(
     () => recentStickers(thread.messages),
@@ -221,7 +230,13 @@ function ConversationPane({ chat }: { chat: Chat }) {
           customerName={customerName}
           currentMemberId={memberId ?? undefined}
           currentMemberName={memberName}
-          onRetry={thread.retry}
+          onRetry={(...args: Parameters<typeof thread.retry>) =>
+            channelDown
+              ? toast.error(copy.channelUnavailableSend, {
+                  description: channelDown.reason,
+                })
+              : thread.retry(...args)
+          }
           onResendSticker={(sticker) =>
             thread.send({
               type: 'sticker',
@@ -244,12 +259,25 @@ function ConversationPane({ chat }: { chat: Chat }) {
               : undefined
           }
           locked={
-            windowClosed && (
-              <ReplyWindowNotice
-                reason={windowClosed}
-                windowHours={windowHours}
-                onPickTemplate={openPicker}
+            channelDown ? (
+              <ChannelDownNotice
+                health={channelDown}
+                canConfigure={role === 'admin'}
+                onRetry={
+                  canRetryChannel(channelDown.type)
+                    ? () => channelRetry.mutate()
+                    : undefined
+                }
+                retrying={channelRetry.isPending}
               />
+            ) : (
+              windowClosed && (
+                <ReplyWindowNotice
+                  reason={windowClosed}
+                  windowHours={windowHours}
+                  onPickTemplate={openPicker}
+                />
+              )
             )
           }
           status={chat.status}

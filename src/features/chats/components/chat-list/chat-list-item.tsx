@@ -3,6 +3,7 @@ import { parsePhoneNumber } from 'react-phone-number-input'
 import { cn } from '@/lib/utils'
 import { useChats } from '../../contexts/chats.context'
 import { CHANNEL_LABEL, copy } from '../../copy'
+import { channelHealthOf } from '../../lib/channel-health'
 import {
   formatFullStamp,
   formatRelativeTime,
@@ -55,6 +56,7 @@ export const ChatListItem = ({
     : formatRelativeTime(at, now)
   const status = chat.status === 'open' ? null : STATUS_META[chat.status]
   const channelType = chat.channel?.type ?? chat.channelType
+  const channelDown = channelHealthOf(chat)
   const unread = selected ? 0 : chat.unread
   const showMeta =
     !!status || !!chat.transfer || showAssignee || (waiting && !chat.assignee)
@@ -87,8 +89,17 @@ export const ChatListItem = ({
         <span className='relative h-fit'>
           <ChatListAvatar customer={chat.customer} />
           <span
-            title={chat.channel?.name || CHANNEL_LABEL[channelType]}
-            className='bg-card text-muted-foreground ring-card absolute -end-1 -bottom-1 grid size-4 place-items-center rounded-full ring-2'
+            title={
+              channelDown
+                ? `${copy.channelDownTitle(channelDown.name)}: ${channelDown.reason}`
+                : chat.channel?.name || CHANNEL_LABEL[channelType]
+            }
+            className={cn(
+              'ring-card absolute -end-1 -bottom-1 grid size-4 place-items-center rounded-full ring-2',
+              channelDown
+                ? 'bg-destructive text-white'
+                : 'bg-card text-muted-foreground'
+            )}
           >
             <ChannelIcon type={channelType} className='size-2.5' />
             <span className='sr-only'>{CHANNEL_LABEL[channelType]}</span>

@@ -342,6 +342,9 @@ export function ClientChatDialog() {
   const dead = !!channel && templateRequired && !supportsTemplates
 
   const noChannel = channels.isSuccess && activeChannels.length === 0
+  // Why there is none: a configured channel that lost its connection.
+  const downChannel =
+    (channels.data ?? []).find((item) => item.status === 'error') ?? null
 
   const next = () => {
     if (blocked || dead || (isLast && !channel)) return
@@ -564,7 +567,14 @@ export function ClientChatDialog() {
 
         {(dead || noChannel) && (
           <p role='alert' className='text-destructive text-sm'>
-            {noChannel ? copy.noChannels : copy.noTemplates}
+            {noChannel
+              ? (downChannel
+                  ? `${chatCopy.channelDownTitle(downChannel.name)}: ${
+                      downChannel.statusReason ??
+                      chatCopy.channelDownFallbackReason
+                    } `
+                  : '') + copy.noChannels
+              : copy.noTemplates}
           </p>
         )}
 

@@ -7,6 +7,7 @@ import {
 } from '@/services/chat.service'
 import { useMemberRole } from '@/hooks/use-member-role'
 import { useNow } from '../../hooks/use-now'
+import { firstChannelDown } from '../../lib/channel-health'
 import { chatKeys } from '../../lib/query-keys'
 import type { Chat, ChatListView } from '../../types/chat.domain'
 import { ChatListHeader } from './chat-list-header'
@@ -77,6 +78,14 @@ export const ChatList = () => {
     all: canSupervise ? queries.all.data?.length : undefined,
   }
 
+  // Same signal as the offline dot: a broken channel shows in the header.
+  const channelDown = firstChannelDown([
+    queries.mine.data,
+    queries.queue.data,
+    queries.needs.data,
+    canSupervise ? queries.all.data : undefined,
+  ])
+
   const term = search.trim().toLowerCase()
   const filtered =
     term === ''
@@ -94,6 +103,7 @@ export const ChatList = () => {
         viewState={{ view: activeView, setView }}
         views={views}
         counts={counts}
+        channelDown={channelDown}
       />
 
       <div className='min-h-0 flex-1 overflow-y-auto p-2'>

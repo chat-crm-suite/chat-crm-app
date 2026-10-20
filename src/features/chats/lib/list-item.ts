@@ -1,6 +1,7 @@
 import {
   ChannelTypeSchema,
   ConversationListItemSchema,
+  ChannelStatusSchema,
   ConversationStatusSchema,
 } from '@chat-crm/contracts'
 import { CHANNEL_LABEL } from '../copy'
@@ -66,6 +67,8 @@ export function toChat(raw: unknown): Chat {
       id: asString(channel.id) ?? '',
       type: channelType,
       name: asString(channel.name) ?? CHANNEL_LABEL[channelType],
+      status: ChannelStatusSchema.catch('active').parse(channel.status),
+      statusReason: asString(channel.statusReason),
     },
     status: ConversationStatusSchema.catch('open').parse(record.status),
     priority: null,
