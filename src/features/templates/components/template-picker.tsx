@@ -89,6 +89,7 @@ export function TemplateComposer({
               components={selected.components}
               params={params}
               headerFile={header.preview}
+              cardFiles={header.cardPreviews}
             />
             <TemplateHeaderMediaField template={selected} header={header} />
             <TemplateFields
@@ -143,6 +144,7 @@ export function TemplatePicker({
           templateId: template.id,
           params: templateParams(template, params),
           headerMedia: header.headerMedia,
+          cards: header.cards,
           clientMessageId: nanoid(),
         })
       ),

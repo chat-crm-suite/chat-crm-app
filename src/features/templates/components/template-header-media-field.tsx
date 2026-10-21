@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
 import {
   channelCapabilities,
+  templateCardMedia,
+  type SendTemplateInput,
   type StagedUpload,
   type Template,
+  type TemplateHeaderMedia,
 } from '@chat-crm/contracts'
 import { CircleCheck, Paperclip, X } from 'lucide-react'
 import { uploadTemplateHeader } from '@/services/template.service'
@@ -23,141 +25,192 @@ type HeaderUpload =
 
 const IDLE: HeaderUpload = { status: 'idle' }
 
+/**
+ * One file a template send needs: its header (`key: 'header'`) or the
+ * header of a carousel card (`key: 'card:<n>'`, staged with `?card=<n>`).
+ */
+export interface HeaderFileSlot {
+  key: string
+  kind: TemplateHeaderMedia
+  card?: number
+  label: string
+}
+
 const normalized = (mime: string) => mime.split(';')[0].trim().toLowerCase()
 
-/** Upload rule of the header kind on the template's channel. */
-function headerRule(template: Template) {
-  if (!template.headerMedia) return null
-  return channelCapabilities(template.channelType)?.media[template.headerMedia] ?? null
+/** Upload rule of a file kind on the template's channel. */
+function kindRule(template: Template, kind: TemplateHeaderMedia) {
+  return channelCapabilities(template.channelType)?.media[kind] ?? null
+}
+
+/** Every file the template needs, header first, then cards in order. */
+function fileSlots(template: Template | null): HeaderFileSlot[] {
+  if (!template) return []
+  const slots: HeaderFileSlot[] = template.headerMedia
+    ? [{ key: 'header', kind: template.headerMedia, label: HEADER_MEDIA_LABEL[template.headerMedia] }]
+    : []
+  templateCardMedia(template.components).forEach((kind, card) => {
+    if (kind) slots.push({ key: `card:${card}`, kind, card, label: copy.cardFileLabel(kind, card) })
+  })
+  return slots
 }
 
 /**
- * The header file of the chosen template: validated against the channel's
- * rule, staged right away (`POST /templates/:id/header-upload`) so sending
- * only references its `uploadId`. Switching template starts clean.
+ * The header files of the chosen template (its header and/or each carousel
+ * card): validated against the channel's rule and staged right away
+ * (`POST /templates/:id/header-upload`), so sending only references their
+ * `uploadId`s. Files upload independently; switching template starts clean.
  */
 export function useTemplateHeaderMedia(template: Template | null) {
-  const [state, setState] = useState<{ id: string | null; value: HeaderUpload }>({
-    id: null,
-    value: IDLE,
-  })
-  const value = state.id === template?.id ? state.value : IDLE
-  const abortRef = useRef<AbortController | null>(null)
-  const { mutate: stage } = useMutation({
-    mutationFn: ({
-      templateId,
-      file,
-      signal,
-    }: {
-      templateId: string
-      file: File
-      signal: AbortSignal
-    }) =>
-      uploadTemplateHeader(templateId, file, {
-        signal,
-        onProgress: (progress) =>
-          setState((previous) =>
-            previous.value.status === 'uploading' && previous.value.file === file
-              ? { ...previous, value: { ...previous.value, progress } }
-              : previous
-          ),
-      }),
-  })
+  const [state, setState] = useState<{
+    id: string | null
+    files: Readonly<Record<string, HeaderUpload>>
+  }>({ id: null, files: {} })
+  const files = state.id === template?.id ? state.files : {}
+  const aborts = useRef(new Map<string, AbortController>())
 
-  // A replaced or dropped file frees its local preview.
-  const url = 'url' in value ? value.url : null
-  useEffect(() => () => {
-    if (url) URL.revokeObjectURL(url)
-  }, [url])
-  useEffect(() => () => abortRef.current?.abort(), [])
+  const fileOf = (key: string) => files[key] ?? IDLE
+
+  // Replaced or dropped files free their local previews.
+  const urls = Object.values(files)
+    .map((file) => ('url' in file ? file.url : null))
+    .filter((url): url is string => !!url)
+    .join('\n')
+  useEffect(
+    () => () => {
+      for (const url of urls.split('\n')) if (url) URL.revokeObjectURL(url)
+    },
+    [urls]
+  )
+  useEffect(() => {
+    const pending = aborts.current
+    return () => pending.forEach((controller) => controller.abort())
+  }, [])
 
   const choose = useCallback(
-    (file: File) => {
-      if (!template?.headerMedia) return
-      abortRef.current?.abort()
-      const set = (next: HeaderUpload) => setState({ id: template.id, value: next })
-
-      const rule = headerRule(template)
-      if (!rule?.mimeTypes.includes(normalized(file.type))) {
-        set({
-          status: 'error',
-          file: null,
-          url: null,
-          message: `«${file.name}» no es un formato admitido para este encabezado.`,
+    (slot: HeaderFileSlot, file: File) => {
+      if (!template) return
+      aborts.current.get(slot.key)?.abort()
+      /** Applies `next` only while this file is still the slot's file. */
+      const update = (next: (current: HeaderUpload) => HeaderUpload | null) =>
+        setState((previous) => {
+          if (previous.id !== template.id) return previous
+          const value = next(previous.files[slot.key] ?? IDLE)
+          return value ? { ...previous, files: { ...previous.files, [slot.key]: value } } : previous
         })
+      const reset = (value: HeaderUpload) =>
+        setState((previous) => ({
+          id: template.id,
+          files: { ...(previous.id === template.id ? previous.files : {}), [slot.key]: value },
+        }))
+      const isCurrent = (current: HeaderUpload) => 'file' in current && current.file === file
+
+      const rule = kindRule(template, slot.kind)
+      if (!rule?.mimeTypes.includes(normalized(file.type))) {
+        reset({ status: 'error', file: null, url: null, message: copy.headerBadFormat(file.name) })
         return
       }
       if (file.size > rule.maxBytes) {
-        set({
+        reset({
           status: 'error',
           file: null,
           url: null,
-          message: `«${file.name}» supera ${formatFileSize(rule.maxBytes)}.`,
+          message: copy.headerTooLarge(file.name, formatFileSize(rule.maxBytes) ?? ''),
         })
         return
       }
 
       const preview = URL.createObjectURL(file)
       const controller = new AbortController()
-      abortRef.current = controller
-      set({ status: 'uploading', file, url: preview, progress: null })
-      stage(
-        { templateId: template.id, file, signal: controller.signal },
-        {
-          onSuccess: (staged) =>
-            setState((previous) =>
-              'file' in previous.value && previous.value.file === file
-                ? { ...previous, value: { status: 'ready', file, url: preview, upload: staged } }
-                : previous
-            ),
-          onError: (error) => {
-            if (controller.signal.aborted) return
-            setState((previous) =>
-              'file' in previous.value && previous.value.file === file
-                ? {
-                    ...previous,
-                    value: {
-                      status: 'error',
-                      file,
-                      url: preview,
-                      message: uploadErrorMessage(error),
-                    },
-                  }
-                : previous
-            )
-          },
+      aborts.current.set(slot.key, controller)
+      reset({ status: 'uploading', file, url: preview, progress: null })
+
+      uploadTemplateHeader(template.id, file, {
+        card: slot.card,
+        signal: controller.signal,
+        onProgress: (progress) =>
+          update((current) =>
+            current.status === 'uploading' && current.file === file
+              ? { ...current, progress }
+              : null
+          ),
+      }).then(
+        (upload) =>
+          update((current) =>
+            isCurrent(current) ? { status: 'ready', file, url: preview, upload } : null
+          ),
+        (error: unknown) => {
+          if (controller.signal.aborted) return
+          update((current) =>
+            isCurrent(current)
+              ? { status: 'error', file, url: preview, message: uploadErrorMessage(error) }
+              : null
+          )
         }
       )
     },
-    [template, stage]
+    [template]
   )
 
-  const clear = useCallback(() => {
-    abortRef.current?.abort()
-    setState({ id: null, value: IDLE })
+  const clearSlot = useCallback((key: string) => {
+    aborts.current.get(key)?.abort()
+    setState((previous) => {
+      const { [key]: _dropped, ...rest } = previous.files
+      return { ...previous, files: rest }
+    })
   }, [])
 
-  const preview: HeaderFilePreview | null =
-    template?.headerMedia && 'file' in value && value.file && value.url
-      ? { mediaType: template.headerMedia, url: value.url, name: value.file.name }
+  const clear = useCallback(() => {
+    aborts.current.forEach((controller) => controller.abort())
+    aborts.current.clear()
+    setState({ id: null, files: {} })
+  }, [])
+
+  const slots = fileSlots(template)
+  const previewOf = (slot: HeaderFileSlot | undefined): HeaderFilePreview | null => {
+    const value = slot ? fileOf(slot.key) : IDLE
+    return slot && 'file' in value && value.file && value.url
+      ? { mediaType: slot.kind, url: value.url, name: value.file.name }
       : null
+  }
+  const uploadIdOf = (key: string) => {
+    const value = fileOf(key)
+    return value.status === 'ready' ? { uploadId: value.upload.uploadId } : undefined
+  }
+  const cardCount = templateCardMedia(template?.components ?? []).length
 
   return {
-    state: value,
-    choose,
+    slots: slots.map((slot) => ({
+      ...slot,
+      state: fileOf(slot.key),
+      choose: (file: File) => choose(slot, file),
+      clear: () => clearSlot(slot.key),
+    })),
     clear,
-    preview,
-    /** The template needs a file that is not staged yet. */
-    missing: !!template?.headerMedia && value.status !== 'ready',
+    /** The chosen header file (template header). */
+    preview: previewOf(slots.find((slot) => slot.key === 'header')),
+    /** The chosen file of each carousel card, by card. */
+    cardPreviews: Array.from({ length: cardCount }, (_, card) =>
+      previewOf(slots.find((slot) => slot.card === card))
+    ),
+    /** Some file the template needs is not staged yet. */
+    missing: slots.some((slot) => fileOf(slot.key).status !== 'ready'),
     /** `SendTemplateInput.headerMedia`, once staged. */
-    headerMedia:
-      value.status === 'ready' ? { uploadId: value.upload.uploadId } : undefined,
+    headerMedia: uploadIdOf('header'),
+    /** `SendTemplateInput.cards`: one entry per card, in order. */
+    cards: cardCount
+      ? (Array.from({ length: cardCount }, (_, card) => {
+          const headerMedia = uploadIdOf(`card:${card}`)
+          return headerMedia ? { headerMedia } : {}
+        }) satisfies NonNullable<SendTemplateInput['cards']>)
+      : undefined,
   }
 }
 
 export type TemplateHeaderMediaState = ReturnType<typeof useTemplateHeaderMedia>
+type SlotState = TemplateHeaderMediaState['slots'][number]
 
-/** File picker of a media header: kind, formats, size and upload status. */
+/** File pickers of a template: its media header and each carousel card. */
 export function TemplateHeaderMediaField({
   template,
   header,
@@ -165,13 +218,22 @@ export function TemplateHeaderMediaField({
   template: Template
   header: TemplateHeaderMediaState
 }) {
+  if (!header.slots.length) return null
+  return (
+    <div className='space-y-3'>
+      {header.slots.map((slot) => (
+        <FileSlotField key={slot.key} template={template} slot={slot} />
+      ))}
+    </div>
+  )
+}
+
+/** One file picker: kind, formats, size and upload status. */
+function FileSlotField({ template, slot }: { template: Template; slot: SlotState }) {
   const id = useId()
   const inputRef = useRef<HTMLInputElement>(null)
-  if (!template.headerMedia) return null
-
-  const rule = headerRule(template)
-  const label = HEADER_MEDIA_LABEL[template.headerMedia]
-  const { state } = header
+  const rule = kindRule(template, slot.kind)
+  const { state } = slot
   const formats = (rule?.mimeTypes ?? [])
     .map((mime) => mime.split('/')[1]?.toUpperCase())
     .filter(Boolean)
@@ -181,7 +243,7 @@ export function TemplateHeaderMediaField({
   return (
     <div className='space-y-1.5'>
       <Label htmlFor={id} className='text-xs font-medium'>
-        {label}
+        {slot.label}
       </Label>
       <input
         ref={inputRef}
@@ -191,7 +253,7 @@ export function TemplateHeaderMediaField({
         accept={rule?.mimeTypes.join(',')}
         onChange={(event) => {
           const file = event.target.files?.[0]
-          if (file) header.choose(file)
+          if (file) slot.choose(file)
           event.target.value = ''
         }}
       />
@@ -216,7 +278,7 @@ export function TemplateHeaderMediaField({
             size='icon'
             className='size-11 sm:size-9'
             aria-label={copy.headerRemove}
-            onClick={header.clear}
+            onClick={slot.clear}
           >
             <X className='size-4' />
           </Button>

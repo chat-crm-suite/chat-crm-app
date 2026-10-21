@@ -25,6 +25,7 @@ export function TemplateCard({
   body,
   footer,
   buttons,
+  carousel,
   variant = 'bubble',
   className,
 }: {
@@ -35,6 +36,8 @@ export function TemplateCard({
   body?: ReactNode
   footer?: ReactNode
   buttons: readonly TemplateButton[]
+  /** Carousel cards (`TemplateCarousel`), shown under the message. */
+  carousel?: ReactNode
   variant?: 'bubble' | 'inline'
   className?: string
 }) {
@@ -91,7 +94,16 @@ export function TemplateCard({
     </div>
   )
 
-  if (inline) return card
+  if (inline) {
+    return carousel ? (
+      <div className='flex min-w-0 flex-col gap-2'>
+        {card}
+        {carousel}
+      </div>
+    ) : (
+      card
+    )
+  }
 
   return (
     <div
@@ -103,6 +115,7 @@ export function TemplateCard({
       )}
     >
       {card}
+      {carousel && <div className='mt-2'>{carousel}</div>}
     </div>
   )
 }

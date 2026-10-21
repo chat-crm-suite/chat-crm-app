@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 
 import { API_URL } from '@/lib/http'
 import { messageWith, readyMedia, templateView } from '../../../testing/messages'
@@ -105,5 +105,45 @@ describe('TemplateBody (sent template in the thread)', () => {
 
     expect(screen.getByText('catalogo.pdf')).toBeInTheDocument()
     expect(screen.getByText('Archivo no disponible')).toBeInTheDocument()
+  })
+
+  it('renders carousel cards in order, each with its own file, text and button', () => {
+    const card = (body: string, id: string) => ({
+      header: {
+        kind: 'media' as const,
+        mediaType: 'image' as const,
+        media: readyMedia({ attachmentId: id, url: `/attachments/${id}` }),
+        filename: null,
+      },
+      body,
+      buttons: [{ type: 'url' as const, text: 'Ver receta', url: `https://example.com/${id}` }],
+    })
+    renderTemplate(
+      templateView({
+        body: 'Recetas frescas de verano.',
+        cards: [card('Cena en una bandeja', 'att-1'), card('Ensalada para Ana', 'att-2')],
+      })
+    )
+
+    expect(screen.getByText('Recetas frescas de verano.')).toBeInTheDocument()
+    const items = within(
+      screen.getByRole('list', { name: 'Tarjetas del carrusel' })
+    ).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(within(items[0]).getByText('Cena en una bandeja')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Ensalada para Ana')).toBeInTheDocument()
+    expect(within(items[1]).getByRole('img')).toHaveAttribute(
+      'src',
+      `${API_URL}/attachments/att-2`
+    )
+    expect(within(items[1]).getByRole('link', { name: 'Ver receta' })).toHaveAttribute(
+      'href',
+      'https://example.com/att-2'
+    )
+  })
+
+  it('shows no carousel row for a template without cards', () => {
+    renderTemplate(templateView())
+    expect(screen.queryByRole('list', { name: 'Tarjetas del carrusel' })).not.toBeInTheDocument()
   })
 })

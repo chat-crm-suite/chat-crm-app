@@ -53,6 +53,7 @@ describe('message kinds registry', () => {
       body: 'Hola Rosa, tu pedido sale hoy.',
       footer: null,
       buttons: [],
+      cards: [],
     }
     expect(previewOf(view)).toBe('Hola Rosa, tu pedido sale hoy.')
     expect(messageTypeOf(view)).toBe('template')

@@ -297,6 +297,7 @@ export function ClientChatDialog() {
                   templateId: template.id,
                   params: templateParams(template, params),
                   headerMedia: header.headerMedia,
+                  cards: header.cards,
                 },
               }
             : {}),

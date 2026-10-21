@@ -210,9 +210,43 @@ const RAW_TEMPLATES: RawTemplate[] = [
     status: 'approved',
     components: [
       { type: 'body', text: 'Mira nuestras novedades de temporada.' },
+      // Synced before cards were kept: unsendable until re-synced.
       { type: 'carousel' },
     ],
     variables: [],
+    visibleToAgents: true,
+  },
+  {
+    ...base,
+    id: 'tpl-recetas',
+    channelId: 'ch-wa-main',
+    channelType: 'whatsapp',
+    channelName: 'WhatsApp Ventas',
+    name: 'recetas_carrusel',
+    language: 'es',
+    category: 'marketing',
+    status: 'approved',
+    components: [
+      { type: 'body', text: 'Recetas frescas de verano.' },
+      {
+        type: 'carousel',
+        cards: [
+          {
+            headerFormat: 'image',
+            body: 'Cena en una sola bandeja',
+            buttons: [{ type: 'url', text: 'Ver receta', url: 'https://example.com/1' }],
+          },
+          {
+            headerFormat: 'image',
+            body: 'Ensalada para {{1}}',
+            buttons: [{ type: 'url', text: 'Ver receta', url: 'https://example.com/2' }],
+          },
+        ],
+      },
+    ],
+    variables: [
+      { key: '1.body.1', component: 'carousel', label: null, example: 'Rosa' },
+    ],
     visibleToAgents: true,
   },
 ]

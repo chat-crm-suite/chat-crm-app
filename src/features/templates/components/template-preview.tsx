@@ -1,10 +1,14 @@
 import {
+  renderTemplateCardText,
   renderTemplateText,
+  templateCards,
   type TemplateComponent,
   type TemplateHeaderMedia,
 } from '@chat-crm/contracts'
 import { FileText, ImageIcon, MapPin, Video } from 'lucide-react'
+import { copy } from '../copy'
 import { TemplateCard } from './template-card'
+import { TemplateCarousel } from './template-carousel'
 
 const MEDIA_ICON = {
   image: ImageIcon,
@@ -89,12 +93,15 @@ export function TemplatePreview({
   components,
   params,
   headerFile,
+  cardFiles = [],
   className,
 }: {
   components: TemplateComponent[]
   params: Readonly<Record<string, string>>
   /** Header file chosen for a media header. */
   headerFile?: HeaderFilePreview | null
+  /** Carousel: the file chosen for each card, by card. */
+  cardFiles?: ReadonlyArray<HeaderFilePreview | null>
   className?: string
 }) {
   const header = components.find((component) => component.type === 'header')
@@ -103,6 +110,7 @@ export function TemplatePreview({
   const buttons = components.find((component) => component.type === 'buttons')
   const mediaFormat =
     header?.format && header.format !== 'text' ? header.format : null
+  const cards = templateCards(components)
 
   return (
     <TemplateCard
@@ -124,6 +132,23 @@ export function TemplatePreview({
       }
       footer={footer?.text}
       buttons={buttons?.buttons ?? []}
+      carousel={
+        cards.length ? (
+          <TemplateCarousel
+            label={copy.carouselLabel}
+            cards={cards.map((card, index) => ({
+              media:
+                card.headerFormat && card.headerFormat !== 'text' ? (
+                  <HeaderMediaSlot format={card.headerFormat} file={cardFiles[index]} />
+                ) : undefined,
+              body: card.body ? (
+                <Rendered text={renderTemplateCardText(card.body, index, params)} />
+              ) : undefined,
+              buttons: card.buttons,
+            }))}
+          />
+        ) : undefined
+      }
     />
   )
 }

@@ -67,7 +67,13 @@ export const uploadTemplateHeader = async (
   {
     onProgress,
     signal,
-  }: { onProgress?: (progress: number) => void; signal?: AbortSignal } = {}
+    card,
+  }: {
+    onProgress?: (progress: number) => void
+    signal?: AbortSignal
+    /** A carousel card's header (`?card=`); none = the template header. */
+    card?: number
+  } = {}
 ): Promise<TemplateHeaderUploadResult> => {
   const form = new FormData()
   form.append('file', file, file.name)
@@ -76,6 +82,7 @@ export const uploadTemplateHeader = async (
     form,
     {
       signal,
+      ...(card === undefined ? {} : { params: { card } }),
       onUploadProgress: (event) => {
         if (event.total) onProgress?.(event.loaded / event.total)
       },

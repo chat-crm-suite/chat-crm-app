@@ -53,6 +53,7 @@ export function templateView(overrides: Partial<TemplateView> = {}): TemplateVie
     body: 'Hola Rosa, tu pedido PED-77 sale hoy.',
     footer: null,
     buttons: [],
+    cards: [],
     ...overrides,
   }
 }
