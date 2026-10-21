@@ -1,3 +1,4 @@
+import type { ChannelType } from '@chat-crm/contracts'
 import { format } from 'date-fns'
 import { Copy, Download, RefreshCcw, Sticker } from 'lucide-react'
 import { toast } from 'sonner'
@@ -31,14 +32,21 @@ function copyableText(message: ChatMessage): string | null {
   if (msg.type === 'text') return msg.text
   if ('caption' in msg) return msg.caption
   if (msg.type === 'unsupported') return msg.text
+  if (msg.type === 'template') return msg.body
   return null
 }
 
 /** The file of a media message, once the API serves it. */
 function downloadUrl(message: ChatMessage): string | undefined {
   const { msg } = message
-  if (!('media' in msg) || msg.media.status !== 'ready') return undefined
-  return resolveMediaUrl(msg.media.url)
+  const media =
+    'media' in msg
+      ? msg.media
+      : msg.type === 'template' && msg.header?.kind === 'media'
+        ? msg.header.media
+        : null
+  if (!media || media.status !== 'ready') return undefined
+  return resolveMediaUrl(media.url)
 }
 
 export function MessageRow({
@@ -46,6 +54,7 @@ export function MessageRow({
   sender,
   onRetry,
   onResendSticker,
+  channelType,
   className,
 }: {
   message: ChatMessage
@@ -53,6 +62,8 @@ export function MessageRow({
   onRetry: (message: ChatMessage) => void
   /** Re-sends a stored sticker by reference (no upload). */
   onResendSticker?: (sticker: { attachmentId: string; url: string }) => void
+  /** Channel of the conversation: picks channel-specific message views. */
+  channelType?: ChannelType | null
   className?: string
 }) {
   const at = new Date(message.timestamp)
@@ -104,6 +115,7 @@ export function MessageRow({
                 message={message}
                 isMine={isMine}
                 senderName={sender.name}
+                channelType={channelType}
               />
             </div>
           </ContextMenuTrigger>

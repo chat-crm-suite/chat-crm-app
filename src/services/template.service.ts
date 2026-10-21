@@ -1,9 +1,11 @@
 import {
   SyncTemplatesResultSchema,
   TemplateGroupSchema,
+  TemplateHeaderUploadResultSchema,
   TemplateSchema,
   type SyncTemplatesResult,
   type Template,
+  type TemplateHeaderUploadResult,
   type TemplateGroup,
   type TemplateListQuery,
   type UpdateTemplateSettingsInput,
@@ -52,6 +54,34 @@ export const syncTemplates = async (
 ): Promise<SyncTemplatesResult> => {
   const { data } = await templates.post('/sync', { channelId })
   return parseContract(SyncTemplatesResultSchema, data)
+}
+
+/**
+ * `POST /templates/:id/header-upload`: stages the header file of a template
+ * (its `headerMedia` kind, the channel's upload rules). The `uploadId` goes
+ * in `SendTemplateInput.headerMedia`, in a chat or when starting one.
+ */
+export const uploadTemplateHeader = async (
+  templateId: string,
+  file: File,
+  {
+    onProgress,
+    signal,
+  }: { onProgress?: (progress: number) => void; signal?: AbortSignal } = {}
+): Promise<TemplateHeaderUploadResult> => {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  const { data } = await templates.post<unknown>(
+    `/${templateId}/header-upload`,
+    form,
+    {
+      signal,
+      onUploadProgress: (event) => {
+        if (event.total) onProgress?.(event.loaded / event.total)
+      },
+    }
+  )
+  return parseContract(TemplateHeaderUploadResultSchema, data)
 }
 
 /** `PATCH /templates/:id/settings` (admin): CRM-side settings only. */

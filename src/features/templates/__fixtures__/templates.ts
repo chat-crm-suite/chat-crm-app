@@ -2,7 +2,11 @@ import {
   SyncTemplatesResultSchema,
   TemplateGroupSchema,
   TemplateSchema,
+  templateHeaderMedia,
+  templateSendSupport,
+  type ChannelType,
   type Template,
+  type TemplateComponent,
   type TemplateGroup,
 } from '@chat-crm/contracts'
 
@@ -23,7 +27,20 @@ const base = {
   updatedAt: at(0.1),
 }
 
-export const FIXTURE_TEMPLATES = TemplateSchema.array().parse([
+/** API-derived fields, computed with the same shared helpers as the API. */
+function withDerived<
+  T extends { components: TemplateComponent[]; channelType: ChannelType },
+>(template: T) {
+  return {
+    ...template,
+    headerMedia: templateHeaderMedia(template.components),
+    sendSupport: templateSendSupport(template.components, template.channelType),
+  }
+}
+
+type RawTemplate = Omit<Template, 'headerMedia' | 'sendSupport'>
+
+const RAW_TEMPLATES: RawTemplate[] = [
   {
     ...base,
     id: 'tpl-seguimiento-sales',
@@ -154,7 +171,55 @@ export const FIXTURE_TEMPLATES = TemplateSchema.array().parse([
     visibleToAgents: false,
     syncedAt: at(3),
   },
-])
+  {
+    ...base,
+    id: 'tpl-promo-imagen',
+    channelId: 'ch-wa-main',
+    channelType: 'whatsapp',
+    channelName: 'WhatsApp Ventas',
+    name: 'promo_con_imagen',
+    language: 'es',
+    category: 'marketing',
+    status: 'approved',
+    components: [
+      { type: 'header', format: 'image', text: null },
+      {
+        type: 'body',
+        text: 'Envío gratis en todos los pedidos de esta semana.',
+      },
+      { type: 'footer', text: 'Tienda Rosa' },
+      {
+        type: 'buttons',
+        buttons: [
+          { type: 'url', text: 'Ver ofertas', url: 'https://example.com' },
+        ],
+      },
+    ],
+    variables: [],
+    visibleToAgents: true,
+  },
+  {
+    ...base,
+    id: 'tpl-carrusel',
+    channelId: 'ch-wa-main',
+    channelType: 'whatsapp',
+    channelName: 'WhatsApp Ventas',
+    name: 'catalogo_carrusel',
+    language: 'es',
+    category: 'marketing',
+    status: 'approved',
+    components: [
+      { type: 'body', text: 'Mira nuestras novedades de temporada.' },
+      { type: 'carousel' },
+    ],
+    variables: [],
+    visibleToAgents: true,
+  },
+]
+
+export const FIXTURE_TEMPLATES = TemplateSchema.array().parse(
+  RAW_TEMPLATES.map(withDerived)
+)
 
 const pick = (template: Template) => ({
   id: template.id,

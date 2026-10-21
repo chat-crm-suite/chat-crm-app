@@ -298,6 +298,11 @@ export function useChatThread(
       if (!clientMessageId) return
 
       if (!outbox.current.has(clientMessageId)) {
+        // Templates go through REST, never the socket outbox.
+        if (message.msg.type === 'template') {
+          toast.info('Vuelve a enviar la plantilla desde «Enviar plantilla».')
+          return
+        }
         // Failed before a reload: only text can be rebuilt from the row.
         if (message.msg.type !== 'text') {
           toast.info('Vuelve a adjuntar el archivo para reenviarlo.')

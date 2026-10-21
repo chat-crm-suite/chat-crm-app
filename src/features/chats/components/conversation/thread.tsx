@@ -1,4 +1,5 @@
 import { useMemo, type ComponentProps } from 'react'
+import type { ChannelType } from '@chat-crm/contracts'
 import { format } from 'date-fns'
 import { ArrowDownIcon, MessageSquareDashed } from 'lucide-react'
 
@@ -116,6 +117,7 @@ export function ConversationThread({
   currentMemberName,
   onRetry,
   onResendSticker,
+  channelType,
   className,
 }: {
   messages: ChatMessage[]
@@ -125,6 +127,8 @@ export function ConversationThread({
   currentMemberName?: string
   onRetry: (message: ChatMessage) => void
   onResendSticker?: ComponentProps<typeof MessageRow>['onResendSticker']
+  /** Channel of the conversation: picks channel-specific message views. */
+  channelType?: ChannelType | null
   className?: string
 }) {
   const rows = useMemo(() => buildRows(messages), [messages])
@@ -192,6 +196,7 @@ export function ConversationThread({
                             })}
                             onRetry={onRetry}
                             onResendSticker={onResendSticker}
+                            channelType={channelType}
                           />
                         ))}
                       </div>

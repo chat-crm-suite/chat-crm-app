@@ -226,6 +226,7 @@ function ConversationPane({ chat }: { chat: Chat }) {
 
         <ConversationThread
           messages={thread.messages}
+          channelType={channelType}
           loading={thread.isLoading}
           customerName={customerName}
           currentMemberId={memberId ?? undefined}

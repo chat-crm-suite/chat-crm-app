@@ -9,11 +9,13 @@ import { TemplatePicker } from './template-picker'
 
 const mocks = vi.hoisted(() => ({
   listTemplates: vi.fn(),
+  uploadTemplateHeader: vi.fn(),
   sendConversationTemplate: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 vi.mock('@/services/template.service', () => ({
   listTemplates: mocks.listTemplates,
+  uploadTemplateHeader: mocks.uploadTemplateHeader,
 }))
 vi.mock('@/services/chat.service', () => ({
   sendConversationTemplate: mocks.sendConversationTemplate,
@@ -49,6 +51,9 @@ describe('TemplatePicker', () => {
   beforeEach(() => {
     mocks.listTemplates.mockReset().mockResolvedValue(approvedSales)
     mocks.sendConversationTemplate.mockReset()
+    mocks.uploadTemplateHeader.mockReset()
+    URL.createObjectURL = vi.fn(() => 'blob:header')
+    URL.revokeObjectURL = vi.fn()
     mocks.toast.success.mockReset()
     mocks.toast.error.mockReset()
   })
@@ -159,5 +164,109 @@ describe('TemplatePicker', () => {
     expect(
       screen.getByRole('button', { name: 'Enviar plantilla' })
     ).toBeDisabled()
+  })
+  it('requires the header file of a media template, then sends its uploadId', async () => {
+    mocks.uploadTemplateHeader.mockResolvedValue({
+      uploadId: '3f0c1d9e-4a6b-4c1e-9d2a-7b8c9d0e1f2a',
+      kind: 'image',
+      mimeType: 'image/jpeg',
+      sizeBytes: 2048,
+      filename: 'promo.jpg',
+      durationMs: null,
+      width: 800,
+      height: 600,
+      expiresAt: new Date(Date.now() + 60_000),
+    })
+    mocks.sendConversationTemplate.mockResolvedValue({
+      messageId: 'msg-2',
+      conversationId: 'conv-1',
+    })
+    const { user } = renderPicker()
+
+    await user.click(
+      await screen.findByRole('radio', { name: /promo_con_imagen/ })
+    )
+    expect(screen.getByText('Falta el archivo del encabezado')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Enviar plantilla' })
+    ).toBeDisabled()
+
+    const file = new File(['jpg'], 'promo.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText('Imagen del encabezado'), file)
+
+    expect(mocks.uploadTemplateHeader).toHaveBeenCalledWith(
+      'tpl-promo-imagen',
+      file,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
+    expect(await screen.findByText('Listo para enviar')).toBeInTheDocument()
+    // The preview shows the chosen picture before sending.
+    expect(screen.getByRole('img', { name: 'promo.jpg' })).toHaveAttribute(
+      'src',
+      'blob:header'
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Enviar plantilla' }))
+    expect(mocks.sendConversationTemplate).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({
+        templateId: 'tpl-promo-imagen',
+        headerMedia: { uploadId: '3f0c1d9e-4a6b-4c1e-9d2a-7b8c9d0e1f2a' },
+      })
+    )
+  })
+
+  it('refuses a header file over the channel limit before uploading', async () => {
+    const { user } = renderPicker()
+
+    await user.click(
+      await screen.findByRole('radio', { name: /promo_con_imagen/ })
+    )
+    const huge = new File(['x'], 'enorme.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(huge, 'size', { value: 6 * 1024 * 1024 })
+    await user.upload(screen.getByLabelText('Imagen del encabezado'), huge)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('«enorme.jpg» supera')
+    expect(mocks.uploadTemplateHeader).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'Enviar plantilla' })
+    ).toBeDisabled()
+  })
+
+  it('explains an upload refusal from the API in Spanish', async () => {
+    mocks.uploadTemplateHeader.mockRejectedValue(
+      new AxiosError('bad request', '400', undefined, undefined, {
+        status: 400,
+        statusText: 'Bad Request',
+        data: { code: 'content_mismatch', message: 'Content mismatch' },
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      })
+    )
+    const { user } = renderPicker()
+
+    await user.click(
+      await screen.findByRole('radio', { name: /promo_con_imagen/ })
+    )
+    await user.upload(
+      screen.getByLabelText('Imagen del encabezado'),
+      new File(['jpg'], 'raro.jpg', { type: 'image/jpeg' })
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'El contenido del archivo no corresponde a un formato compatible'
+    )
+  })
+
+  it('disables a carousel template and says why', async () => {
+    renderPicker()
+
+    const carousel = await screen.findByRole('radio', {
+      name: /catalogo_carrusel/,
+    })
+    expect(carousel).toBeDisabled()
+    expect(carousel).toHaveTextContent(
+      'Plantilla de carrusel: aún no se puede enviar desde el CRM'
+    )
   })
 })

@@ -12,6 +12,7 @@ describe('message kinds registry', () => {
       'audio',
       'document',
       'sticker',
+      'template',
       'unsupported',
     ]
     expect(Object.keys(MESSAGE_KINDS).sort()).toEqual([...kinds].sort())
@@ -20,6 +21,7 @@ describe('message kinds registry', () => {
   it('maps stored types to view kinds and back', () => {
     expect(viewTypeOf('image')).toBe('image')
     expect(viewTypeOf('location')).toBe('unsupported')
+    expect(viewTypeOf('template')).toBe('template')
     expect(messageTypeOf({ type: 'unsupported', originalType: 'contact', text: null })).toBe(
       'contact'
     )
@@ -29,6 +31,7 @@ describe('message kinds registry', () => {
     expect(labelOf('image').label).toBe('Foto')
     expect(labelOf('sticker').label).toBe('Sticker')
     expect(labelOf('location').label).toBe('Ubicación')
+    expect(labelOf('template').label).toBe('Plantilla')
   })
 
   it('previews text, captions, voice notes and names', () => {
@@ -38,5 +41,20 @@ describe('message kinds registry', () => {
     expect(
       previewOf({ type: 'document', media: readyMedia(), filename: 'a.pdf', caption: null })
     ).toBe('a.pdf')
+  })
+
+  it('previews a sent template by its filled body', () => {
+    const view = {
+      type: 'template' as const,
+      templateId: 'tpl-1',
+      name: 'seguimiento_pedido',
+      language: 'es',
+      header: null,
+      body: 'Hola Rosa, tu pedido sale hoy.',
+      footer: null,
+      buttons: [],
+    }
+    expect(previewOf(view)).toBe('Hola Rosa, tu pedido sale hoy.')
+    expect(messageTypeOf(view)).toBe('template')
   })
 })
