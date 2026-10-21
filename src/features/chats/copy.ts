@@ -46,6 +46,12 @@ export const CONVERSATION_ERROR_COPY: Record<ConversationErrorCode, string> = {
   template_unavailable:
     'La plantilla ya no está disponible (no aprobada, oculta o de otro canal).',
   template_params_missing: 'Completa todas las variables de la plantilla.',
+  template_unsendable:
+    'Esta plantilla aún no se puede enviar desde el CRM (carrusel, ubicación o archivo no admitido).',
+  template_header_media_missing: 'Adjunta el archivo del encabezado de la plantilla.',
+  template_header_media_mismatch:
+    'El archivo del encabezado no es del tipo que pide la plantilla, o caducó. Vuelve a adjuntarlo.',
+  template_header_media_not_needed: 'Esta plantilla no lleva archivo en el encabezado.',
   channel_unavailable:
     'El canal no está conectado: revisa la conexión antes de enviar.',
 }

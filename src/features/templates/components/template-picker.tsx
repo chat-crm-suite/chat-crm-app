@@ -24,6 +24,11 @@ import {
   templateParams,
   useTemplateParams,
 } from './template-fields'
+import {
+  TemplateHeaderMediaField,
+  useTemplateHeaderMedia,
+  type TemplateHeaderMediaState,
+} from './template-header-media-field'
 import { TemplateList } from './template-list'
 import { TemplatePreview } from './template-preview'
 
@@ -37,6 +42,7 @@ export function TemplateComposer({
   onSelect,
   params,
   onParamChange,
+  header,
   className,
 }: {
   channelId: string | null
@@ -44,6 +50,8 @@ export function TemplateComposer({
   onSelect: (template: Template | null) => void
   params: Readonly<Record<string, string>>
   onParamChange: (key: string, value: string) => void
+  /** Header file state (`useTemplateHeaderMedia`) for media headers. */
+  header: TemplateHeaderMediaState
   className?: string
 }) {
   const idPrefix = useId()
@@ -77,7 +85,13 @@ export function TemplateComposer({
               <ArrowLeft className='size-4' />
               {copy.pickerBack}
             </Button>
-            <TemplatePreview components={selected.components} params={params} />
+            <TemplatePreview
+              components={selected.components}
+              params={params}
+              headerFile={header.preview}
+              cardFiles={header.cardPreviews}
+            />
+            <TemplateHeaderMediaField template={selected} header={header} />
             <TemplateFields
               template={selected}
               params={params}
@@ -113,10 +127,12 @@ export function TemplatePicker({
 }) {
   const [selected, setSelected] = useState<Template | null>(null)
   const { params, setParam, missing, reset } = useTemplateParams(selected)
+  const header = useTemplateHeaderMedia(selected)
 
   const close = () => {
     setSelected(null)
     reset()
+    header.clear()
     onOpenChange(false)
   }
 
@@ -127,6 +143,8 @@ export function TemplatePicker({
         SendTemplateSchema.parse({
           templateId: template.id,
           params: templateParams(template, params),
+          headerMedia: header.headerMedia,
+          cards: header.cards,
           clientMessageId: nanoid(),
         })
       ),
@@ -136,8 +154,13 @@ export function TemplatePicker({
     },
     onError: (error) => {
       toast.error(conversationErrorMessage(error, copy.pickerError))
+      const { code } = getApiError(error)
       // A template that vanished meanwhile cannot be retried as is.
-      if (getApiError(error).code === 'template_unavailable') setSelected(null)
+      if (code === 'template_unavailable' || code === 'template_unsendable') {
+        setSelected(null)
+      }
+      // An expired or wrong header file must be chosen again.
+      if (code === 'template_header_media_mismatch') header.clear()
     },
   })
 
@@ -157,17 +180,25 @@ export function TemplatePicker({
           onSelect={setSelected}
           params={params}
           onParamChange={setParam}
+          header={header}
         />
         <DialogFooter className='items-center gap-3 sm:justify-between'>
           <p className='text-muted-foreground text-xs' aria-live='polite'>
             {selected && missing.length > 0
               ? copy.pickerMissing(missing.length)
-              : ''}
+              : selected && header.missing
+                ? copy.pickerMissingHeader
+                : ''}
           </p>
           <Button
             type='button'
             className='h-11 sm:h-9'
-            disabled={!selected || missing.length > 0 || send.isPending}
+            disabled={
+              !selected ||
+              missing.length > 0 ||
+              header.missing ||
+              send.isPending
+            }
             onClick={() => selected && send.mutate(selected)}
           >
             {send.isPending ? copy.pickerSending : copy.pickerSend}

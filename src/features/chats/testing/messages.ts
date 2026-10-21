@@ -39,3 +39,21 @@ export function messageWith(
 ): ChatMessage {
   return makeMessage({ msg: view, ...overrides })
 }
+
+type TemplateView = Extract<MessageView, { type: 'template' }>
+
+/** A sent template snapshot: text-only body unless overridden. */
+export function templateView(overrides: Partial<TemplateView> = {}): TemplateView {
+  return {
+    type: 'template',
+    templateId: 'tpl-1',
+    name: 'seguimiento_pedido',
+    language: 'es',
+    header: null,
+    body: 'Hola Rosa, tu pedido PED-77 sale hoy.',
+    footer: null,
+    buttons: [],
+    cards: [],
+    ...overrides,
+  }
+}

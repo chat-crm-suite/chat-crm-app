@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { TEMPLATE_CATEGORY_LABEL, copy } from '../copy'
+import { TEMPLATE_CATEGORY_LABEL, TEMPLATE_UNSENDABLE_LABEL, copy } from '../copy'
 
 /**
  * Selectable list of templates (radio semantics) with a local name filter.
@@ -79,19 +79,24 @@ export function TemplateList({
           )}
           {visible.map((template) => {
             const selected = template.id === selectedId
+            const unsendable = template.sendSupport.reason
+              ? TEMPLATE_UNSENDABLE_LABEL[template.sendSupport.reason]
+              : null
             return (
               <button
                 key={template.id}
                 type='button'
                 role='radio'
                 aria-checked={selected}
+                disabled={!!unsendable}
                 onClick={() => onSelect(template)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-start text-sm',
                   'focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px] max-sm:min-h-11',
+                  'disabled:cursor-not-allowed disabled:opacity-60',
                   selected
                     ? 'border-primary bg-primary/10'
-                    : 'hover:bg-accent border-transparent'
+                    : 'hover:bg-accent border-transparent disabled:hover:bg-transparent'
                 )}
               >
                 <span className='min-w-0 flex-1'>
@@ -102,6 +107,11 @@ export function TemplateList({
                     {TEMPLATE_CATEGORY_LABEL[template.category]} ·{' '}
                     {template.language}
                   </span>
+                  {unsendable && (
+                    <span className='text-muted-foreground block text-xs'>
+                      {unsendable}
+                    </span>
+                  )}
                 </span>
                 {template.variables.length > 0 && (
                   <Badge variant='outline' className='h-5 text-[10px]'>

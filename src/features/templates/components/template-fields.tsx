@@ -72,10 +72,19 @@ export function useTemplateParams(template: Template | null) {
 
 /** Human label of a variable: the admin's label, else `Variable {{1}}`. */
 export function variableLabel(variable: TemplateVariable) {
+  if (variable.component === 'carousel') return cardVariableLabel(variable)
   const base = variable.label ?? copy.variable(variable.key)
   return variable.component === 'body'
     ? base
     : `${base} · ${COMPONENT_LABEL[variable.component]}`
+}
+
+/** `0.body.1` -> "Variable {{1}} · Tarjeta 1", `1.button.0` -> "Enlace · Tarjeta 2". */
+function cardVariableLabel(variable: TemplateVariable) {
+  const [card, part, key] = variable.key.split('.')
+  const where = copy.cardLabel(Number(card))
+  if (variable.label) return `${variable.label} · ${where}`
+  return part === 'button' ? `${copy.cardButtonVariable} · ${where}` : `${copy.variable(key ?? '')} · ${where}`
 }
 
 /** One input per variable, in template order; the example is the hint. */

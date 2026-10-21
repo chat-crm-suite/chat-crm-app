@@ -49,6 +49,7 @@ import {
   templateParams,
   useTemplateParams,
 } from '@/features/templates/components/template-fields'
+import { useTemplateHeaderMedia } from '@/features/templates/components/template-header-media-field'
 import { TemplateComposer } from '@/features/templates/components/template-picker'
 import { api } from '../api'
 import { useChats } from '../contexts/chats.context'
@@ -194,6 +195,7 @@ export function ClientChatDialog() {
     missing,
     reset: resetParams,
   } = useTemplateParams(template)
+  const header = useTemplateHeaderMedia(template)
   const [assignee, setAssignee] = useState<string>('')
   const [withTask, setWithTask] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
@@ -272,6 +274,7 @@ export function ClientChatDialog() {
     setChannelId(null)
     setTemplate(null)
     resetParams()
+    header.clear()
     setAssignee('')
     setWithTask(false)
     setTaskTitle('')
@@ -293,6 +296,8 @@ export function ClientChatDialog() {
                 template: {
                   templateId: template.id,
                   params: templateParams(template, params),
+                  headerMedia: header.headerMedia,
+                  cards: header.cards,
                 },
               }
             : {}),
@@ -332,8 +337,8 @@ export function ClientChatDialog() {
         return !channel || (templateRequired && !supportsTemplates)
       case 'template':
         return templateRequired
-          ? !template || missing.length > 0
-          : !!template && missing.length > 0
+          ? !template || missing.length > 0 || header.missing
+          : !!template && (missing.length > 0 || header.missing)
       case 'assign':
         return withTask && !taskTitle.trim()
     }
@@ -481,6 +486,7 @@ export function ClientChatDialog() {
               onSelect={setTemplate}
               params={params}
               onParamChange={setParam}
+              header={header}
             />
             {!templateRequired && template && (
               <Button

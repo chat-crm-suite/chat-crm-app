@@ -1,7 +1,6 @@
 import type { MessageType } from '@chat-crm/contracts'
 import {
   Contact,
-  LayoutTemplate,
   MapPin,
   MessageSquareMore,
   MousePointerClick,
@@ -16,7 +15,6 @@ export const UNSUPPORTED_KINDS: Partial<
   location: { label: 'Ubicación', icon: MapPin },
   contact: { label: 'Contacto', icon: Contact },
   reaction: { label: 'Reacción', icon: SmilePlus },
-  template: { label: 'Plantilla', icon: LayoutTemplate },
   interactive: { label: 'Mensaje interactivo', icon: MousePointerClick },
 }
 

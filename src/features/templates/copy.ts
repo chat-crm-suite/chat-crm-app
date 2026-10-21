@@ -1,4 +1,9 @@
-import type { TemplateCategory, TemplateStatus } from '@chat-crm/contracts'
+import type {
+  TemplateCategory,
+  TemplateHeaderMedia,
+  TemplateStatus,
+  TemplateUnsendableReason,
+} from '@chat-crm/contracts'
 
 /** User-facing Spanish copy of Plantillas (code stays in English). */
 
@@ -38,7 +43,32 @@ export const COMPONENT_LABEL = {
   body: 'Cuerpo',
   footer: 'Pie',
   buttons: 'Botones',
+  carousel: 'Carrusel',
 } as const
+
+/** Why the CRM cannot send a template yet (`sendSupport.reason`). */
+export const TEMPLATE_UNSENDABLE_LABEL: Record<TemplateUnsendableReason, string> = {
+  carousel:
+    'Carrusel sin tarjetas o no admitido por este canal: sincroniza las plantillas',
+  location_header:
+    'Encabezado de ubicación: aún no se puede enviar desde el CRM',
+  header_media_unsupported:
+    'Este canal no admite el archivo que pide el encabezado',
+}
+
+/** The header file a template asks for, by kind. */
+export const HEADER_MEDIA_LABEL: Record<TemplateHeaderMedia, string> = {
+  image: 'Imagen del encabezado',
+  video: 'Video del encabezado',
+  document: 'Documento del encabezado',
+}
+
+/** A carousel card's file, by kind (`Imagen de la tarjeta 1`). */
+const CARD_MEDIA_NOUN: Record<TemplateHeaderMedia, string> = {
+  image: 'Imagen',
+  video: 'Video',
+  document: 'Documento',
+}
 
 export const copy = {
   title: 'Plantillas',
@@ -115,6 +145,21 @@ export const copy = {
   pickerMissing: (count: number) =>
     count === 1 ? 'Falta 1 variable' : `Faltan ${count} variables`,
   pickerBack: 'Plantillas',
+  pickerMissingHeader: 'Faltan archivos por adjuntar',
+  carouselLabel: 'Tarjetas del carrusel',
+  cardLabel: (card: number) => `Tarjeta ${card + 1}`,
+  cardButtonVariable: 'Final del enlace',
+  cardFileLabel: (kind: TemplateHeaderMedia, card: number) =>
+    `${CARD_MEDIA_NOUN[kind]} de la tarjeta ${card + 1}`,
+  headerBadFormat: (name: string) => `«${name}» no es un formato admitido para este archivo.`,
+  headerTooLarge: (name: string, size: string) => `«${name}» supera ${size}.`,
+  headerChoose: 'Elegir archivo',
+  headerReplace: 'Cambiar',
+  headerRemove: 'Quitar archivo',
+  headerUploading: 'Subiendo…',
+  headerReady: 'Listo para enviar',
+  headerHint: (formats: string, size: string) => `${formats} · hasta ${size}`,
+  headerUploadError: 'No se pudo subir el archivo.',
   variable: (key: string) => `Variable {{${key}}}`,
   noTemplate: 'Sin plantilla',
 } as const
