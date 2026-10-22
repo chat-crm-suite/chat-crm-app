@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useId, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  NOTIFICATION_AUDIENCE,
   NOTIFICATION_TYPES,
   type NotificationPreferences,
   type NotificationType,
 } from '@chat-crm/contracts'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import {
   desktopPermission,
   readLocalNotificationPrefs,
@@ -15,54 +16,65 @@ import {
 import { FormSection } from '@/components/form-kit'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
+import { useMemberRole } from '@/hooks/use-member-role'
 import {
-  getNotificationPreferences,
-  saveNotificationPreferences,
-} from '@/services/notification-preferences.service'
+  notificationPrefsKey,
+  useNotificationPreferences,
+} from '@/features/notifications/use-notification-preferences'
+import { useActiveCompanyId } from '@/features/notifications/use-notifications'
+import { saveNotificationPreferences } from '@/services/notification-preferences.service'
 import { SwitchList, SwitchRow } from '../components/switch-row'
 import { NOTIFICATION_COPY, NOTIFICATION_TYPE_COPY } from '../copy'
 
-export const NOTIFICATION_PREFS_KEY = ['notifications', 'preferences'] as const
-
 /**
- * Per-type switches are stored on the server (muted types are never created
- * for the member) and apply instantly: the switch flips first and goes back if
- * the save fails. Sound and desktop alerts are per browser.
+ * Per-type choices are stored on the server for the active company (muted
+ * types are never created for the member; `desktop` types may also raise an
+ * OS notification) and apply instantly: the switch flips first and goes back
+ * if the save fails. Only the types the member's role can receive are listed.
+ * Sound and the OS permission are per browser.
  */
 export function NotificationsForm() {
   const queryClient = useQueryClient()
-  const prefs = useQuery({
-    queryKey: NOTIFICATION_PREFS_KEY,
-    queryFn: getNotificationPreferences,
-  })
+  const companyId = useActiveCompanyId()
+  const prefsKey = notificationPrefsKey(companyId)
+  const prefs = useNotificationPreferences()
+  const { role } = useMemberRole()
+  const types = NOTIFICATION_TYPES.filter((type) =>
+    role ? NOTIFICATION_AUDIENCE[type].includes(role) : true
+  )
 
   const save = useMutation({
     mutationFn: (next: NotificationPreferences) =>
       saveNotificationPreferences(next),
     onMutate: async (next: NotificationPreferences) => {
-      await queryClient.cancelQueries({ queryKey: NOTIFICATION_PREFS_KEY })
-      const previous = queryClient.getQueryData<NotificationPreferences>(
-        NOTIFICATION_PREFS_KEY
-      )
-      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, next)
+      await queryClient.cancelQueries({ queryKey: prefsKey })
+      const previous = queryClient.getQueryData<NotificationPreferences>(prefsKey)
+      queryClient.setQueryData(prefsKey, next)
       return { previous }
     },
     onError: (_error, _next, context) => {
-      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, context?.previous)
-      toast.error(NOTIFICATION_COPY.saveFailed)
+      queryClient.setQueryData(prefsKey, context?.previous)
+      notify.error(NOTIFICATION_COPY.saveFailed, { id: 'notification-prefs:save' })
     },
     onSuccess: (saved) => {
-      queryClient.setQueryData(NOTIFICATION_PREFS_KEY, saved)
+      queryClient.setQueryData(prefsKey, saved)
     },
   })
 
-  const setEnabled = (type: NotificationType, enabled: boolean) => {
-    const muted = new Set(prefs.data?.muted ?? [])
-    if (enabled) muted.delete(type)
-    else muted.add(type)
-    // Keep the contract order so the payload does not depend on click order.
-    save.mutate({ muted: NOTIFICATION_TYPES.filter((t) => muted.has(t)) })
+  // Keep the contract order so the payload does not depend on click order.
+  const toggled = (list: NotificationType[], type: NotificationType, on: boolean) => {
+    const set = new Set(list)
+    if (on) set.add(type)
+    else set.delete(type)
+    return NOTIFICATION_TYPES.filter((t) => set.has(t))
   }
+
+  const current = prefs.data ?? { muted: [], desktop: [] }
+  const setInApp = (type: NotificationType, enabled: boolean) =>
+    save.mutate({ ...current, muted: toggled(current.muted, type, !enabled) })
+  const setDesktop = (type: NotificationType, enabled: boolean) =>
+    save.mutate({ ...current, desktop: toggled(current.desktop, type, enabled) })
 
   return (
     <div className='space-y-10'>
@@ -85,21 +97,78 @@ export function NotificationsForm() {
           </p>
         ) : (
           <SwitchList>
-            {NOTIFICATION_TYPES.map((type) => (
-              <SwitchRow
-                key={type}
-                label={NOTIFICATION_TYPE_COPY[type].label}
-                description={NOTIFICATION_TYPE_COPY[type].description}
-                checked={!prefs.data.muted.includes(type)}
-                onCheckedChange={(enabled) => setEnabled(type, enabled)}
-              />
-            ))}
+            {types.map((type) => {
+              const inApp = !prefs.data.muted.includes(type)
+              return (
+                <NotificationTypeRow
+                  key={type}
+                  label={NOTIFICATION_TYPE_COPY[type].label}
+                  description={NOTIFICATION_TYPE_COPY[type].description}
+                  inApp={inApp}
+                  desktop={inApp && prefs.data.desktop.includes(type)}
+                  onInAppChange={(enabled) => setInApp(type, enabled)}
+                  onDesktopChange={(enabled) => setDesktop(type, enabled)}
+                />
+              )
+            })}
           </SwitchList>
         )}
       </FormSection>
 
       <DeviceNotifications />
     </div>
+  )
+}
+
+/** One type: in-app switch (named after the type) + OS-notification switch. */
+function NotificationTypeRow({
+  label,
+  description,
+  inApp,
+  desktop,
+  onInAppChange,
+  onDesktopChange,
+}: {
+  label: string
+  description: string
+  inApp: boolean
+  desktop: boolean
+  onInAppChange: (enabled: boolean) => void
+  onDesktopChange: (enabled: boolean) => void
+}) {
+  const id = useId()
+
+  return (
+    <li className='flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6'>
+      <div className='min-w-0 space-y-0.5'>
+        <p id={`${id}-label`} className='text-sm font-medium'>
+          {label}
+        </p>
+        <p id={`${id}-hint`} className='text-muted-foreground text-[13px] text-pretty'>
+          {description}
+        </p>
+      </div>
+      <div className='flex shrink-0 items-center gap-5'>
+        <label className='text-muted-foreground flex items-center gap-2 text-xs' title={NOTIFICATION_COPY.inAppHint}>
+          <Switch
+            checked={inApp}
+            onCheckedChange={onInAppChange}
+            aria-labelledby={`${id}-label`}
+            aria-describedby={`${id}-hint`}
+          />
+          {NOTIFICATION_COPY.inApp}
+        </label>
+        <label className='text-muted-foreground flex items-center gap-2 text-xs' title={NOTIFICATION_COPY.desktopTypeHint}>
+          <Switch
+            checked={desktop}
+            disabled={!inApp}
+            onCheckedChange={onDesktopChange}
+            aria-label={`${label}: ${NOTIFICATION_COPY.desktopType}`}
+          />
+          {NOTIFICATION_COPY.desktopType}
+        </label>
+      </div>
+    </li>
   )
 }
 
@@ -125,7 +194,7 @@ function DeviceNotifications() {
     }
     if (current === 'granted') return update({ desktop: true })
 
-    toast.error(NOTIFICATION_COPY.desktopBlocked)
+    notify.error(NOTIFICATION_COPY.desktopBlocked, { id: 'notification-prefs:desktop' })
   }
 
   const unsupported = permission === 'unsupported'

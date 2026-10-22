@@ -1,6 +1,10 @@
 import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import type { MessageView, MessageViewType } from '@chat-crm/contracts'
+import type {
+  ChannelType,
+  MessageView,
+  MessageViewType,
+} from '@chat-crm/contracts'
 import type { ChatMessage } from '../types/chat.domain'
 
 /** The view of one message kind, e.g. `ViewOf<'image'>`. */
@@ -12,6 +16,8 @@ export interface MessageBodyProps<K extends MessageViewType> {
   /** Sent by the signed-in member (drives the tick). */
   isMine: boolean
   senderName: string
+  /** Channel of the conversation; `channels/` may swap the view for it. */
+  channelType?: ChannelType | null
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   FileText,
   Film,
   Image as ImageIcon,
+  LayoutTemplate,
   MessageSquareText,
   Mic,
   Sticker,
@@ -16,6 +17,7 @@ import { AudioBody } from './bodies/audio-body'
 import { DocumentBody } from './bodies/document-body'
 import { ImageBody } from './bodies/image-body'
 import { StickerBody } from './bodies/sticker-body'
+import { TemplateBody } from './bodies/template/template-body'
 import { TextBody } from './bodies/text-body'
 import { UnsupportedBody } from './bodies/unsupported-body'
 import { unsupportedKind } from './unsupported-kinds'
@@ -64,6 +66,12 @@ export const MESSAGE_KINDS = {
     preview: () => null,
     Body: StickerBody,
   },
+  template: {
+    label: 'Plantilla',
+    icon: LayoutTemplate,
+    preview: (view) => view.body || null,
+    Body: TemplateBody,
+  },
   unsupported: {
     label: 'Mensaje',
     icon: MessageSquareText,
@@ -90,6 +98,7 @@ const RENDERED_TYPES = new Set<MessageType>([
   'audio',
   'document',
   'sticker',
+  'template',
 ] satisfies RenderedType[])
 
 /** The view kind a stored message type renders as. */

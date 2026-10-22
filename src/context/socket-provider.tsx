@@ -1,21 +1,20 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { sendTemplate } from '@/services/whatsapp.service'
 import { ConversationSocketEvent, SOCKET_NAMESPACES } from '@chat-crm/contracts'
 import { CloudAlert } from 'lucide-react'
 import { io, type Socket } from 'socket.io-client'
-import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { SOCKET_URL } from '@/lib/endpoints'
 import { refreshSession } from '@/lib/http'
-import {
-  readLocalNotificationPrefs,
-  shouldShowDesktopNotification,
-} from '@/lib/local-notification-prefs'
-import {
-  notificationToastPayload,
-  prependNotification,
-  resolveErrorToast,
-} from '@/lib/socket-taxonomy'
+import { notify } from '@/lib/notify'
+import { resolveErrorToast } from '@/lib/socket-taxonomy'
+import { requestTemplatePicker } from '@/features/chats/lib/template-picker-request'
+
+const RECONNECTING_TOAST_ID = 'socket:reconnecting'
+const RECONNECTING_AFTER_ATTEMPTS = 3
+const RECONNECTING_COPY = {
+  title: 'Reconectando…',
+  description: 'Se perdió la conexión en tiempo real. Lo reintentamos solos.',
+} as const
 
 interface SocketContextType {
   socket: Socket | null
@@ -45,19 +44,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   // Keyed by the user only: one socket spans every company of the session,
   // so switching the active company never reconnects it.
   const userId = useAuthStore((state) => state.auth.user?.id)
-  const [_unreadCount, setUnreadCount] = useState(0)
-  const queryClient = useQueryClient()
   const socketRef = useRef<Socket | null>(null)
-  const originalTitleRef = useRef(document.title)
-
-  // Browser notification permission is requested from an effect, never during
-  // render (requesting it while rendering side-effects React's render phase).
-  useEffect(() => {
-    if (typeof Notification === 'undefined') return
-    if (Notification.permission === 'default') {
-      void Notification.requestPermission()
-    }
-  }, [])
 
   useEffect(() => {
     if (!userId) {
@@ -68,25 +55,38 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       return
     }
 
-    // VITE_SOCKET_URL is the server base URL (no namespace); the namespace
-    // comes from the shared contracts (single source of truth with the API).
-    const socketBaseUrl = (
-      import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
-    ).replace(/\/+$/, '')
+    // SOCKET_URL is the server base (no namespace, see lib/endpoints); the
+    // namespace comes from the shared contracts (single source with the API).
     // Identity is the `access_token` cookie only; the server joins the socket
     // to the rooms of every company in the session.
-    const newSocket = io(`${socketBaseUrl}/${SOCKET_NAMESPACES.conversation}`, {
+    const newSocket = io(`${SOCKET_URL}/${SOCKET_NAMESPACES.conversation}`, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
+      // Never give up: a laptop waking up or a server restart must recover
+      // on its own. Backoff grows to 30 s; the notifications replay on
+      // `connect` (see `useNotificationRealtime`) fills the gap.
       reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionDelayMax: 30_000,
+      randomizationFactor: 0.5,
     })
 
     // Event listeners
     newSocket.on('connect', () => {
       setIsConnected(true)
+      notify.dismiss(RECONNECTING_TOAST_ID)
+    })
+
+    // Only after a few failed attempts: a blip should not flash a toast.
+    newSocket.io.on('reconnect_attempt', (attempt) => {
+      if (attempt === RECONNECTING_AFTER_ATTEMPTS) {
+        notify.warning(RECONNECTING_COPY.title, {
+          id: RECONNECTING_TOAST_ID,
+          description: RECONNECTING_COPY.description,
+          duration: Infinity,
+        })
+      }
     })
 
     newSocket.on('disconnect', (reason) => {
@@ -101,62 +101,34 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       }
     })
 
-    // Single `notification:new` handler: browser notification + sound + title
-    // counter + bell cache + one toast. This is the only place that reacts to
-    // the event (T6): do not add a second listener elsewhere.
-    newSocket.on(ConversationSocketEvent.NewNotification, (notification) => {
-      const { title, body } = notificationToastPayload(notification)
-
-      setUnreadCount((previous) => {
-        const next = previous + 1
-        document.title = `(${next}) Nuevo mensaje - MiApp`
-        return next
-      })
-
-      // Desktop alerts and sound follow the per-browser choice in Ajustes.
-      if (shouldShowDesktopNotification()) {
-        new Notification(title, { body: body ?? 'Vista no disponible' })
-      }
-
-      queryClient.setQueryData(['notifications'], (previous: unknown) =>
-        prependNotification(previous, notification)
-      )
-
-      if (readLocalNotificationPrefs().sound) {
-        const audio = new Audio('/sounds/alert.mp3')
-        void audio.play().catch(() => undefined)
-      }
-
-      toast.info(title, { position: 'top-right', description: body })
-    })
-
     newSocket.on('event-error', () => {
       setIsConnected(false)
     })
 
-    // Failure taxonomy: with action → persistent "Enviar plantilla" toast;
+    // Failure taxonomy: with action → persistent "Enviar plantilla" toast that
+    // opens the open conversation's template picker;
     // without → detail toast. The v2 payload carries no message reference, so
     // the inline `failed` state comes from the `conversation:message:status`
     // patch (T3), never from this event.
     newSocket.on(ConversationSocketEvent.ErrorMessage, (error) => {
       const decision = resolveErrorToast(error)
 
+      // One toast per failure kind: a burst of failed sends updates it
+      // instead of stacking copies.
       if (decision.kind === 'template') {
-        toast.error(decision.title, {
-          position: 'top-right',
+        notify.critical(decision.title, {
+          id: 'message-error:template',
           description: decision.description,
           action: {
             label: 'Enviar plantilla',
-            onClick: () => void sendTemplate(decision.recipient ?? ''),
+            onClick: requestTemplatePicker,
           },
-          closeButton: true,
-          duration: Infinity,
         })
         return
       }
 
-      toast(decision.title, {
-        position: 'top-right',
+      notify.error(decision.title, {
+        id: `message-error:${decision.title}`,
         description: decision.description,
         icon: <CloudAlert />,
       })
@@ -168,23 +140,9 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     return () => {
       newSocket.close()
       socketRef.current = null
+      notify.dismiss(RECONNECTING_TOAST_ID)
     }
-  }, [userId, queryClient])
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        setUnreadCount(0)
-        document.title = originalTitleRef.current
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
+  }, [userId])
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

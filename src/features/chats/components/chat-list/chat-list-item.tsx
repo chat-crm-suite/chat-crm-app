@@ -1,7 +1,9 @@
+import { ArrowRightLeft } from 'lucide-react'
 import { parsePhoneNumber } from 'react-phone-number-input'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { useChats } from '../../contexts/chats.context'
+import { CHANNEL_LABEL, copy } from '../../copy'
+import { channelHealthOf } from '../../lib/channel-health'
 import {
   formatFullStamp,
   formatRelativeTime,
@@ -10,15 +12,11 @@ import {
   type UrgencyTier,
 } from '../../lib/list-time'
 import type { Chat } from '../../types/chat.domain'
+import { ChannelIcon } from '../channel-icon'
+import { STATUS_META } from '../conversation/status-meta'
+import { MemberAvatar } from '../member-avatar'
 import { ChatListAvatar } from './chat-list-avatar'
 import { ChatPreview } from './chat-preview'
-
-const TICK: Record<UrgencyTier, string> = {
-  quiet: 'bg-transparent',
-  normal: 'bg-muted-foreground/40',
-  warning: 'bg-warning',
-  critical: 'bg-destructive',
-}
 
 const TIME: Record<UrgencyTier, string> = {
   quiet: 'text-muted-foreground',
@@ -30,19 +28,22 @@ const TIME: Record<UrgencyTier, string> = {
 const customerName = (customer: Chat['customer']) =>
   customer?.displayName ??
   parsePhoneNumber(customer?.phone ?? '', 'PE')?.formatNational() ??
-  'Desconocido'
+  copy.unknownCustomer
 
 export const ChatListItem = ({
   chat,
   waiting = false,
+  showAssignee = false,
   now,
 }: {
   chat: Chat
-  /** Queue / needs-response rows encode waiting; inbox rows stay quiet. */
+  /** Queue / needs-response rows encode waiting; the others stay quiet. */
   waiting?: boolean
+  /** "Todos": the owner's mini avatar (or "Sin asignar"). */
+  showAssignee?: boolean
   now: number
 }) => {
-  const { chatSelected, setChatSelected, setMobile } = useChats()
+  const { chatSelected, setChatSelected, setMobile, updateChat } = useChats()
   const selected = chatSelected?.id === chat.id
 
   const at =
@@ -53,6 +54,12 @@ export const ChatListItem = ({
   const time = waiting
     ? formatWaitingTime(at, now)
     : formatRelativeTime(at, now)
+  const status = chat.status === 'open' ? null : STATUS_META[chat.status]
+  const channelType = chat.channel?.type ?? chat.channelType
+  const channelDown = channelHealthOf(chat)
+  const unread = selected ? 0 : chat.unread
+  const showMeta =
+    !!status || !!chat.transfer || showAssignee || (waiting && !chat.assignee)
 
   return (
     <button
@@ -61,6 +68,7 @@ export const ChatListItem = ({
       onClick={() => {
         setChatSelected(chat)
         setMobile(true)
+        if (chat.unread) updateChat(chat.id, { unread: 0 })
       }}
       className={cn(
         'group relative w-full rounded-md px-2 py-2 text-start text-sm',
@@ -77,43 +85,92 @@ export const ChatListItem = ({
         )}
       />
 
-      <div className='grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2'>
-        <ChatListAvatar customer={chat.customer} />
-
-        <div className='flex min-w-0 flex-col items-start gap-0.5'>
-          <span className='w-full truncate font-medium'>
-            {customerName(chat.customer)}
-          </span>
-
-          <ChatPreview preview={chat.preview} />
-
-          {chat.isUnassigned ? (
-            <Badge
-              variant='secondary'
-              className='mt-px h-4 px-1.5 py-0 text-[10px]'
-            >
-              Sin asignar
-            </Badge>
-          ) : chat.member ? (
-            <span className='text-muted-foreground w-full truncate text-[11px]'>
-              {chat.member.username
-                ? `Asignado a @${chat.member.username}`
-                : 'Asignado'}
-            </span>
-          ) : null}
-        </div>
-
-        <div className='flex w-14 shrink-0 flex-col items-end justify-between gap-1'>
+      <div className='grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5'>
+        <span className='relative h-fit'>
+          <ChatListAvatar customer={chat.customer} />
           <span
-            title={formatFullStamp(at)}
-            className={cn('text-[11px] tabular-nums', TIME[tier])}
+            title={
+              channelDown
+                ? `${copy.channelDownTitle(channelDown.name)}: ${channelDown.reason}`
+                : chat.channel?.name || CHANNEL_LABEL[channelType]
+            }
+            className={cn(
+              'ring-card absolute -end-1 -bottom-1 grid size-4 place-items-center rounded-full ring-2',
+              channelDown
+                ? 'bg-destructive text-white'
+                : 'bg-card text-muted-foreground'
+            )}
           >
-            {time}
+            <ChannelIcon type={channelType} className='size-2.5' />
+            <span className='sr-only'>{CHANNEL_LABEL[channelType]}</span>
           </span>
-          <span
-            aria-hidden='true'
-            className={cn('h-3 w-[3px] rounded-full', TICK[tier])}
-          />
+        </span>
+
+        <div className='flex min-w-0 flex-col gap-0.5'>
+          <div className='flex items-baseline justify-between gap-2'>
+            <span
+              className={cn(
+                'truncate',
+                unread ? 'font-semibold' : 'font-medium'
+              )}
+            >
+              {customerName(chat.customer)}
+            </span>
+            <span
+              title={formatFullStamp(at)}
+              className={cn('shrink-0 text-[11px] tabular-nums', TIME[tier])}
+            >
+              {time}
+            </span>
+          </div>
+
+          <div className='flex items-center justify-between gap-2'>
+            <ChatPreview preview={chat.preview} />
+            {unread > 0 && (
+              <span
+                aria-label={`${unread} sin leer`}
+                className='bg-primary text-primary-foreground ms-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full px-1 text-[10px] font-semibold tabular-nums'
+              >
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+          </div>
+
+          {showMeta && (
+            <div className='text-muted-foreground mt-0.5 flex min-w-0 items-center gap-2 text-[11px]'>
+              {status && (
+                <span className='flex items-center gap-1'>
+                  <span
+                    aria-hidden
+                    className={cn('size-1.5 rounded-full', status.dot)}
+                  />
+                  {status.label}
+                </span>
+              )}
+              {chat.transfer && (
+                <span className='text-foreground flex items-center gap-0.5 rounded-sm border px-1 font-medium'>
+                  <ArrowRightLeft className='size-2.5' aria-hidden />
+                  {copy.transferred}
+                </span>
+              )}
+              {(showAssignee || waiting) &&
+                (chat.assignee ? (
+                  showAssignee && (
+                    <span className='ms-auto flex min-w-0 items-center gap-1'>
+                      <MemberAvatar
+                        name={chat.assignee.name}
+                        className='size-4'
+                      />
+                      <span className='truncate'>{chat.assignee.name}</span>
+                    </span>
+                  )
+                ) : (
+                  <span className='bg-secondary text-secondary-foreground rounded-sm px-1 font-medium'>
+                    {copy.unassigned}
+                  </span>
+                ))}
+            </div>
+          )}
         </div>
       </div>
     </button>

@@ -2,7 +2,6 @@ import type {
   ConversationCustomer,
   ConversationListItem,
   ConversationMessage,
-  ConversationPriority,
   ConversationSentiment,
 } from '@chat-crm/contracts'
 
@@ -28,42 +27,31 @@ export interface LocalSendState {
  */
 export type ChatMessage = ConversationMessage & { local?: LocalSendState }
 
-/** Miembro de la empresa dueño de una conversación. */
-export interface ChatMember {
-  id: string
-  username: string | null
-}
+/**
+ * Tabs of the chat list:
+ * - `mine`: assigned to me (`GET /conversations?scope=mine`);
+ * - `queue`: unassigned, anyone can take them;
+ * - `needs`: the customer wrote last and is waiting for a reply;
+ * - `all`: every conversation of the company (admin/supervisor only).
+ */
+export type ChatListView = 'mine' | 'queue' | 'needs' | 'all'
 
-/** Vistas del panel de chats (asignación automática). */
-export type ChatListView = 'inbox' | 'queue' | 'needs-response'
-
-/** Último mensaje que muestra la lista (payload REST + actualizaciones en vivo). */
+/** Last message shown by the list (REST payload + live updates). */
 export type ChatPreviewData = ConversationListItem['preview']
 
 /**
- * Conversación de la lista (`GET /conversations/list`) más los extras locales
- * de las vistas de asignación (cola / sin respuesta).
+ * A conversation of the list: the shared list item plus the waiting stamp of
+ * the queue views (age of the oldest unanswered message).
  */
 export interface Chat extends Omit<ConversationListItem, 'preview'> {
   preview?: ChatPreviewData
-  isDraft?: boolean
-  /** Cola de sin asignar: momento del último mensaje (antigüedad). */
+  /** Queue / needs-response views: since when the customer is waiting. */
   waitingSince?: string | Date | null
-  /** Vista "sin respuesta": dueño actual (null si está en cola). */
-  member?: ChatMember | null
-  /** Marcado local: la conversación está en la cola y se puede reclamar. */
-  isUnassigned?: boolean
-  /**
-   * Case priority when the API emits it; today no list endpoint does, so the
-   * rail hides the row instead of inventing a value.
-   */
-  priority?: ConversationPriority | null
 }
 
-/** Cliente de la conversación: el contacto v2 (contrato compartido). */
+/** Conversation customer: the v2 contact (shared contract). */
 export type Client = ConversationCustomer
 
-// SENTIMENT
 /**
  * Customer tone as returned by the API, aliased to the shared contract so the
  * service parse and every consumer cannot drift from the payload shape.

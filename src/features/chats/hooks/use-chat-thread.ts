@@ -18,7 +18,6 @@ import {
   uploadKindOf,
   type OutgoingDraft,
 } from '../lib/outgoing-draft'
-import { uploadErrorMessage } from '../lib/upload-errors'
 import {
   applyAttachmentPatch,
   applyStatusPatch,
@@ -28,6 +27,7 @@ import {
   sortChronologically,
   upsertMessage,
 } from '../lib/thread-state'
+import { uploadErrorMessage } from '../lib/upload-errors'
 import type { ChatMessage } from '../types/chat.domain'
 import { ChatSocketEvents as Events } from '../types/socket.api'
 
@@ -47,6 +47,7 @@ const ACK_ERRORS: Record<SendMessageErrorCode | 'timeout', string> = {
   validation: 'El mensaje no es válido.',
   not_found: 'La conversación ya no existe.',
   internal: 'El servidor no pudo encolar el mensaje. Inténtalo de nuevo.',
+  channel_unavailable: 'El canal no está conectado: el mensaje no se envió.',
   timeout: 'Sin respuesta del servidor. Revisa tu conexión y reintenta.',
 }
 
@@ -160,14 +161,20 @@ export function useChatThread(
   const fail = useCallback(
     (clientMessageId: string, reason: string) => {
       updateThread((current) => markMessageFailed(current, { clientMessageId }))
-      toast.error('No se pudo enviar el mensaje', { description: reason })
+      // Same id per conversation: several failed sends update one toast.
+      toast.error('No se pudo enviar el mensaje', {
+        id: `send-failed:${conversationId}`,
+        description: reason,
+      })
     },
-    [updateThread]
+    [updateThread, conversationId]
   )
 
   /** Stages the file of an entry (once) and builds its send payload. */
   const prepare = useCallback(
-    async (clientMessageId: string): Promise<SendConversationMessageInput | null> => {
+    async (
+      clientMessageId: string
+    ): Promise<SendConversationMessageInput | null> => {
       const entry = outbox.current.get(clientMessageId)
       if (!entry || !conversationId) return null
       if (entry.payload) return entry.payload
@@ -225,7 +232,13 @@ export function useChatThread(
       if (!ack.success) {
         fail(payload.clientMessageId, ACK_ERRORS.timeout)
       } else if (!ack.data.ok) {
-        fail(payload.clientMessageId, ACK_ERRORS[ack.data.code])
+        fail(
+          payload.clientMessageId,
+          // The channel answer carries its reason (token expired, …).
+          ack.data.code === 'channel_unavailable' && ack.data.message
+            ? ack.data.message
+            : ACK_ERRORS[ack.data.code]
+        )
       }
     },
     [socket, fail]
@@ -285,6 +298,11 @@ export function useChatThread(
       if (!clientMessageId) return
 
       if (!outbox.current.has(clientMessageId)) {
+        // Templates go through REST, never the socket outbox.
+        if (message.msg.type === 'template') {
+          toast.info('Vuelve a enviar la plantilla desde «Enviar plantilla».')
+          return
+        }
         // Failed before a reload: only text can be rebuilt from the row.
         if (message.msg.type !== 'text') {
           toast.info('Vuelve a adjuntar el archivo para reenviarlo.')
@@ -323,7 +341,8 @@ function createSlots(size: number) {
 
   return {
     async run<T>(task: () => Promise<T>): Promise<T> {
-      if (running >= size) await new Promise<void>((resolve) => waiting.push(resolve))
+      if (running >= size)
+        await new Promise<void>((resolve) => waiting.push(resolve))
       running += 1
       try {
         return await task()

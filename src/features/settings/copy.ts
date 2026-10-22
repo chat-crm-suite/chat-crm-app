@@ -62,12 +62,17 @@ export const NOTIFICATION_COPY = {
   serverSection: 'Avisos de esta empresa',
   serverSectionHint:
     'Se aplican a tu cuenta en la empresa activa. Si trabajas en varias, cada una tiene sus propios avisos.',
+  inApp: 'En la app',
+  inAppHint: 'Aviso en la campana y en pantalla',
+  desktopType: 'Aviso del sistema',
+  desktopTypeHint: 'También fuera del navegador si la pestaña está en segundo plano',
   deviceSection: 'En este dispositivo',
   deviceSectionHint: 'Estas opciones solo valen para este navegador.',
   sound: 'Sonido con mensajes nuevos',
   soundHint: 'Suena un aviso corto cuando llega una notificación.',
   desktop: 'Avisos del escritorio',
-  desktopHint: 'El navegador muestra un aviso aunque esta pestaña esté en segundo plano.',
+  desktopHint:
+    'El sistema muestra los avisos marcados arriba aunque esta pestaña esté en segundo plano, como WhatsApp Web.',
   desktopBlocked:
     'El navegador bloqueó los avisos. Actívalos desde la configuración del sitio y vuelve a intentarlo.',
   desktopUnsupported: 'Este navegador no admite avisos del escritorio.',
@@ -82,17 +87,39 @@ export const NOTIFICATION_TYPE_COPY: Record<
 > = {
   conversation_assigned: {
     label: 'Conversación asignada',
-    description: 'Te avisamos cuando te asignan una conversación.',
+    description: 'Cuando te asignan una conversación.',
+  },
+  conversation_message: {
+    label: 'Mensajes nuevos en tus chats',
+    description:
+      'Cuando un cliente te escribe y no tienes ese chat abierto. Varios mensajes seguidos llegan como un solo aviso.',
   },
   queue_unassigned: {
     label: 'Conversaciones sin responsable',
     description:
-      'Te avisamos cuando una conversación queda en la cola sin nadie a cargo.',
+      'Cuando una conversación queda en la cola sin nadie a cargo.',
+  },
+  task_assigned: {
+    label: 'Tarea asignada',
+    description: 'Cuando alguien te asigna una tarea.',
+  },
+  task_due: {
+    label: 'Tareas por vencer',
+    description: 'Cuando una de tus tareas está por vencer o ya venció.',
+  },
+  channel_down: {
+    label: 'Canal desconectado',
+    description:
+      'Cuando WhatsApp deja de funcionar (por ejemplo, un token vencido).',
+  },
+  ia_down: {
+    label: 'Análisis de IA no disponible',
+    description: 'Cuando el análisis de sentimiento deja de responder.',
   },
   spend_budget: {
     label: 'Presupuesto de mensajes',
     description:
-      'Te avisamos cuando el gasto de mensajes se acerca al límite del mes.',
+      'Cuando el gasto de mensajes se acerca al límite del mes o lo supera.',
   },
 }
 

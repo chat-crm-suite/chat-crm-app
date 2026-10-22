@@ -10,14 +10,14 @@ const notifications = client('/notifications')
 const parse = (data: unknown): NotificationPreferences =>
   parseContract(NotificationPreferencesSchema, data)
 
-/** Notification types the member muted in the active company. */
+/** Muted and OS-notification types of the member in the active company. */
 export const getNotificationPreferences =
   async (): Promise<NotificationPreferences> => {
     const { data } = await notifications.get('/preferences')
     return parse(data)
   }
 
-/** Replaces the whole muted list. */
+/** Replaces both lists. */
 export const saveNotificationPreferences = async (
   input: NotificationPreferences
 ): Promise<NotificationPreferences> => {

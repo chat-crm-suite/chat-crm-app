@@ -8,7 +8,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
-import { GeneralError } from '@/features/errors/general-error'
+import { RouteError } from '@/features/errors/route-error'
 import { NotFoundError } from '@/features/errors/not-found-error'
 import { resolveSetupRedirect } from '@/features/setup/setup-steps'
 import { getSetupStatus } from '@/services/setup.service'
@@ -33,7 +33,15 @@ export const Route = createRootRouteWithContext<{
       <>
         <NavigationProgress />
         <Outlet />
-        <Toaster duration={5000} />
+        {/* The app's only Toaster: one position, at most 4 visible, every
+            toast closable. Toasts go through `@/lib/notify`. */}
+        <Toaster
+          position='top-right'
+          richColors
+          closeButton
+          visibleToasts={4}
+          duration={5000}
+        />
         {import.meta.env.MODE === 'development' && (
           <>
             <ReactQueryDevtools buttonPosition='bottom-left' />
@@ -44,5 +52,5 @@ export const Route = createRootRouteWithContext<{
     )
   },
   notFoundComponent: NotFoundError,
-  errorComponent: GeneralError,
+  errorComponent: RouteError,
 })

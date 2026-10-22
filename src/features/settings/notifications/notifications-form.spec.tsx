@@ -3,16 +3,17 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOCAL_NOTIFICATION_PREFS_KEY } from '@/lib/local-notification-prefs'
-import { newQueryClient } from '../testing/fixtures'
-import {
-  NOTIFICATION_PREFS_KEY,
-  NotificationsForm,
-} from './notifications-form'
+import { notificationPrefsKey } from '@/features/notifications/use-notification-preferences'
+import { makeUser, membership, newQueryClient, signIn } from '../testing/fixtures'
+import { NotificationsForm } from './notifications-form'
+
+const NOTIFICATION_PREFS_KEY = notificationPrefsKey('c1')
+const DEFAULT_DESKTOP = ['conversation_assigned', 'conversation_message', 'task_assigned']
 
 const mocks = vi.hoisted(() => ({
   getNotificationPreferences: vi.fn(),
   saveNotificationPreferences: vi.fn(),
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(), dismiss: vi.fn() },
 }))
 
 vi.mock('@/services/notification-preferences.service', () => ({
@@ -47,13 +48,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.unstubAllGlobals()
   window.localStorage.clear()
-  mocks.getNotificationPreferences.mockResolvedValue({ muted: [] })
+  signIn(makeUser())
+  mocks.getNotificationPreferences.mockResolvedValue({ muted: [], desktop: DEFAULT_DESKTOP })
 })
 
 describe('NotificationsForm: server preferences', () => {
   it('shows one switch per notification type, on unless muted', async () => {
     mocks.getNotificationPreferences.mockResolvedValue({
       muted: ['queue_unassigned'],
+      desktop: DEFAULT_DESKTOP,
     })
     renderForm()
 
@@ -78,9 +81,10 @@ describe('NotificationsForm: server preferences', () => {
     expect(await toggle('Conversación asignada')).not.toBeChecked()
     expect(mocks.saveNotificationPreferences).toHaveBeenCalledWith({
       muted: ['conversation_assigned'],
+      desktop: DEFAULT_DESKTOP,
     })
 
-    finish({ muted: ['conversation_assigned'] })
+    finish({ muted: ['conversation_assigned'], desktop: DEFAULT_DESKTOP })
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: 'Conversación asignada' })).not.toBeChecked()
     )
@@ -97,6 +101,7 @@ describe('NotificationsForm: server preferences', () => {
     await waitFor(() =>
       expect(mocks.saveNotificationPreferences).toHaveBeenLastCalledWith({
         muted: ['conversation_assigned', 'spend_budget'],
+        desktop: DEFAULT_DESKTOP,
       })
     )
   })
@@ -110,11 +115,44 @@ describe('NotificationsForm: server preferences', () => {
 
     await waitFor(() =>
       expect(mocks.toast.error).toHaveBeenCalledWith(
-        'No se pudo guardar. Se restauró tu elección anterior.'
+        'No se pudo guardar. Se restauró tu elección anterior.',
+        expect.objectContaining({ id: 'notification-prefs:save' })
       )
     )
     expect(await toggle('Conversación asignada')).toBeChecked()
-    expect(queryClient.getQueryData(NOTIFICATION_PREFS_KEY)).toEqual({ muted: [] })
+    expect(queryClient.getQueryData(NOTIFICATION_PREFS_KEY)).toEqual({
+      muted: [],
+      desktop: DEFAULT_DESKTOP,
+    })
+  })
+
+  it('lists only the types the role can receive', async () => {
+    signIn(makeUser({ memberships: [membership('c1', 'agent')] }))
+    renderForm()
+
+    expect(await toggle('Conversación asignada')).toBeChecked()
+    expect(screen.queryByRole('switch', { name: 'Conversaciones sin responsable' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Presupuesto de mensajes' })).toBeNull()
+  })
+
+  it('saves the OS-notification choice per type, and locks it while the type is off', async () => {
+    const user = userEvent.setup()
+    mocks.saveNotificationPreferences.mockImplementation(async (value) => value)
+    renderForm()
+
+    const desktop = await toggle('Tarea asignada: Aviso del sistema')
+    expect(desktop).toBeChecked()
+    await user.click(desktop)
+
+    await waitFor(() =>
+      expect(mocks.saveNotificationPreferences).toHaveBeenLastCalledWith({
+        muted: [],
+        desktop: ['conversation_assigned', 'conversation_message'],
+      })
+    )
+
+    await user.click(await toggle('Conversación asignada'))
+    expect(await toggle('Conversación asignada: Aviso del sistema')).toBeDisabled()
   })
 
   it('offers a retry when the preferences cannot be loaded', async () => {
@@ -171,7 +209,8 @@ describe('NotificationsForm: this device', () => {
 
     await waitFor(() =>
       expect(mocks.toast.error).toHaveBeenCalledWith(
-        expect.stringContaining('El navegador bloqueó los avisos')
+        expect.stringContaining('El navegador bloqueó los avisos'),
+        expect.anything()
       )
     )
     expect(await toggle('Avisos del escritorio')).not.toBeChecked()

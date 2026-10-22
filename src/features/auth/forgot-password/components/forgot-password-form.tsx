@@ -39,12 +39,12 @@ export function ForgotPasswordForm({
     setIsLoading(true)
 
     toast.promise(sleep(2000), {
-      loading: 'Sending email...',
+      loading: 'Enviando correo…',
       success: () => {
         setIsLoading(false)
         form.reset()
         navigate({ to: '/otp' })
-        return `Email sent to ${data.email}`
+        return `Te enviamos un correo a ${data.email}`
       },
       error: 'Error',
     })

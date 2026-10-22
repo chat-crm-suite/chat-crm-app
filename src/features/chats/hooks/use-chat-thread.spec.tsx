@@ -128,6 +128,7 @@ describe('useChatThread', () => {
 
       await waitFor(() => expect(t.thread()[0].status).toBe('failed'))
       expect(mocks.toast.error).toHaveBeenCalledWith('No se pudo enviar el mensaje', {
+        id: 'send-failed:c-1',
         description: 'Ya no tienes acceso a esta conversación.',
       })
     })
