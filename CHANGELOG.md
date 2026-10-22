@@ -1,3 +1,22 @@
+## 2.3.0 (2026-10-22)
+
+### Feat
+
+- ✨ carousel cards in template picker, preview and thread
+- ✨ template message view and header media upload
+- ✨ notifications phase 2: open chat reads its own notices
+- ✨ notifications v2: one toast layer, synced bell, OS notices
+- ✨ channel down notice with retry and settings link
+- ✨ inbox v2 unified chat UI, tasks and templates
+- ✨ dev proxy to the API over the compose network + single endpoints module
+- ✨ pending WhatsApp channel screen, connection test and null bodies
+- ✨ auto-commit the contracts lock after contracts:pull
+
+### Fix
+
+- 🔒 whatsapp settings admin-only
+- 🐛 wait for the API instead of the 500 page when it does not answer
+
 ## 2.0.0-b0 (2025-11-16)
 
 ## 0.1.0 (2025-11-15)
